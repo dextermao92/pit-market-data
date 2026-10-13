@@ -7,7 +7,8 @@ port = 4002              # paper API, as published by docker-compose
 client_id = 11
 market_data_type = 1     # 1 live, 2 frozen, 3 delayed, 4 delayed-frozen
 batch_size = 90          # contracts streamed at once; default account limit is 100 lines
-wait_seconds = 3         # time to collect ticks per batch
+wait_seconds = 3         # min time to collect ticks per batch
+max_wait_seconds = 15    # keep waiting until every contract has ticked, up to this
 
 [[underlyings]]
 symbol = "SPX"

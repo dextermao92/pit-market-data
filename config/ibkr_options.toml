@@ -1,0 +1,19 @@
+# Option chain snapshot config. IB_HOST / IB_PORT env vars override host/port
+# (docker-compose sets them to the ib-gateway service).
+
+[ibkr]
+host = "127.0.0.1"
+port = 4002              # paper API, as published by docker-compose
+client_id = 11
+market_data_type = 1     # 1 live, 2 frozen, 3 delayed, 4 delayed-frozen
+batch_size = 90          # contracts streamed at once; default account limit is 100 lines
+wait_seconds = 3         # time to collect ticks per batch
+
+[[underlyings]]
+symbol = "SPX"
+sec_type = "IND"
+exchange = "CBOE"
+currency = "USD"
+trading_class = "SPXW"   # PM-settled weeklies/dailies; "SPX" = AM-settled monthlies
+max_expiries = 3         # nearest N expiries from today
+strike_range_pct = 0.03  # strikes within ±3% of spot

@@ -34,7 +34,7 @@ dataset that can't be bought back later.
 | Equity/ETF bars | Alpaca, free plan | 15-min OHLCV, unadjusted | ~50 symbols | Backfillable to 2016 |
 | Daily bars | Alpaca, free plan | Daily OHLCV, unadjusted | Same | Reconciliation only (rule 12) |
 | Corporate actions | Alpaca | Event | Same | Backfillable |
-| Option chain snapshots | IBKR, OPRA subscription | Every 15 min in market hours | ~10 underlyings; expiries ≤ 60 DTE; strikes within ±20% of spot at each snapshot | **From first run; no backfill** |
+| Option chain snapshots | IBKR, OPRA subscription | Every 15 min in market hours | Per underlying in `config/ibkr_options.toml`: trading class, nearest N expiries, strikes within ±X% of spot at each snapshot (SPX example: SPXW, 3 expiries, ±3%) | **From first run; no backfill** |
 
 **Alpaca** free plan serves SIP (all-exchange) historical bars except the latest
 15 minutes, at 200 calls/min. Its free options feed is indicative
@@ -77,7 +77,7 @@ apart. The list of contracts requested is stored with each snapshot.
 ## Architecture
 
 ```
- Alpaca REST                                  IB Gateway on host (paper, read-only)
+ Alpaca REST                                  IB Gateway container (paper, read-only)
    bars, corporate actions                        option snapshots
         │                                              │
         ▼                                              ▼
@@ -170,9 +170,9 @@ dbt tests (curated):
 |---|---|
 | Language / env | Python 3.12, uv (Airflow installed with its official constraints file) |
 | Orchestration | Airflow 3, LocalExecutor |
-| Runtime | Docker Compose: Postgres (Airflow metadata) + Airflow, image extended from `apache/airflow` with the pipeline package; Celery/Redis from the official compose file dropped. Postgres lets both ingest DAGs run in parallel (SQLite would not). |
+| Runtime | Docker Compose: Postgres (Airflow metadata), Airflow (`standalone`, image extended from `apache/airflow`), IB Gateway. Postgres lets both ingest DAGs run in parallel (SQLite would not). `src/`, `dags/`, `config/`, `data/` are bind-mounted. |
 | Data dir | `./data` bind-mounted, so Parquet stays on the host and is queryable locally |
-| IB Gateway | On the host, reached at `host.docker.internal:4002`; IBC optional for daily restart/re-login (weekly 2FA stays manual) |
+| IB Gateway | `gnzsnz/ib-gateway` image (Gateway + IBC: daily auto-restart; VNC on localhost for 2FA/UI). Gateway, not TWS: no trading UI, lighter, built for API use |
 | Alpaca client | httpx, not the SDK — raw stores the response as received |
 | IBKR client | ib_async (maintained ib_insync fork); raw = received fields serialized to JSON |
 | Transform | Polars |
@@ -189,9 +189,9 @@ dbt tests (curated):
 | Phase | Scope | Done when |
 |---|---|---|
 | P0 | Sources, repo, this doc | This README |
-| P1 | Ingest → raw → staged for both sources, idempotent; `pipeline_runs`; IBKR cycle-time check; host cron every 15 min | Same run twice → identical staged data (hash of sorted rows, not file bytes); queryable in DuckDB; option snapshots collecting |
+| P1 | Docker Compose up; ingest → raw → staged for both sources, idempotent; `pipeline_runs`; IBKR cycle-time check; ingest DAGs on cron + market-open check | Same run twice → identical staged data (hash of sorted rows, not file bytes); queryable in DuckDB; option snapshots collecting |
 | P2 | Row rules + quarantine, partition checks, corporate actions, adjustment | Each rule has +/- tests; hand-computed adjustment golden test passes |
-| P3 | Docker Compose + Airflow DAGs + market-hours Timetable (replaces cron); dbt curated layer, SCD2, rules 12–13; backfill; CI | 1-year equity backfill succeeds; a full week unattended except Gateway re-auth; `dbt build` green |
+| P3 | Market-hours Timetable (replaces cron), `eod` DAG; dbt curated layer, SCD2, rules 12–13; backfill; CI | 1-year equity backfill succeeds; a full week unattended except Gateway re-auth; `dbt build` green |
 | P4 | `as_of` queries + simulated bad-data drill | Same query differs across `as_of` values; drill written up, labelled simulated |
 
 Option snapshots start in P1 and keep running, so history accumulates while the

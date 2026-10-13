@@ -1,0 +1,60 @@
+name: pit-market-data
+
+services:
+  postgres:  # Airflow metadata only; market data lives in ./data as files
+    image: postgres:17.6
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  ib-gateway:  # IB Gateway + IBC; paper login, read-only API
+    image: ghcr.io/gnzsnz/ib-gateway:10.50.1f
+    environment:
+      TWS_USERID: ${TWS_USERID}
+      TWS_PASSWORD: ${TWS_PASSWORD}
+      TRADING_MODE: paper
+      READ_ONLY_API: "yes"
+      VNC_SERVER_PASSWORD: ${VNC_SERVER_PASSWORD:-}
+      TIME_ZONE: America/New_York
+      AUTO_RESTART_TIME: "11:45 PM"
+      TWOFA_TIMEOUT_ACTION: restart
+    ports:
+      - "127.0.0.1:4002:4004"  # paper API, for running the collector from the host
+      - "127.0.0.1:5900:5900"  # VNC, only if VNC_SERVER_PASSWORD is set
+    restart: unless-stopped
+
+  airflow:  # `standalone` = scheduler + dag-processor + api-server + triggerer in one container
+    build: .
+    command: standalone
+    user: "${AIRFLOW_UID:-50000}:0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"  # local only, no login
+      PYTHONPATH: /opt/airflow/src
+      IB_HOST: ib-gateway
+      IB_PORT: "4004"
+      DATA_DIR: /opt/airflow/data
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./config:/opt/airflow/config
+      - ./data:/opt/airflow/data
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

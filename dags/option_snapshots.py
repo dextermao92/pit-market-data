@@ -3,7 +3,7 @@ import pandas as pd
 import pendulum
 from airflow.sdk import dag, task
 
-from pit.ibkr_options import run
+from pit.pipeline import collect_option_snapshots
 
 
 # ponytail: cron + open-check; replace with a custom market-hours Timetable in P3.
@@ -19,8 +19,9 @@ def option_snapshots():
         return xcals.get_calendar("XNYS").is_open_on_minute(pd.Timestamp.now(tz="UTC"))
 
     @task(retries=1)
-    def snapshot() -> str:
-        return str(run("/opt/airflow/config/ibkr_options.toml"))
+    def snapshot(**context) -> str:
+        rec = collect_option_snapshots("/opt/airflow/config/ibkr_options.toml", run_id=context["run_id"])
+        return rec["staged_path"]
 
     market_open() >> snapshot()
 

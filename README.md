@@ -67,6 +67,7 @@ IBKR tick time, and a derived `quote_status`:
 |---|---|---|
 | `two_sided` | bid > 0 and ask > 0 | Normal contract |
 | `ask_only` | bid missing or 0, ask > 0 | Deep OTM: MM offers, nobody bids |
+| `bid_only` | bid > 0, ask missing or 0 | Rare one-sided bid |
 | `no_quote` | neither side | No market at all |
 | `crossed` | bid > ask | Quarantined (rule 4) |
 
@@ -86,7 +87,7 @@ apart. The list of contracts requested is stored with each snapshot.
         │  parse + type + row rules (Polars)
         ├────────► quarantine/      error rows + rule + run_id
         ▼
- staged/     <dataset>/ingest_date=YYYY-MM-DD/part.parquet   (warn rows kept, flagged)
+ staged/     <dataset>/ingest_date=YYYY-MM-DD/<ingested_at>.parquet   (1:1 with raw; warn rows kept, flagged)
         │  dbt-duckdb (eod only)
         ▼
  curated     adjusted bars, chain views, security_master (SCD2), dbt tests
@@ -157,7 +158,7 @@ Partition checks (→ `pipeline_runs`):
 
 9. Missing 15-min bars vs the session calendar (`warn`: halts/LULD cause real gaps)
 10. Freshness: latest bar/snapshot within SLA of the interval end
-11. Snapshot breakdown: requested / responded / `two_sided` / `ask_only` / `no_quote`, and cycle time vs the 15-min budget
+11. Snapshot breakdown: count per `quote_status`, IBKR error codes, and cycle time vs the 15-min budget
 
 dbt tests (curated):
 

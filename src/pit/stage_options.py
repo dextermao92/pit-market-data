@@ -13,7 +13,7 @@ import polars as pl
 
 from pit.storage import TS, staged_path, write_parquet
 
-QUOTE = {  # raw field -> staged column; IBKR's -1 means "no value" and becomes null
+QUOTE = {  # raw field -> staged column; IBKR sentinels (-1, INT32_MAX) mean "no value" and become null
     "bid": "bid", "bidSize": "bid_size", "ask": "ask", "askSize": "ask_size",
     "last": "last", "lastSize": "last_size", "volume": "volume", "close": "close",
 }
@@ -35,8 +35,11 @@ def _ts(s):
     return datetime.fromisoformat(s) if s else None
 
 
+SENTINELS = {-1, 2**31 - 1}  # 2147483647 seen in option volume on 2026-10-14
+
+
 def _value(x):
-    return None if x == -1 else x
+    return None if x in SENTINELS else x
 
 
 def to_frame(payload: dict) -> pl.DataFrame:

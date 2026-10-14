@@ -29,7 +29,7 @@ PAYLOAD = {
     "underlyings": [{"symbol": "SPX", "trading_class": "SPXW", "spot": 7800.0,
                      "spot_time": "2026-10-14T14:30:00.2+00:00", "contracts": [
         contract(7800, "C", 10.0, 10.5, call_oi=500.0),            # two_sided
-        contract(7800, "P", 9.0, 9.5, put_oi=700.0),               # two_sided
+        contract(7800, "P", 9.0, 9.5, put_oi=700.0) | {"volume": 2147483647.0},  # two_sided
         contract(9000, "C", -1, 0.05, greeks=False),               # ask_only (-1 = no bid)
         contract(6000, "P", 0.05, None),                           # bid_only
         contract(9500, "C", None, None, greeks=False),             # no_quote
@@ -50,6 +50,7 @@ def test_quote_status_nulls_and_open_interest():
     df = to_frame(PAYLOAD)
     assert df["quote_status"].to_list() == ["two_sided", "two_sided", "ask_only", "bid_only", "no_quote", "crossed"]
     assert df["bid"][2] is None  # -1 -> null, never 0
+    assert df["volume"][1] is None  # INT32_MAX sentinel -> null
     assert df["open_interest"].to_list()[:2] == [500.0, 700.0]  # picked by right
     assert df["iv"][2] is None and df["iv"][0] == 0.2
 

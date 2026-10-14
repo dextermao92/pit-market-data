@@ -49,11 +49,20 @@ def ticker_row(t) -> dict:
     }
 
 
+def wait_for_ticks(ib: IB, ib_cfg: dict, tickers, ready) -> None:
+    """First-time subscriptions or a data farm still connecting (e.g. right after login) can take >3s:
+    wait the minimum, then until ready(t) holds for every ticker, capped at max_wait_seconds."""
+    ib.sleep(ib_cfg["wait_seconds"])
+    deadline = time.monotonic() + ib_cfg["max_wait_seconds"] - ib_cfg["wait_seconds"]
+    while time.monotonic() < deadline and not all(ready(t) for t in tickers):
+        ib.sleep(0.25)
+
+
 def snapshot_underlying(ib: IB, ib_cfg: dict, u: dict, today: str) -> dict:
     und = Contract(symbol=u["symbol"], secType=u["sec_type"], exchange=u["exchange"], currency=u["currency"])
     ib.qualifyContracts(und)
     und_t = ib.reqMktData(und)  # streamed, not snapshot: a snapshot of an index outside RTH returns nothing
-    ib.sleep(ib_cfg["wait_seconds"])
+    wait_for_ticks(ib, ib_cfg, [und_t], lambda t: clean(t.marketPrice()) or clean(t.close))
     ib.cancelMktData(und)
     spot = clean(und_t.marketPrice()) or clean(und_t.close)  # indices only calculate in RTH; fall back to close
     if spot is None:
@@ -77,12 +86,7 @@ def snapshot_underlying(ib: IB, ib_cfg: dict, u: dict, today: str) -> dict:
     for i in range(0, len(contracts), n):
         chunk = contracts[i : i + n]
         tickers = [ib.reqMktData(c, OPEN_INTEREST) for c in chunk]
-        # Contracts subscribed for the first time (or a waking data farm) can take >3s to tick:
-        # wait the minimum, then until every ticker has ticked, capped at max_wait_seconds.
-        ib.sleep(ib_cfg["wait_seconds"])
-        deadline = time.monotonic() + ib_cfg["max_wait_seconds"] - ib_cfg["wait_seconds"]
-        while time.monotonic() < deadline and not all(t.time for t in tickers):
-            ib.sleep(0.25)
+        wait_for_ticks(ib, ib_cfg, tickers, lambda t: t.time)
         rows += [ticker_row(t) for t in tickers]
         for c in chunk:
             ib.cancelMktData(c)

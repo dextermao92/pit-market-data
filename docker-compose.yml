@@ -47,6 +47,8 @@ services:
       IB_HOST: ib-gateway
       IB_PORT: "4004"
       DATA_DIR: /opt/airflow/data
+      APCA_API_KEY_ID: ${APCA_API_KEY_ID:-}
+      APCA_API_SECRET_KEY: ${APCA_API_SECRET_KEY:-}
     volumes:
       - ./dags:/opt/airflow/dags
       - ./src:/opt/airflow/src

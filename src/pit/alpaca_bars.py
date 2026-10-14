@@ -1,4 +1,4 @@
-"""Alpaca 15-min bars: fetch the session's completed bars so far into raw/, and stage raw -> Parquet.
+"""Alpaca intraday bars (bar size in config): fetch the session's completed bars so far into raw/, and stage raw -> Parquet.
 
 Every run refetches the whole session so far, so vendor revisions show up as new rows.
 Usage: python -m pit.alpaca_bars config/alpaca_bars.toml

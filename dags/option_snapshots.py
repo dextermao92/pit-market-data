@@ -8,7 +8,7 @@ from pit.pipeline import collect_option_snapshots
 
 # ponytail: cron + open-check; replace with a custom market-hours Timetable in P3.
 @dag(
-    schedule="*/15 9-16 * * 1-5",
+    schedule="*/5 9-16 * * 1-5",
     start_date=pendulum.datetime(2026, 10, 1, tz="America/New_York"),
     catchup=False,  # a missed snapshot can't be fetched later
     max_active_runs=1,

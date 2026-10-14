@@ -1,7 +1,7 @@
 # pit-market-data
 
-A personal, local, batch pipeline for US equity/ETF 15-minute bars and option
-chain snapshots that can answer **"what did I know as of time T?"** —
+A personal, local, batch pipeline for US equity/ETF 5-minute bars and 5-minute
+option chain snapshots that can answer **"what did I know as of time T?"** —
 reproducibly.
 
 Status: design (P0). Nothing below is implemented yet.
@@ -31,10 +31,10 @@ dataset that can't be bought back later.
 
 | Dataset | Source | Grain | Universe | History |
 |---|---|---|---|---|
-| Equity/ETF bars | Alpaca, free plan | 15-min OHLCV, unadjusted | 50 symbols in `config/alpaca_bars.toml` | Backfillable to 2016 |
+| Equity/ETF bars | Alpaca, free plan | 5-min OHLCV, unadjusted | 50 symbols in `config/alpaca_bars.toml` | Backfillable to 2016 |
 | Daily bars | Alpaca, free plan | Daily OHLCV, unadjusted | Same | Reconciliation only (rule 12) |
 | Corporate actions | Alpaca | Event | Same | Backfillable |
-| Option chain snapshots | IBKR, OPRA subscription | Every 15 min in market hours | Per underlying in `config/ibkr_options.toml`: trading class, nearest N expiries, strikes within ±X% of spot at each snapshot (SPX example: SPXW, 3 expiries, ±3%) | **From first run; no backfill** |
+| Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | Per underlying in `config/ibkr_options.toml`: trading class, nearest N expiries, strikes within ±X% of spot at each snapshot (SPX example: SPXW, 3 expiries, ±3%) | **From first run; no backfill** |
 
 **Alpaca** free plan serves SIP (all-exchange) historical bars except the latest
 15 minutes, at 200 calls/min. Its free options feed is indicative
@@ -43,7 +43,7 @@ dataset that can't be bought back later.
 **IBKR** gives real OPRA quotes plus IBKR-computed IV/greeks. It needs IB
 Gateway running and logged in — daily restarts and periodic 2FA make the
 options pipeline not fully unattended — and market-data line limits force
-batched snapshots. P1 must confirm a full cycle fits well inside 15 minutes;
+batched snapshots. P1 must confirm a full cycle fits well inside 5 minutes;
 the universe shrinks if not. The Gateway is logged into a **paper account**
 with market-data sharing and **Read-Only API**, so the pipeline cannot touch
 the live account.
@@ -107,9 +107,9 @@ and both ingest DAGs fire at the same moment.
 
 | DAG | Schedule | Tasks |
 |---|---|---|
-| `equity_bars` | Custom Timetable: every 15 min in NYSE sessions (`exchange_calendars`: holidays, half days, DST), from open+30 min to close+30 min | fetch the session's completed bars so far → raw → staged |
+| `equity_bars` | Custom Timetable: every 5 min in NYSE sessions (`exchange_calendars`: holidays, half days, DST), from open+20 min (first bar + 15-min lag) to close+30 min | fetch the session's completed bars so far → raw → staged |
 | `option_snapshots` | Same Timetable | Gateway health sensor → batched snapshots → raw → staged |
-| `eod` | Same Timetable, once at session close | corporate actions + daily bars → refetch last 10 trading days of 15-min bars → `dbt build` (runs tests) |
+| `eod` | Same Timetable, once at session close | corporate actions + daily bars → refetch last 10 trading days of 5-min bars → `dbt build` (runs tests) |
 
 Ingest DAGs declare their staged datasets as Assets for lineage.
 `equity_bars` supports catchup/backfill; `option_snapshots` does not — a
@@ -122,7 +122,7 @@ missed snapshot is recorded in `pipeline_runs` as missed, never imputed.
 | Raw: one file per fetch, named by `ingested_at` (UTC) | Truly immutable. A rerun re-parses its existing raw file; only an explicit refetch creates a new file with a new `ingested_at`. |
 | Staged partitioned by `ingest_date`, not `trade_date` | Staged is a pure function of raw, so reruns give identical data and revisions become new rows, not overwrites. Bar key `(symbol, bar_start, ingested_at)`; "current" = latest `ingested_at` per `(symbol, bar_start)` at or before `as_of`. |
 | Refetch to capture revisions: every `equity_bars` run refetches today so far; `eod` refetches 10 days | Without refetching, vendor revisions are never seen and point-in-time is only nominal. |
-| Bars lag one run | The free plan withholds the latest 15 min, so a run fetches bars ending ≥ 15 min ago. Bar timestamps are bar start, UTC. |
+| Bars lag 15 minutes | The free plan withholds the latest 15 min, so a run fetches bars ending ≥ 15 min ago. Bar timestamps are bar start, UTC. |
 | Atomic writes: temp file → `rename` | A crash mid-write leaves the old partition intact; rerunning is always safe. |
 | Compute adjustments; store unadjusted bars | Vendor-adjusted prices bake in today's knowledge. |
 | `security_master` SCD2 keyed on `ingested_at` | dbt snapshot's default validity time is run time, wrong on backfill/replay. Use the `check` strategy with an explicit timestamp, or a hand-written model. |
@@ -156,13 +156,13 @@ Row rules, `warn`:
 
 Partition checks (→ `pipeline_runs`):
 
-9. Missing 15-min bars vs the session calendar (`warn`: halts/LULD cause real gaps)
+9. Missing 5-min bars vs the session calendar (`warn`: halts/LULD cause real gaps)
 10. Freshness: latest bar/snapshot within SLA of the interval end
-11. Snapshot breakdown: count per `quote_status`, IBKR error codes, and cycle time vs the 15-min budget
+11. Snapshot breakdown: count per `quote_status`, IBKR error codes, and cycle time vs the 5-min budget
 
 dbt tests (curated):
 
-12. 15-min bars aggregated to daily match Alpaca daily bars (high, low, volume)
+12. 5-min bars aggregated to daily match Alpaca daily bars (high, low, volume)
 13. Cross-source: IBKR underlying price at snapshot time lies within the matching Alpaca bar's `[low, high]` (stocks/ETFs only; Alpaca has no index data, so SPX-style underlyings have no second source)
 
 ## Stack
@@ -209,6 +209,6 @@ rest is built. Stop after P4.
 - Survivorship: universes are fixed lists chosen today. `security_master` has
   `valid_from/valid_to` for delistings and renames, but past delisted names are
   not reconstructed.
-- 15-min granularity only. No tick data, streaming, Kafka or Spark.
+- 5-min granularity only. No tick data, streaming, Kafka or Spark.
 - Local only; no cloud. No strategies, backtests, risk models or UI.
 - Personal project; not a production system.

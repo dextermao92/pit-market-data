@@ -70,3 +70,9 @@ def test_pipeline_records_equity_run(tmp_path, monkeypatch):
     assert rec["staged_path"].endswith("staged/equity_bars/ingest_date=2026-10-14/20261014T140000000000Z.parquet")
     runs = pl.read_parquet(tmp_path / "pipeline_runs/dataset=equity_bars/**/*.parquet")
     assert runs["two_sided"][0] is None  # option-only columns stay null
+
+
+def test_window_with_5_min_bars():
+    five = timedelta(minutes=5)
+    assert window(t(13, 50, 1), OPEN, CLOSE, five, LAG) == (OPEN, t(13, 30))   # 09:50 ET: first 5-min bar
+    assert window(t(20, 15, 1), OPEN, CLOSE, five, LAG)[1] == t(19, 55)        # 16:15 ET: last bar of the day

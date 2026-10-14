@@ -3,7 +3,7 @@
 [alpaca]
 base_url = "https://data.alpaca.markets"
 feed = "sip"          # all exchanges; the free plan serves it except the latest 15 minutes
-bar_minutes = 15
+bar_minutes = 5
 lag_minutes = 15      # only fetch bars whose interval ended at least this long ago
 
 symbols = [

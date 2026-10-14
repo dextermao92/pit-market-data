@@ -31,7 +31,7 @@ dataset that can't be bought back later.
 
 | Dataset | Source | Grain | Universe | History |
 |---|---|---|---|---|
-| Equity/ETF bars | Alpaca, free plan | 15-min OHLCV, unadjusted | ~50 symbols | Backfillable to 2016 |
+| Equity/ETF bars | Alpaca, free plan | 15-min OHLCV, unadjusted | 50 symbols in `config/alpaca_bars.toml` | Backfillable to 2016 |
 | Daily bars | Alpaca, free plan | Daily OHLCV, unadjusted | Same | Reconciliation only (rule 12) |
 | Corporate actions | Alpaca | Event | Same | Backfillable |
 | Option chain snapshots | IBKR, OPRA subscription | Every 15 min in market hours | Per underlying in `config/ibkr_options.toml`: trading class, nearest N expiries, strikes within ±X% of spot at each snapshot (SPX example: SPXW, 3 expiries, ±3%) | **From first run; no backfill** |
@@ -107,7 +107,7 @@ and both ingest DAGs fire at the same moment.
 
 | DAG | Schedule | Tasks |
 |---|---|---|
-| `equity_bars` | Custom Timetable: every 15 min in NYSE sessions (`exchange_calendars`: holidays, half days, DST) | fetch today's bars so far → raw → staged |
+| `equity_bars` | Custom Timetable: every 15 min in NYSE sessions (`exchange_calendars`: holidays, half days, DST), from open+30 min to close+30 min | fetch the session's completed bars so far → raw → staged |
 | `option_snapshots` | Same Timetable | Gateway health sensor → batched snapshots → raw → staged |
 | `eod` | Same Timetable, once at session close | corporate actions + daily bars → refetch last 10 trading days of 15-min bars → `dbt build` (runs tests) |
 

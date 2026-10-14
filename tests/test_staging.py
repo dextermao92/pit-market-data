@@ -73,15 +73,15 @@ def test_staging_is_idempotent_and_queryable(tmp_path):
 
 def test_pipeline_runs_records_success_and_failure(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
-    monkeypatch.setattr(pipeline, "run", lambda cfg: write_raw(tmp_path))
+    monkeypatch.setattr(pipeline.ibkr_options, "run", lambda cfg: write_raw(tmp_path))
     rec = pipeline.collect_option_snapshots("cfg.toml", run_id="r1")
-    assert rec["status"] == "success" and rec["contracts"] == 6 and rec["crossed"] == 1
+    assert rec["status"] == "success" and rec["rows"] == 6 and rec["crossed"] == 1
     assert rec["ibkr_error_codes"] == [10197]  # farm status 2104 filtered out
 
     def boom(cfg):
         raise ConnectionError("gateway down")
 
-    monkeypatch.setattr(pipeline, "run", boom)
+    monkeypatch.setattr(pipeline.ibkr_options, "run", boom)
     with pytest.raises(ConnectionError):
         pipeline.collect_option_snapshots("cfg.toml", run_id="r2")
 

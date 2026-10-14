@@ -3,7 +3,6 @@
 Usage: python -m pit.ibkr_options config/ibkr_options.toml
 """
 
-import json
 import math
 import os
 import sys
@@ -14,6 +13,8 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from ib_async import IB, Contract, Option, StartupFetch
+
+from pit.storage import write_raw
 
 TICKER_FIELDS = (
     "bid", "bidSize", "ask", "askSize", "last", "lastSize", "volume", "close",
@@ -95,16 +96,6 @@ def snapshot_underlying(ib: IB, ib_cfg: dict, u: dict, today: str) -> dict:
     }
 
 
-def write_raw(data_dir: Path, payload: dict, ingested_at: datetime) -> Path:
-    d = data_dir / "raw" / "source=ibkr" / f"ingest_date={ingested_at:%Y-%m-%d}" / "option_snapshots"
-    d.mkdir(parents=True, exist_ok=True)
-    path = d / f"{ingested_at:%Y%m%dT%H%M%S%fZ}.json"
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(payload, default=str))
-    tmp.replace(path)  # atomic: a crash never leaves a half-written file under the final name
-    return path
-
-
 def run(config_path: str) -> Path:
     cfg = tomllib.loads(Path(config_path).read_text())
     ib_cfg = cfg["ibkr"]
@@ -136,7 +127,7 @@ def run(config_path: str) -> Path:
         "underlyings": underlyings,
         "errors": errors,
     }
-    return write_raw(Path(os.environ.get("DATA_DIR", "data")), payload, ingested_at)
+    return write_raw(Path(os.environ.get("DATA_DIR", "data")), "ibkr", "option_snapshots", payload, ingested_at)
 
 
 if __name__ == "__main__":

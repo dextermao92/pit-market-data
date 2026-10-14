@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 
 from ib_async import Option, Ticker
 
-from pit.ibkr_options import pick_expiries, ticker_row, write_raw
+from pit.ibkr_options import pick_expiries, ticker_row
+from pit.storage import write_raw
 
 
 def test_pick_expiries_skips_past_and_sorts():
@@ -23,7 +24,7 @@ def test_ticker_row_ask_only_quote():
 
 def test_write_raw_is_partitioned_and_complete(tmp_path):
     at = datetime(2026, 10, 13, 14, 30, tzinfo=timezone.utc)
-    path = write_raw(tmp_path, {"x": 1}, at)
+    path = write_raw(tmp_path, "ibkr", "option_snapshots", {"x": 1}, at)
     assert path.parent == tmp_path / "raw/source=ibkr/ingest_date=2026-10-13/option_snapshots"
     assert json.loads(path.read_text()) == {"x": 1}
     assert not list(path.parent.glob("*.tmp"))

@@ -1,0 +1,32 @@
+# Equity/ETF bar config. API keys come from env: APCA_API_KEY_ID, APCA_API_SECRET_KEY.
+
+[alpaca]
+base_url = "https://data.alpaca.markets"
+feed = "sip"          # all exchanges; the free plan serves it except the latest 15 minutes
+bar_minutes = 15
+lag_minutes = 15      # only fetch bars whose interval ended at least this long ago
+
+symbols = [
+    # index / factor ETFs
+    "SPY", "QQQ", "IWM", "SPMO",
+    # sector ETFs
+    "XLK", "XLF", "XLE", "XLV", "XLY", "XLP", "XLI", "XLU", "XLB", "XLRE", "XLC", "SMH",
+    # rates / commodities
+    "TLT", "GLD",
+    # mega-cap tech
+    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AVGO",
+    # semis
+    "AMD", "TSM", "MU", "INTC",
+    # software / internet
+    "NFLX", "ORCL", "CRM", "PLTR",
+    # financials
+    "JPM", "BAC", "GS", "V", "MA",
+    # energy
+    "XOM", "CVX",
+    # healthcare
+    "UNH", "LLY", "JNJ",
+    # consumer
+    "WMT", "COST", "HD", "KO", "PEP",
+    # other
+    "BRK.B",
+]

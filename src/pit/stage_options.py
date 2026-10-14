@@ -1,17 +1,16 @@
-"""Raw IBKR option snapshot JSON -> typed staged Parquet, one file per raw file.
+"""Raw IBKR option snapshot JSON -> typed staged Parquet (+ quarantine), one file per raw file.
 
 Staged is a pure function of raw: re-staging gives identical data.
-Usage (re-stage everything): python -m pit.stage_options data
 """
 
 import json
-import sys
 from datetime import datetime
 from pathlib import Path
 
 import polars as pl
 
-from pit.storage import TS, staged_path, write_parquet
+from pit.rules import check_options
+from pit.storage import TS, write_staged
 
 QUOTE = {  # raw field -> staged column; IBKR sentinels (-1, INT32_MAX) mean "no value" and become null
     "bid": "bid", "bidSize": "bid_size", "ask": "ask", "askSize": "ask_size",
@@ -77,11 +76,6 @@ def to_frame(payload: dict) -> pl.DataFrame:
     return pl.DataFrame(rows, schema=SCHEMA).with_columns(quote_status=quote_status)
 
 
-def stage_file(raw_path: Path) -> tuple[Path, pl.DataFrame]:
-    df = to_frame(json.loads(raw_path.read_text()))
-    return write_parquet(df, staged_path(raw_path)), df
-
-
-if __name__ == "__main__":
-    for raw in sorted(Path(sys.argv[1]).glob("raw/source=ibkr/ingest_date=*/option_snapshots/*.json")):
-        print(stage_file(raw)[0])
+def stage_file(raw_path: Path) -> tuple[Path, pl.DataFrame, pl.DataFrame]:
+    staged, quarantined = check_options(to_frame(json.loads(raw_path.read_text())))
+    return write_staged(raw_path, staged, quarantined), staged, quarantined

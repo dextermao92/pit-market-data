@@ -57,12 +57,12 @@ def test_quote_status_nulls_and_open_interest():
 
 def test_staging_is_idempotent_and_queryable(tmp_path):
     raw = write_raw(tmp_path)
-    path, _ = stage_file(raw)
+    path, _, _ = stage_file(raw)
     assert path == tmp_path / "staged/option_snapshots/ingest_date=2026-10-14/20261014T143000000000Z.parquet"
 
     def digest():
         df = pl.read_parquet(path).sort("con_id")
-        return hashlib.sha256(df.write_csv().encode()).hexdigest()
+        return hashlib.sha256(df.write_ndjson().encode()).hexdigest()
 
     first = digest()
     stage_file(raw)
@@ -70,13 +70,16 @@ def test_staging_is_idempotent_and_queryable(tmp_path):
     n = duckdb.sql(f"select count(*) from '{tmp_path}/staged/option_snapshots/*/*.parquet' "
                    "where quote_status = 'two_sided'").fetchone()[0]
     assert n == 2
+    q = pl.read_parquet(tmp_path / "quarantine/option_snapshots/ingest_date=2026-10-14/20261014T143000000000Z.parquet")
+    assert q["rules"].to_list() == [["crossed_quote"]]
 
 
 def test_pipeline_runs_records_success_and_failure(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setattr(pipeline.ibkr_options, "run", lambda cfg: write_raw(tmp_path))
     rec = pipeline.collect_option_snapshots("cfg.toml", run_id="r1")
-    assert rec["status"] == "success" and rec["rows"] == 6 and rec["crossed"] == 1
+    assert rec["status"] == "success" and rec["rows"] == 5 and rec["quarantined"] == 1 and rec["crossed"] == 1
+    assert rec["flagged"] == 0
     assert rec["ibkr_error_codes"] == [10197]  # farm status 2104 filtered out
 
     def boom(cfg):

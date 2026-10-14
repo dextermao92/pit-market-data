@@ -32,8 +32,8 @@ dataset that can't be bought back later.
 | Dataset | Source | Grain | Universe | History |
 |---|---|---|---|---|
 | Equity/ETF bars | Alpaca, free plan | 5-min OHLCV, unadjusted | 50 symbols in `config/alpaca_bars.toml` | Backfillable to 2016 |
-| Daily bars | Alpaca, free plan | Daily OHLCV, unadjusted | Same | Reconciliation only (rule 12) |
-| Corporate actions | Alpaca | Event | Same | Backfillable |
+| Daily bars | Alpaca, free plan | Daily OHLCV, unadjusted | Same | Reconciliation only (rule 14) |
+| Corporate actions | Alpaca, full history (2016 → +1 year) refetched daily by `eod` | Event: splits, stock and cash dividends staged; other types raw only | Same | Every fetch is a new version |
 | Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | Per underlying in `config/ibkr_options.toml`: trading class, nearest N expiries, strikes within ±X% of spot at each snapshot (SPX example: SPXW, 3 expiries, ±5%) | **From first run; no backfill** |
 
 **Alpaca** free plan serves SIP (all-exchange) historical bars except the latest
@@ -109,7 +109,7 @@ and both ingest DAGs fire at the same moment.
 |---|---|---|
 | `equity_bars` | Custom Timetable: every 5 min in NYSE sessions (`exchange_calendars`: holidays, half days, DST), from open+20 min (first bar + 15-min lag) to close+30 min | fetch the session's completed bars so far → raw → staged |
 | `option_snapshots` | Same Timetable | Gateway health sensor → batched snapshots → raw → staged |
-| `eod` | Same Timetable, once at session close | corporate actions + daily bars → refetch last 10 trading days of 5-min bars → `dbt build` (runs tests) |
+| `eod` | 17:30 ET on weekdays | corporate actions (P2); P3 adds daily bars → refetch last 10 trading days of 5-min bars → `dbt build` (runs tests) |
 
 Ingest DAGs declare their staged datasets as Assets for lineage.
 `equity_bars` supports catchup/backfill; `option_snapshots` does not — a
@@ -124,7 +124,7 @@ missed snapshot is recorded in `pipeline_runs` as missed, never imputed.
 | Refetch to capture revisions: every `equity_bars` run refetches today so far; `eod` refetches 10 days | Without refetching, vendor revisions are never seen and point-in-time is only nominal. |
 | Bars lag 15 minutes | The free plan withholds the latest 15 min, so a run fetches bars ending ≥ 15 min ago. Bar timestamps are bar start, UTC. |
 | Atomic writes: temp file → `rename` | A crash mid-write leaves the old partition intact; rerunning is always safe. |
-| Compute adjustments; store unadjusted bars | Vendor-adjusted prices bake in today's knowledge. |
+| Compute adjustments; store unadjusted bars | Vendor-adjusted prices bake in today's knowledge. `pit.adjust` uses only actions known by `as_of` (latest version per id) with `ex_date <= as_of`: splits by ratio, cash dividends CRSP-style (`1 - cash / previous session close`). |
 | `security_master` SCD2 keyed on `ingested_at` | dbt snapshot's default validity time is run time, wrong on backfill/replay. Use the `check` strategy with an explicit timestamp, or a hand-written model. |
 
 ## Quality rules
@@ -137,33 +137,44 @@ does).
 
 Two severities, mirroring dbt: `error` → row moved to quarantine (kept as
 evidence, never deleted); `warn` → row stays in staged with a flag. Only
-logically impossible rows are errors. Rules are hand-written (~10 don't justify
-Great Expectations); each has a passing and a failing test.
+logically impossible rows are errors. Rules are hand-written in `src/pit/rules.py`
+(a dozen don't justify Great Expectations); each has a passing and a failing test.
+
+Rules see one raw file only, so staged stays a pure function of raw; context a
+rule needs (the previous session's last bar) is fetched into the same raw file.
+Quarantine files mirror staged 1:1 (`quarantine/<dataset>/ingest_date=D/<ingested_at>.parquet`,
+with a `rules` column); staged rows carry `flags`. After a rule change,
+`python -m pit.pipeline restage data` rebuilds staged and quarantine from raw.
 
 Row rules, `error`:
 
-1. Schema and types
-2. Unique `(symbol, bar_start)` / `(contract, snapshot_time)` within one fetch
+1. Required fields present (types are enforced by each dataset's staged schema)
+2. Unique `(symbol, bar_start)` / `con_id` within one fetch
 3. Bar OHLC invariants: `low <= open, close <= high`, `volume >= 0`
-4. Option quotes: not `crossed`; expiry not in the past; IV not negative
+4. Option quotes: not `crossed`; expiry not before the snapshot's New York date; IV not negative
+5. Corporate actions: split/stock-dividend factor > 0, cash dividend >= 0
 
 Row rules, `warn`:
 
-5. Suspected unrecorded split (equity bars): jump near an integer ratio, no matching corporate action, no reversion
-6. Suspected bad tick (equity bars): single-bar spike that reverts next bar on low volume
-7. Non-standard option contract (adjusted deliverable or multiplier ≠ 100)
-8. IV missing on a `two_sided` quote
+6. Overnight split-ratio jump (equity bars): session open and latest close both near an integer ratio of the previous close. Matching against corporate actions happens in the curated layer.
+7. Bad tick (equity bars): close > 1% away from both neighbours, in opposite directions, on < 20% of median bar volume
+8. Non-standard option contract (multiplier ≠ 100)
+9. IV missing on a `two_sided` quote
+10. Special cash dividend
+
+IBKR sentinels (-1, 2147483647) are turned into null during staging, never 0.
 
 Partition checks (→ `pipeline_runs`):
 
-9. Missing 5-min bars vs the session calendar (`warn`: halts/LULD cause real gaps)
-10. Freshness: latest bar/snapshot within SLA of the interval end
-11. Snapshot breakdown: count per `quote_status`, IBKR error codes, and cycle time vs the 5-min budget
+11. Missing 5-min bars: expected `(symbol, bar_start)` slots minus present (`warn`: halts and no-trade intervals are real gaps)
+12. Freshness: `gap_s` since the previous successful run of the dataset (exposes missed runs, e.g. a sleeping host)
+13. Snapshot breakdown: count per `quote_status`, IBKR error codes, cycle time vs the 5-min budget; rows / quarantined / flagged for every dataset
 
 dbt tests (curated):
 
-12. 5-min bars aggregated to daily match Alpaca daily bars (high, low, volume)
-13. Cross-source: IBKR underlying price at snapshot time lies within the matching Alpaca bar's `[low, high]` (stocks/ETFs only; Alpaca has no index data, so SPX-style underlyings have no second source)
+14. 5-min bars aggregated to daily match Alpaca daily bars (high, low, volume)
+15. Rule 6 hits without a matching split in corporate actions
+16. Cross-source: IBKR underlying price at snapshot time lies within the matching Alpaca bar's `[low, high]` (stocks/ETFs only; Alpaca has no index data, so SPX-style underlyings have no second source)
 
 ## Stack
 
@@ -192,7 +203,7 @@ dbt tests (curated):
 | P0 | Sources, repo, this doc | This README |
 | P1 | Docker Compose up; ingest → raw → staged for both sources, idempotent; `pipeline_runs`; IBKR cycle-time check; ingest DAGs on cron + market-open check | Same run twice → identical staged data (hash of sorted rows, not file bytes); queryable in DuckDB; option snapshots collecting |
 | P2 | Row rules + quarantine, partition checks, corporate actions, adjustment | Each rule has +/- tests; hand-computed adjustment golden test passes |
-| P3 | Market-hours Timetable (replaces cron), `eod` DAG; dbt curated layer, SCD2, rules 12–13; backfill; CI | 1-year equity backfill succeeds; a full week unattended except Gateway re-auth; `dbt build` green |
+| P3 | Market-hours Timetable (replaces cron), `eod` DAG; dbt curated layer, SCD2, rules 14–16; backfill; CI | 1-year equity backfill succeeds; a full week unattended except Gateway re-auth; `dbt build` green |
 | P4 | `as_of` queries + simulated bad-data drill | Same query differs across `as_of` values; drill written up, labelled simulated |
 
 Option snapshots start in P1 and keep running, so history accumulates while the

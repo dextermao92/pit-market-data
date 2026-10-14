@@ -1,6 +1,7 @@
 """Alpaca intraday bars (bar size in config): fetch the session's completed bars so far into raw/, and stage raw -> Parquet.
 
-Every run refetches the whole session so far, so vendor revisions show up as new rows.
+Every run refetches the whole session so far, so vendor revisions show up as new rows. It also fetches the
+previous session's last bar and stores it in the same raw file, so the overnight-split rule needs nothing else.
 Usage: python -m pit.alpaca_bars config/alpaca_bars.toml
 """
 
@@ -17,7 +18,8 @@ import httpx
 import pandas as pd
 import polars as pl
 
-from pit.storage import TS, staged_path, write_parquet, write_raw
+from pit.rules import check_bars
+from pit.storage import TS, write_raw, write_staged
 
 SCHEMA = {
     "ingested_at": TS, "symbol": pl.String, "bar_start": TS, "open": pl.Float64, "high": pl.Float64,
@@ -33,10 +35,15 @@ def window(now: datetime, open_: datetime, close: datetime, bar: timedelta, lag:
     return open_, min(last, close - bar)
 
 
-def fetch_pages(client: httpx.Client, params: dict) -> list[dict]:
+def client() -> httpx.Client:
+    return httpx.Client(base_url="https://data.alpaca.markets", timeout=30, headers={
+        "APCA-API-KEY-ID": os.environ["APCA_API_KEY_ID"], "APCA-API-SECRET-KEY": os.environ["APCA_API_SECRET_KEY"]})
+
+
+def fetch_pages(client: httpx.Client, path: str, params: dict) -> list[dict]:
     pages, token = [], None
     while True:
-        r = client.get("/v2/stocks/bars", params=params | ({"page_token": token} if token else {}))
+        r = client.get(path, params=params | ({"page_token": token} if token else {}))
         r.raise_for_status()
         pages.append(r.json())
         token = pages[-1].get("next_page_token")
@@ -50,10 +57,12 @@ def run(config_path: str, now: datetime | None = None) -> Path:
     t0 = time.monotonic()
     cal = xcals.get_calendar("XNYS")
     session = cal.date_to_session(pd.Timestamp(now).tz_convert("America/New_York").date(), "previous")
+    bar = timedelta(minutes=cfg["bar_minutes"])
     first, last = window(
         now, cal.session_open(session).to_pydatetime(), cal.session_close(session).to_pydatetime(),
-        timedelta(minutes=cfg["bar_minutes"]), timedelta(minutes=cfg["lag_minutes"]),
+        bar, timedelta(minutes=cfg["lag_minutes"]),
     )
+    prev_last = cal.session_close(cal.previous_session(session)).to_pydatetime() - bar
     if last < first:
         raise ValueError(f"no completed bars yet in session {session.date()}")
 
@@ -62,31 +71,34 @@ def run(config_path: str, now: datetime | None = None) -> Path:
         "start": first.isoformat(), "end": last.isoformat(),  # end is inclusive on bar start
         "feed": cfg["feed"], "adjustment": "raw", "limit": 10000,
     }
-    headers = {"APCA-API-KEY-ID": os.environ["APCA_API_KEY_ID"], "APCA-API-SECRET-KEY": os.environ["APCA_API_SECRET_KEY"]}
-    with httpx.Client(base_url=cfg["base_url"], headers=headers, timeout=30) as client:
-        pages = fetch_pages(client, params)
+    prev_params = params | {"start": prev_last.isoformat(), "end": prev_last.isoformat()}
+    with client() as c:
+        pages = fetch_pages(c, "/v2/stocks/bars", params)
+        prev_pages = fetch_pages(c, "/v2/stocks/bars", prev_params)
 
     payload = {
         "ingested_at": now.isoformat(), "duration_s": round(time.monotonic() - t0, 1),
-        "session": str(session.date()), "request": params, "pages": pages,
+        "session": str(session.date()), "request": params, "pages": pages, "prev_pages": prev_pages,
     }
     return write_raw(Path(os.environ.get("DATA_DIR", "data")), "alpaca", "equity_bars", payload, now)
 
 
-def to_frame(payload: dict) -> pl.DataFrame:
+def to_frame(payload: dict, pages_key: str = "pages") -> pl.DataFrame:
     ingested_at = datetime.fromisoformat(payload["ingested_at"])
     rows = [
         {"ingested_at": ingested_at, "symbol": sym, "bar_start": datetime.fromisoformat(b["t"]),
          "open": b["o"], "high": b["h"], "low": b["l"], "close": b["c"], "volume": b["v"],
          "trade_count": b["n"], "vwap": b["vw"]}
-        for page in payload["pages"] for sym, bars in (page.get("bars") or {}).items() for b in bars
+        for page in payload.get(pages_key, []) for sym, bars in (page.get("bars") or {}).items() for b in bars
     ]
     return pl.DataFrame(rows, schema=SCHEMA)
 
 
-def stage_file(raw_path: Path) -> tuple[Path, pl.DataFrame]:
-    df = to_frame(json.loads(raw_path.read_text()))
-    return write_parquet(df, staged_path(raw_path)), df
+def stage_file(raw_path: Path) -> tuple[Path, pl.DataFrame, pl.DataFrame]:
+    payload = json.loads(raw_path.read_text())
+    prev_close = to_frame(payload, "prev_pages").select("symbol", prev_close="close")  # absent in early raw files
+    staged, quarantined = check_bars(to_frame(payload), prev_close)
+    return write_staged(raw_path, staged, quarantined), staged, quarantined
 
 
 if __name__ == "__main__":

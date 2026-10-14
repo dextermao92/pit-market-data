@@ -44,12 +44,14 @@ def test_fetch_pages_follows_page_tokens():
         return httpx.Response(200, json=pages[token])
 
     with httpx.Client(base_url="https://x", transport=httpx.MockTransport(handler)) as c:
-        out = fetch_pages(c, {"symbols": "SPY,QQQ"})
+        out = fetch_pages(c, "/v2/stocks/bars", {"symbols": "SPY,QQQ"})
     assert seen == [None, "p2"] and len(out) == 2
 
 
 PAYLOAD = {
-    "ingested_at": "2026-10-14T14:00:00+00:00", "duration_s": 0.4, "session": "2026-10-14", "request": {},
+    "ingested_at": "2026-10-14T14:00:00+00:00", "duration_s": 0.4, "session": "2026-10-14",
+    "request": {"symbols": "SPY,BRK.B", "timeframe": "15Min", "start": "2026-10-14T13:30:00+00:00",
+                "end": "2026-10-14T13:45:00+00:00"},
     "pages": [{"bars": {"SPY": [bar("2026-10-14T13:30:00Z", 700.0), bar("2026-10-14T13:45:00Z", 701.0)]},
                "next_page_token": "p2"},
               {"bars": {"BRK.B": [bar("2026-10-14T13:30:00Z", 500.0)]}, "next_page_token": None}],
@@ -66,7 +68,8 @@ def test_pipeline_records_equity_run(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setattr(alpaca_bars, "run", lambda cfg: write_raw(tmp_path, "alpaca", "equity_bars", PAYLOAD, t(14, 0)))
     rec = pipeline.collect_equity_bars("cfg.toml", run_id="e1")
-    assert rec["status"] == "success" and rec["rows"] == 3
+    assert rec["status"] == "success" and rec["rows"] == 3 and rec["quarantined"] == 0
+    assert rec["missing_bars"] == 1  # BRK.B has no 13:45 bar
     assert rec["staged_path"].endswith("staged/equity_bars/ingest_date=2026-10-14/20261014T140000000000Z.parquet")
     runs = pl.read_parquet(tmp_path / "pipeline_runs/dataset=equity_bars/**/*.parquet")
     assert runs["two_sided"][0] is None  # option-only columns stay null

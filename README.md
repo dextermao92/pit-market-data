@@ -34,7 +34,7 @@ dataset that can't be bought back later.
 | Equity/ETF bars | Alpaca, free plan | 5-min OHLCV, unadjusted | 50 symbols in `config/alpaca_bars.toml` | Backfillable to 2016 |
 | Daily bars | Alpaca, free plan | Daily OHLCV, unadjusted | Same | Reconciliation only (rule 12) |
 | Corporate actions | Alpaca | Event | Same | Backfillable |
-| Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | Per underlying in `config/ibkr_options.toml`: trading class, nearest N expiries, strikes within ±X% of spot at each snapshot (SPX example: SPXW, 3 expiries, ±3%) | **From first run; no backfill** |
+| Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | Per underlying in `config/ibkr_options.toml`: trading class, nearest N expiries, strikes within ±X% of spot at each snapshot (SPX example: SPXW, 3 expiries, ±5%) | **From first run; no backfill** |
 
 **Alpaca** free plan serves SIP (all-exchange) historical bars except the latest
 15 minutes, at 200 calls/min. Its free options feed is indicative

@@ -15,12 +15,12 @@ services:
       retries: 10
     restart: unless-stopped
 
-  ib-gateway:  # IB Gateway + IBC; paper login, read-only API
+  ib-gateway:  # IB Gateway + IBC; read-only API. TRADING_MODE/IB_PORT in .env: paper/4004 (default) or live/4003
     image: ghcr.io/gnzsnz/ib-gateway:10.50.1f
     environment:
       TWS_USERID: ${TWS_USERID}
       TWS_PASSWORD: ${TWS_PASSWORD}
-      TRADING_MODE: paper
+      TRADING_MODE: ${TRADING_MODE:-paper}
       READ_ONLY_API: "yes"
       VNC_SERVER_PASSWORD: ${VNC_SERVER_PASSWORD:-}
       TIME_ZONE: America/New_York
@@ -28,6 +28,7 @@ services:
       TWOFA_TIMEOUT_ACTION: restart
     ports:
       - "127.0.0.1:4002:4004"  # paper API, for running the collector from the host
+      - "127.0.0.1:4001:4003"  # live API (read-only)
       - "127.0.0.1:5900:5900"  # VNC, only if VNC_SERVER_PASSWORD is set
     restart: unless-stopped
 
@@ -45,7 +46,7 @@ services:
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "True"  # local only, no login
       PYTHONPATH: /opt/airflow/src
       IB_HOST: ib-gateway
-      IB_PORT: "4004"
+      IB_PORT: ${IB_PORT:-4004}
       DATA_DIR: /opt/airflow/data
       APCA_API_KEY_ID: ${APCA_API_KEY_ID:-}
       APCA_API_SECRET_KEY: ${APCA_API_SECRET_KEY:-}

@@ -52,6 +52,7 @@ services:
       APCA_API_SECRET_KEY: ${APCA_API_SECRET_KEY:-}
     volumes:
       - ./dags:/opt/airflow/dags
+      - ./plugins:/opt/airflow/plugins
       - ./src:/opt/airflow/src
       - ./config:/opt/airflow/config
       - ./data:/opt/airflow/data

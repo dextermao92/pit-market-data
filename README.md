@@ -176,7 +176,7 @@ Partition checks (→ `pipeline_runs`):
 
 dbt tests (curated):
 
-14. 5-min bars aggregated to daily match Alpaca daily bars (high, low, volume)
+14. 5-min bars aggregated to daily fit inside Alpaca daily bars: high/low within 0.5%, volume not above (one-sided: daily bars include extended hours, the closing auction and trades that skip intraday bars; calibrated on a year of data)
 15. Rule 6 hits without a matching split in corporate actions
 16. Cross-source: IBKR underlying price at snapshot time lies within the matching Alpaca bar's `[low, high]` (stocks/ETFs only; Alpaca has no index data, so SPX-style underlyings have no second source)
 

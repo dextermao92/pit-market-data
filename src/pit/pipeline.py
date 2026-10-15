@@ -29,6 +29,7 @@ RUN_SCHEMA = {
 STAGERS = {
     "option_snapshots": stage_options.stage_file,
     "equity_bars": alpaca_bars.stage_file,
+    "daily_bars": alpaca_bars.stage_file,
     "corporate_actions": corporate_actions.stage_file,
 }
 
@@ -79,15 +80,19 @@ def collect_option_snapshots(config_path: str, run_id: str | None = None) -> dic
     return _recorded("option_snapshots", run_id, collect)
 
 
-def collect_equity_bars(config_path: str, run_id: str | None = None) -> dict:
+def collect_equity_bars(config_path: str, run_id: str | None = None, session=None) -> dict:
     def collect():
-        rec, payload, staged, quarantined = _stage("equity_bars", alpaca_bars.run(config_path))
+        rec, payload, staged, quarantined = _stage("equity_bars", alpaca_bars.run(config_path, session=session))
         req = payload["request"]
         present = pl.concat([staged.select("symbol", "bar_start"), quarantined.select("symbol", "bar_start")])
         return rec | {"missing_bars": missing_bars(
             present, req["symbols"].split(","), datetime.fromisoformat(req["start"]),
             datetime.fromisoformat(req["end"]), timedelta(minutes=int(req["timeframe"].removesuffix("Min"))))}
     return _recorded("equity_bars", run_id, collect)
+
+
+def collect_daily_bars(config_path: str, sessions: list, run_id: str | None = None) -> dict:
+    return _recorded("daily_bars", run_id, lambda: _stage("daily_bars", alpaca_bars.run_daily(config_path, sessions))[0])
 
 
 def collect_corporate_actions(config_path: str, run_id: str | None = None) -> dict:

@@ -38,3 +38,14 @@ def test_accepts_datetime_subclasses():
         def __sub__(self, other):
             return object()  # anything but a timedelta
     assert next_slot(Sub(2026, 10, 14, 13, 31, tzinfo=UTC), **OPTIONS) == utc(2026, 10, 14, 13, 35)
+
+
+def test_recent_sessions_only_completed():
+    from datetime import date
+    from pit.market_hours import recent_sessions
+    # Thu 15 Oct 2026 17:30 ET: today's session is complete
+    assert recent_sessions(utc(2026, 10, 15, 21, 30), 3) == [date(2026, 10, 13), date(2026, 10, 14), date(2026, 10, 15)]
+    # 10:00 ET the same day: today not complete yet
+    assert recent_sessions(utc(2026, 10, 15, 14, 0), 2) == [date(2026, 10, 13), date(2026, 10, 14)]
+    # day after Thanksgiving 2026, 18:00 ET: the half day counts, Thanksgiving doesn't
+    assert recent_sessions(utc(2026, 11, 27, 23, 0), 3) == [date(2026, 11, 24), date(2026, 11, 25), date(2026, 11, 27)]

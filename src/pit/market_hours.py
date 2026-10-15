@@ -29,3 +29,12 @@ def next_slot(after: datetime, every: timedelta, start_offset: timedelta, end_of
         if t < end:
             return t
     raise RuntimeError(f"no session within 14 days after {after}")
+
+
+def recent_sessions(now: datetime, n: int) -> list:
+    """The last n sessions whose close is at or before `now`, oldest first."""
+    cal = calendar()
+    last = cal.date_to_session(pd.Timestamp(now).tz_convert("America/New_York").date(), "previous")
+    if cal.session_close(last) > pd.Timestamp(now):
+        last = cal.previous_session(last)
+    return [s.date() for s in cal.sessions_window(last, -n)]

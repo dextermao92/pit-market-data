@@ -10,14 +10,14 @@ import os
 import sys
 import time
 import tomllib
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-import exchange_calendars as xcals
 import httpx
 import pandas as pd
 import polars as pl
 
+from pit.market_hours import calendar
 from pit.rules import check_bars
 from pit.storage import TS, write_raw, write_staged
 
@@ -51,12 +51,15 @@ def fetch_pages(client: httpx.Client, path: str, params: dict) -> list[dict]:
             return pages
 
 
-def run(config_path: str, now: datetime | None = None) -> Path:
+def run(config_path: str, now: datetime | None = None, session: date | None = None) -> Path:
+    """Completed bars of `session` (default: the current/last session) so far. A past session gives the
+    whole day; ingested_at is always the real fetch time, also for refetches and backfills."""
     cfg = tomllib.loads(Path(config_path).read_text())["alpaca"]
     now = now or datetime.now(timezone.utc)
     t0 = time.monotonic()
-    cal = xcals.get_calendar("XNYS")
-    session = cal.date_to_session(pd.Timestamp(now).tz_convert("America/New_York").date(), "previous")
+    cal = calendar()
+    session = pd.Timestamp(session) if session else cal.date_to_session(
+        pd.Timestamp(now).tz_convert("America/New_York").date(), "previous")
     bar = timedelta(minutes=cfg["bar_minutes"])
     first, last = window(
         now, cal.session_open(session).to_pydatetime(), cal.session_close(session).to_pydatetime(),
@@ -66,21 +69,36 @@ def run(config_path: str, now: datetime | None = None) -> Path:
     if last < first:
         raise ValueError(f"no completed bars yet in session {session.date()}")
 
-    params = {
-        "symbols": ",".join(cfg["symbols"]), "timeframe": f"{cfg['bar_minutes']}Min",
-        "start": first.isoformat(), "end": last.isoformat(),  # end is inclusive on bar start
-        "feed": cfg["feed"], "adjustment": "raw", "limit": 10000,
-    }
+    params = _params(cfg, f"{cfg['bar_minutes']}Min", first.isoformat(), last.isoformat())  # end inclusive
     prev_params = params | {"start": prev_last.isoformat(), "end": prev_last.isoformat()}
     with client() as c:
         pages = fetch_pages(c, "/v2/stocks/bars", params)
         prev_pages = fetch_pages(c, "/v2/stocks/bars", prev_params)
-
     payload = {
         "ingested_at": now.isoformat(), "duration_s": round(time.monotonic() - t0, 1),
         "session": str(session.date()), "request": params, "pages": pages, "prev_pages": prev_pages,
     }
     return write_raw(Path(os.environ.get("DATA_DIR", "data")), "alpaca", "equity_bars", payload, now)
+
+
+def run_daily(config_path: str, sessions: list[date], now: datetime | None = None) -> Path:
+    """Vendor daily bars for `sessions`; used to reconcile aggregated 5-min bars (dbt)."""
+    cfg = tomllib.loads(Path(config_path).read_text())["alpaca"]
+    now = now or datetime.now(timezone.utc)
+    t0 = time.monotonic()
+    # A date-only end means "end of that day", which hits the free plan's 15-minute limit for today.
+    end = calendar().session_close(pd.Timestamp(max(sessions))).isoformat()
+    params = _params(cfg, "1Day", str(min(sessions)), end)
+    with client() as c:
+        pages = fetch_pages(c, "/v2/stocks/bars", params)
+    payload = {"ingested_at": now.isoformat(), "duration_s": round(time.monotonic() - t0, 1),
+               "request": params, "pages": pages}
+    return write_raw(Path(os.environ.get("DATA_DIR", "data")), "alpaca", "daily_bars", payload, now)
+
+
+def _params(cfg: dict, timeframe: str, start: str, end: str) -> dict:
+    return {"symbols": ",".join(cfg["symbols"]), "timeframe": timeframe, "start": start, "end": end,
+            "feed": cfg["feed"], "adjustment": "raw", "limit": 10000}
 
 
 def to_frame(payload: dict, pages_key: str = "pages") -> pl.DataFrame:

@@ -66,7 +66,7 @@ def test_to_frame_flattens_all_pages():
 
 def test_pipeline_records_equity_run(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
-    monkeypatch.setattr(alpaca_bars, "run", lambda cfg: write_raw(tmp_path, "alpaca", "equity_bars", PAYLOAD, t(14, 0)))
+    monkeypatch.setattr(alpaca_bars, "run", lambda cfg, session=None: write_raw(tmp_path, "alpaca", "equity_bars", PAYLOAD, t(14, 0)))
     rec = pipeline.collect_equity_bars("cfg.toml", run_id="e1")
     assert rec["status"] == "success" and rec["rows"] == 3 and rec["quarantined"] == 0
     assert rec["missing_bars"] == 1  # BRK.B has no 13:45 bar

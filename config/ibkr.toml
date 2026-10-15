@@ -1,0 +1,86 @@
+# IBKR collection: option chains + index levels. IB_HOST / IB_PORT env vars override host/port
+# (docker-compose sets them to the ib-gateway service). Add an underlying or index by adding a block.
+
+[ibkr]
+host = "127.0.0.1"
+port = 4002              # paper API, as published by docker-compose
+client_id = 11           # option chains; indices use client_id + 1
+market_data_type = 1     # 1 live, 2 frozen, 3 delayed, 4 delayed-frozen
+batch_size = 90          # contracts streamed at once; default account limit is 100 lines
+wait_seconds = 3         # min time to collect ticks per batch
+max_wait_seconds = 15    # keep waiting until every contract has ticked, up to this
+
+# Each chain: an underlying + trading class, which expiries, which strikes, how often.
+#   expiries: dte = [min, max]      every expiry with min <= DTE <= max
+#             target_dte = [...]    the expiry nearest each target (deduplicated)
+#   strikes:  rights = "both" | "otm" (puts below spot, calls above; ITM follows from put-call parity)
+#             put_range / call_range: how far below / above spot, as a fraction
+#             strike_steps = [[max |moneyness|, step], ...]: keep strikes that are multiples of step
+#   every_minutes: multiple of 5 (the DAG cadence); contracts already taken by an earlier chain are skipped.
+
+[[chains]]
+name = "spx_intraday"     # short-dated gamma: 0-2 DTE, both sides, every strike
+symbol = "SPX"
+sec_type = "IND"
+exchange = "CBOE"
+currency = "USD"
+trading_class = "SPXW"
+dte = [0, 2]
+rights = "both"
+put_range = 0.05
+call_range = 0.05
+strike_steps = [[1.0, 5]]
+every_minutes = 5
+
+[[chains]]
+name = "spx_term"         # convexity / tail hedges: OTM wings out to -40% / +15%
+symbol = "SPX"
+sec_type = "IND"
+exchange = "CBOE"
+currency = "USD"
+trading_class = "SPXW"
+target_dte = [7, 14, 30, 45, 60, 90, 120, 180, 270]
+rights = "otm"
+put_range = 0.40
+call_range = 0.15
+strike_steps = [[0.10, 25], [1.0, 50]]
+every_minutes = 5
+
+[[chains]]
+name = "spx_leaps"        # SPXW lists ~1 year out; the AM-settled SPX monthlies go further
+symbol = "SPX"
+sec_type = "IND"
+exchange = "CBOE"
+currency = "USD"
+trading_class = "SPX"
+target_dte = [365, 730]
+rights = "otm"
+put_range = 0.40
+call_range = 0.15
+strike_steps = [[0.10, 25], [1.0, 50]]
+every_minutes = 5
+
+# Index levels snapshotted with the chains: vol term structure, tail and vol-of-vol gauges.
+[[indices]]
+symbol = "VIX"
+exchange = "CBOE"
+
+[[indices]]
+symbol = "VIX9D"
+exchange = "CBOE"
+
+[[indices]]
+symbol = "VIX3M"
+exchange = "CBOE"
+
+[[indices]]
+symbol = "VIX6M"
+exchange = "CBOE"
+
+[[indices]]
+symbol = "VVIX"
+exchange = "CBOE"
+
+[[indices]]
+symbol = "SKEW"
+exchange = "CBOE"

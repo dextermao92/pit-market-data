@@ -21,7 +21,8 @@ GREEKS = {
     "optPrice": "model_price", "pvDividend": "pv_dividend", "undPrice": "model_und_price",
 }
 SCHEMA = {
-    "ingested_at": TS, "underlying": pl.String, "trading_class": pl.String, "spot": pl.Float64, "spot_time": TS,
+    "ingested_at": TS, "chain": pl.String, "underlying": pl.String, "trading_class": pl.String,
+    "spot": pl.Float64, "spot_time": TS,
     "con_id": pl.Int64, "local_symbol": pl.String, "expiry": pl.Date, "strike": pl.Float64, "right": pl.String,
     "multiplier": pl.Int32,
     **{c: pl.Float64 for c in QUOTE.values()},
@@ -48,6 +49,7 @@ def to_frame(payload: dict) -> pl.DataFrame:
             g = c["modelGreeks"] or {}
             rows.append({
                 "ingested_at": _ts(payload["ingested_at"]),
+                "chain": u.get("chain"),  # absent in raw files from before multi-chain configs
                 "underlying": u["symbol"],
                 "trading_class": c["tradingClass"],
                 "spot": u["spot"],

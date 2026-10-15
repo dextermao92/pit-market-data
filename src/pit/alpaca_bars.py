@@ -115,7 +115,7 @@ def to_frame(payload: dict, pages_key: str = "pages") -> pl.DataFrame:
 def stage_file(raw_path: Path) -> tuple[Path, pl.DataFrame, pl.DataFrame]:
     payload = json.loads(raw_path.read_text())
     prev_close = to_frame(payload, "prev_pages").select("symbol", prev_close="close")  # absent in early raw files
-    staged, quarantined = check_bars(to_frame(payload), prev_close)
+    staged, quarantined = check_bars(to_frame(payload), prev_close, intraday=raw_path.parent.name == "equity_bars")
     return write_staged(raw_path, staged, quarantined), staged, quarantined
 
 

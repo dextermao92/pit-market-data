@@ -2,7 +2,9 @@ import pendulum
 from airflow.sdk import dag, task
 
 from pit.airflow_timetable import MarketHoursTimetable
-from pit.pipeline import collect_option_snapshots
+from pit.pipeline import collect_index_snapshots, collect_option_snapshots
+
+CONFIG = "/opt/airflow/config/ibkr.toml"
 
 
 @dag(
@@ -13,11 +15,14 @@ from pit.pipeline import collect_option_snapshots
 )
 def option_snapshots():
     @task(retries=1)
-    def snapshot(**context) -> str:
-        rec = collect_option_snapshots("/opt/airflow/config/ibkr_options.toml", run_id=context["run_id"])
-        return rec["staged_path"]
+    def chains(**context) -> str:
+        return collect_option_snapshots(CONFIG, run_id=context["run_id"])["staged_path"]
 
-    snapshot()
+    @task(retries=1)
+    def indices(**context) -> str:
+        return collect_index_snapshots(CONFIG, run_id=context["run_id"])["staged_path"]
+
+    [chains(), indices()]
 
 
 option_snapshots()

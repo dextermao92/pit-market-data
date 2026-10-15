@@ -1,6 +1,6 @@
-"""Snapshot option chains from IB Gateway into raw/ — one JSON file per run.
+"""Snapshot option chains from IB Gateway into raw/ — one JSON file per run, every chain in config [[chains]].
 
-Usage: python -m pit.ibkr_options config/ibkr_options.toml
+Usage: python -m pit.ibkr_options config/ibkr.toml
 """
 
 import math
@@ -8,7 +8,7 @@ import os
 import sys
 import time
 import tomllib
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -29,8 +29,33 @@ def clean(x):
     return None if isinstance(x, float) and math.isnan(x) else x
 
 
-def pick_expiries(expirations, today: str, n: int) -> list[str]:
-    return sorted(e for e in expirations if e >= today)[:n]
+def _dte(expiry: str, today: date) -> int:
+    return (date(int(expiry[:4]), int(expiry[4:6]), int(expiry[6:8])) - today).days
+
+
+def pick_expiries(expirations, today: date, chain: dict) -> list[str]:
+    """dte = [min, max]: every expiry in range. target_dte = [...]: the nearest expiry to each target."""
+    live = sorted(e for e in expirations if _dte(e, today) >= 0)
+    if "dte" in chain:
+        lo, hi = chain["dte"]
+        return [e for e in live if lo <= _dte(e, today) <= hi]
+    return sorted({min(live, key=lambda e: abs(_dte(e, today) - t)) for t in chain["target_dte"]})
+
+
+def keep_strike(strike: float, right: str, spot: float, chain: dict) -> bool:
+    m = strike / spot - 1
+    if chain["rights"] == "otm" and ((right == "P" and strike > spot) or (right == "C" and strike < spot)):
+        return False
+    if m < -chain["put_range"] or m > chain["call_range"]:
+        return False
+    step = next(step for band, step in chain["strike_steps"] if abs(m) <= band)
+    return round(strike * 100) % round(step * 100) == 0
+
+
+def due(chain: dict, now_et: datetime) -> bool:
+    """Run cadence is 5 min; a chain with every_minutes = 15 is taken on the 5-min slots divisible by 15."""
+    slot = (now_et.hour * 60 + now_et.minute) // 5 * 5
+    return slot % chain.get("every_minutes", 5) == 0
 
 
 def ticker_row(t) -> dict:
@@ -58,28 +83,39 @@ def wait_for_ticks(ib: IB, ib_cfg: dict, tickers, ready) -> None:
         ib.sleep(0.25)
 
 
-def snapshot_underlying(ib: IB, ib_cfg: dict, u: dict, today: str) -> dict:
-    und = Contract(symbol=u["symbol"], secType=u["sec_type"], exchange=u["exchange"], currency=u["currency"])
+def spot_of(ib: IB, ib_cfg: dict, chain: dict) -> tuple[Contract, float, str | None]:
+    und = Contract(symbol=chain["symbol"], secType=chain["sec_type"], exchange=chain["exchange"],
+                   currency=chain["currency"])
     ib.qualifyContracts(und)
-    und_t = ib.reqMktData(und)  # streamed, not snapshot: a snapshot of an index outside RTH returns nothing
-    wait_for_ticks(ib, ib_cfg, [und_t], lambda t: clean(t.marketPrice()) or clean(t.close))
+    t = ib.reqMktData(und)  # streamed, not snapshot: a snapshot of an index outside RTH returns nothing
+    wait_for_ticks(ib, ib_cfg, [t], lambda t: clean(t.marketPrice()) or clean(t.close))
     ib.cancelMktData(und)
-    spot = clean(und_t.marketPrice()) or clean(und_t.close)  # indices only calculate in RTH; fall back to close
+    spot = clean(t.marketPrice()) or clean(t.close)  # indices only calculate in RTH; fall back to close
     if spot is None:
-        raise RuntimeError(f"{u['symbol']}: no spot price; check the market-data subscription for the underlying")
+        raise RuntimeError(f"{chain['symbol']}: no spot price; check the market-data subscription for the underlying")
+    return und, spot, t.time.isoformat() if t.time else None
 
-    chain = next(
+
+def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, taken: set) -> dict:
+    key = (chain["symbol"], chain["sec_type"], chain["exchange"])
+    if key not in spots:  # one spot per underlying per run, shared by its chains
+        spots[key] = spot_of(ib, ib_cfg, chain)
+    und, spot, spot_time = spots[key]
+
+    params = next(
         c for c in ib.reqSecDefOptParams(und.symbol, "", und.secType, und.conId)
-        if c.tradingClass == u["trading_class"] and c.exchange == "SMART"
+        if c.tradingClass == chain["trading_class"] and c.exchange == "SMART"
     )
     # One contract-details request per expiry returns the strikes that really exist for it.
     contracts = []
-    for exp in pick_expiries(chain.expirations, today, u["max_expiries"]):
-        template = Option(u["symbol"], exp, exchange="SMART", currency=u["currency"], tradingClass=u["trading_class"])
-        contracts += [
-            d.contract for d in ib.reqContractDetails(template)
-            if abs(d.contract.strike - spot) <= spot * u["strike_range_pct"]
-        ]
+    for exp in pick_expiries(params.expirations, today, chain):
+        template = Option(chain["symbol"], exp, exchange="SMART", currency=chain["currency"],
+                          tradingClass=chain["trading_class"])
+        for d in ib.reqContractDetails(template):
+            c = d.contract
+            if c.conId not in taken and keep_strike(c.strike, c.right, spot, chain):
+                taken.add(c.conId)
+                contracts.append(c)
 
     # Stream a batch, wait, read, cancel: keeps us under the market-data line limit.
     rows, n = [], ib_cfg["batch_size"]
@@ -91,21 +127,11 @@ def snapshot_underlying(ib: IB, ib_cfg: dict, u: dict, today: str) -> dict:
         for c in chunk:
             ib.cancelMktData(c)
 
-    return {
-        "symbol": u["symbol"],
-        "trading_class": u["trading_class"],
-        "spot": spot,
-        "spot_time": und_t.time.isoformat() if und_t.time else None,
-        "contracts": rows,
-    }
+    return {"chain": chain["name"], "symbol": chain["symbol"], "trading_class": chain["trading_class"],
+            "spot": spot, "spot_time": spot_time, "contracts": rows}
 
 
-def run(config_path: str) -> Path:
-    cfg = tomllib.loads(Path(config_path).read_text())
-    ib_cfg = cfg["ibkr"]
-    ingested_at, t0 = datetime.now(timezone.utc), time.monotonic()
-    today = datetime.now(ZoneInfo("America/New_York")).strftime("%Y%m%d")
-
+def connect(ib_cfg: dict, client_offset: int = 0) -> tuple[IB, list]:
     errors = []
     ib = IB()
     ib.errorEvent += lambda req_id, code, msg, contract: errors.append(
@@ -114,13 +140,23 @@ def run(config_path: str) -> Path:
     ib.connect(
         os.environ.get("IB_HOST", ib_cfg["host"]),
         int(os.environ.get("IB_PORT", ib_cfg["port"])),
-        clientId=ib_cfg["client_id"],
+        clientId=ib_cfg["client_id"] + client_offset,
         readonly=True,
         fetchFields=StartupFetch(0),  # don't pull positions/orders/account into a data pipeline
     )
+    ib.reqMarketDataType(ib_cfg["market_data_type"])
+    return ib, errors
+
+
+def run(config_path: str) -> Path:
+    cfg = tomllib.loads(Path(config_path).read_text())
+    ingested_at, t0 = datetime.now(timezone.utc), time.monotonic()
+    now_et = datetime.now(ZoneInfo("America/New_York"))
+    ib, errors = connect(cfg["ibkr"])
     try:
-        ib.reqMarketDataType(ib_cfg["market_data_type"])
-        underlyings = [snapshot_underlying(ib, ib_cfg, u, today) for u in cfg["underlyings"]]
+        spots, taken = {}, set()
+        chains = [snapshot_chain(ib, cfg["ibkr"], c, now_et.date(), spots, taken)
+                  for c in cfg["chains"] if due(c, now_et)]
     finally:
         ib.disconnect()
 
@@ -128,7 +164,7 @@ def run(config_path: str) -> Path:
         "ingested_at": ingested_at.isoformat(),
         "duration_s": round(time.monotonic() - t0, 1),
         "config": cfg,
-        "underlyings": underlyings,
+        "underlyings": chains,  # one entry per chain (key kept from the single-underlying layout)
         "errors": errors,
     }
     return write_raw(Path(os.environ.get("DATA_DIR", "data")), "ibkr", "option_snapshots", payload, ingested_at)

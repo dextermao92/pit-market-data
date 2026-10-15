@@ -53,8 +53,9 @@ def _near_split_ratio(x: pl.Expr) -> pl.Expr:
     )
 
 
-def check_bars(df: pl.DataFrame, prev_close: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """prev_close: (symbol, prev_close) = close of each symbol's last bar in the previous session."""
+def check_bars(df: pl.DataFrame, prev_close: pl.DataFrame, intraday: bool = True) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """prev_close: (symbol, prev_close) = close of each symbol's last bar in the previous session.
+    The warn rules are about intraday bars (one session per fetch); daily bars get the error rules only."""
     df = df.sort("symbol", "bar_start").join(prev_close, on="symbol", how="left")
     c, by = pl.col("close"), "symbol"
     up, down = c / c.shift(1).over(by) - 1, c.shift(-1).over(by) / c - 1
@@ -68,9 +69,9 @@ def check_bars(df: pl.DataFrame, prev_close: pl.DataFrame) -> tuple[pl.DataFrame
                           | (pl.col("volume") < 0),
     }, warns={
         # Corporate-action matching happens downstream, where actions and bars meet (curated layer).
-        "overnight_split_ratio_jump": _near_split_ratio(overnight) & _near_split_ratio(still),
+        "overnight_split_ratio_jump": _near_split_ratio(overnight) & _near_split_ratio(still) & intraday,
         "bad_tick": (up.abs() > BAD_TICK_MOVE) & (down.abs() > BAD_TICK_MOVE) & (up.sign() != down.sign())
-                    & (pl.col("volume") < BAD_TICK_VOLUME * pl.col("volume").median().over(by)),
+                    & (pl.col("volume") < BAD_TICK_VOLUME * pl.col("volume").median().over(by)) & intraday,
     })
     return staged.drop("prev_close"), quarantined.drop("prev_close")
 

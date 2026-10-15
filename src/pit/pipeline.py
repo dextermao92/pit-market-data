@@ -14,7 +14,7 @@ from pathlib import Path
 
 import polars as pl
 
-from pit import alpaca_bars, assets, corporate_actions, ibkr_options, stage_options
+from pit import alpaca_bars, assets, corporate_actions, ibkr_indices, ibkr_options, stage_options
 from pit.market_hours import calendar
 from pit.rules import missing_bars
 from pit.storage import TS, write_parquet
@@ -31,6 +31,7 @@ RUN_SCHEMA = {
 }
 STAGERS = {
     "option_snapshots": stage_options.stage_file,
+    "index_snapshots": ibkr_indices.stage_file,
     "equity_bars": alpaca_bars.stage_file,
     "daily_bars": alpaca_bars.stage_file,
     "corporate_actions": corporate_actions.stage_file,
@@ -85,6 +86,13 @@ def collect_option_snapshots(config_path: str, run_id: str | None = None) -> dic
         return rec | {s: counts[s] for s in QUOTE_STATUSES} | {
             "ibkr_error_codes": sorted({e["code"] for e in payload["errors"]} - IBKR_INFO_CODES)}
     return _recorded("option_snapshots", run_id, collect)
+
+
+def collect_index_snapshots(config_path: str, run_id: str | None = None) -> dict:
+    def collect():
+        rec, payload, _, _ = _stage("index_snapshots", ibkr_indices.run(config_path))
+        return rec | {"ibkr_error_codes": sorted({e["code"] for e in payload["errors"]} - IBKR_INFO_CODES)}
+    return _recorded("index_snapshots", run_id, collect)
 
 
 def collect_equity_bars(config_path: str, run_id: str | None = None, session=None) -> dict:

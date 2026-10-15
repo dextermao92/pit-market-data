@@ -24,7 +24,7 @@ services:
       READ_ONLY_API: "yes"
       VNC_SERVER_PASSWORD: ${VNC_SERVER_PASSWORD:-}
       TIME_ZONE: America/New_York
-      AUTO_RESTART_TIME: "11:45 PM"
+      AUTO_RESTART_TIME: "09:05 AM"  # daily, no 2FA; a clean session just before the 09:10 pre-open runs
       TWOFA_TIMEOUT_ACTION: restart
     ports:
       - "127.0.0.1:4002:4004"  # paper API, for running the collector from the host
@@ -48,8 +48,13 @@ services:
       IB_HOST: ib-gateway
       IB_PORT: ${IB_PORT:-4004}
       DATA_DIR: /opt/airflow/data
+      DBT_TARGET: /opt/airflow/dbt/target
       APCA_API_KEY_ID: ${APCA_API_KEY_ID:-}
       APCA_API_SECRET_KEY: ${APCA_API_SECRET_KEY:-}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     volumes:
       - ./dags:/opt/airflow/dags
       - ./plugins:/opt/airflow/plugins

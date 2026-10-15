@@ -16,11 +16,18 @@ import polars as pl
 
 from pit import alpaca_bars, assets, corporate_actions, ibkr_indices, ibkr_options, stage_options
 from pit.market_hours import calendar
+from pit.notify import alert_once
 from pit.rules import missing_bars
 from pit.storage import TS, write_parquet
 
 QUOTE_STATUSES = ("two_sided", "ask_only", "bid_only", "no_quote", "crossed")
 IBKR_INFO_CODES = {2104, 2106, 2107, 2108, 2119, 2158}  # data-farm status messages, not errors
+IBKR_ALERT_CODES = {  # worth a notification (once per day per code)
+    354: "market data not subscribed", 10089: "API market data needs an extra subscription",
+    10090: "part of the market data not subscribed", 10197: "no market data during a competing live session",
+    1100: "Gateway lost connectivity to IBKR", 2103: "a market data farm connection is broken",
+    2105: "a historical data farm connection is broken", 2157: "a sec-def data farm connection is broken",
+}
 RUN_SCHEMA = {
     "run_id": pl.String, "dataset": pl.String, "started_at": TS, "finished_at": TS, "status": pl.String,
     "error": pl.String, "raw_path": pl.String, "staged_path": pl.String, "cycle_s": pl.Float64,
@@ -79,19 +86,27 @@ def _stage(dataset: str, raw: Path) -> tuple[dict, dict, pl.DataFrame, pl.DataFr
     return rec, payload, staged, quarantined
 
 
+def _ibkr_codes(dataset: str, payload: dict) -> list[int]:
+    codes = sorted({e["code"] for e in payload["errors"]} - IBKR_INFO_CODES)
+    for code in set(codes) & IBKR_ALERT_CODES.keys():
+        msgs = sorted({e["msg"][:200] for e in payload["errors"] if e["code"] == code})
+        alert_once(f"ibkr_{code}", f"IBKR {code}: {IBKR_ALERT_CODES[code]}",
+                   f"first seen in {dataset} at {payload['ingested_at']}\n" + "\n".join(msgs[:5]))
+    return codes
+
+
 def collect_option_snapshots(config_path: str, run_id: str | None = None) -> dict:
     def collect():
         rec, payload, staged, quarantined = _stage("option_snapshots", ibkr_options.run(config_path))
         counts = Counter(staged["quote_status"].to_list() + quarantined["quote_status"].to_list())
-        return rec | {s: counts[s] for s in QUOTE_STATUSES} | {
-            "ibkr_error_codes": sorted({e["code"] for e in payload["errors"]} - IBKR_INFO_CODES)}
+        return rec | {s: counts[s] for s in QUOTE_STATUSES} | {"ibkr_error_codes": _ibkr_codes("option_snapshots", payload)}
     return _recorded("option_snapshots", run_id, collect)
 
 
 def collect_index_snapshots(config_path: str, run_id: str | None = None) -> dict:
     def collect():
         rec, payload, _, _ = _stage("index_snapshots", ibkr_indices.run(config_path))
-        return rec | {"ibkr_error_codes": sorted({e["code"] for e in payload["errors"]} - IBKR_INFO_CODES)}
+        return rec | {"ibkr_error_codes": _ibkr_codes("index_snapshots", payload)}
     return _recorded("index_snapshots", run_id, collect)
 
 
@@ -100,9 +115,14 @@ def collect_equity_bars(config_path: str, run_id: str | None = None, session=Non
         rec, payload, staged, quarantined = _stage("equity_bars", alpaca_bars.run(config_path, session=session))
         req = payload["request"]
         present = pl.concat([staged.select("symbol", "bar_start"), quarantined.select("symbol", "bar_start")])
-        return rec | {"missing_bars": missing_bars(
-            present, req["symbols"].split(","), datetime.fromisoformat(req["start"]),
-            datetime.fromisoformat(req["end"]), timedelta(minutes=int(req["timeframe"].removesuffix("Min"))))}
+        symbols = req["symbols"].split(",")
+        missing = missing_bars(present, symbols, datetime.fromisoformat(req["start"]),
+                               datetime.fromisoformat(req["end"]), timedelta(minutes=int(req["timeframe"].removesuffix("Min"))))
+        if missing >= len(symbols):  # a whole slot's worth: a vendor gap, not one quiet symbol
+            alert_once(f"missing_bars_{payload['session']}", f"Alpaca: {missing} bars missing for {payload['session']}",
+                       f"{missing} (symbol, 5-min bar) slots missing between {req['start']} and {req['end']}.\n"
+                       "Cross-check IBKR snapshots for the same window; the eod refetch picks up a later repair.")
+        return rec | {"missing_bars": missing}
     return _recorded("equity_bars", run_id, collect)
 
 

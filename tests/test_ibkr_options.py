@@ -79,18 +79,3 @@ def test_index_snapshot_staging(tmp_path):
     assert quarantined.height == 0 and staged["bid"].to_list() == [None, None]
     assert staged["flags"].to_list() == [[], ["no_live_price"]]
 
-
-@pytest.mark.parametrize("expiry, monthly", [
-    ("20261016", True),    # third Friday of Oct 2026
-    ("20261009", False), ("20261023", False), ("20261015", False),
-    ("20250417", True),    # Good Friday 18 Apr 2025 was the third Friday: monthly moved to Thursday
-    ("20250418", False),
-])
-def test_is_monthly(expiry, monthly):
-    from pit.ibkr_options import is_monthly
-    assert is_monthly(expiry) is monthly
-
-
-def test_pick_monthlies_in_dte_range():
-    exps = ["20261016", "20261023", "20261120", "20261218", "20261231", "20270115", "20271217"]
-    assert pick_expiries(exps, TODAY, {"dte": [3, 400], "monthly": True}) == ["20261120", "20261218", "20270115"]

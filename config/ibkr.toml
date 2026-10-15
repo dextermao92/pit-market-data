@@ -12,7 +12,6 @@ max_wait_seconds = 15    # keep waiting until every contract has ticked, up to t
 
 # Each chain: an underlying + trading class, which expiries, which strikes, how often.
 #   expiries: dte = [min, max]      every expiry with min <= DTE <= max
-#             monthly = true        ...standard monthlies only (third Friday), each followed through its life
 #             target_dte = [...]    the expiry nearest each target (deduplicated)
 #   strikes:  rights = "both" | "otm" (puts below spot, calls above; ITM follows from put-call parity)
 #             put_range / call_range: how far below / above spot, as a fraction
@@ -20,7 +19,7 @@ max_wait_seconds = 15    # keep waiting until every contract has ticked, up to t
 #   every_minutes: multiple of 5 (the DAG cadence); contracts already taken by an earlier chain are skipped.
 
 [[chains]]
-name = "spx_intraday"     # short-dated gamma: 0-2 DTE, both sides, every strike
+name = "spx_intraday"     # short-dated context (vol premium, intraday skew); not traded, so every 15 min
 symbol = "SPX"
 sec_type = "IND"
 exchange = "CBOE"
@@ -31,17 +30,16 @@ rights = "both"
 put_range = 0.05
 call_range = 0.05
 strike_steps = [[1.0, 5]]
-every_minutes = 5
+every_minutes = 15
 
 [[chains]]
-name = "spx_monthly"      # 30-45 DTE short puts, tail hedges: every monthly from 400 DTE to expiry, OTM wings
-symbol = "SPX"
-sec_type = "IND"
+name = "spx_monthly"      # 30-45 DTE short puts, tail hedges: every standard monthly, 400 DTE to expiry
+symbol = "SPX"            # the SPX (AM-settled) class lists only standard monthlies + December LEAPS;
+sec_type = "IND"          # IBKR dates them by last trading day (Thursday, or Wednesday before a holiday)
 exchange = "CBOE"
 currency = "USD"
-trading_class = "SPXW"
-dte = [3, 400]            # 0-2 DTE is the intraday chain's
-monthly = true
+trading_class = "SPX"
+dte = [3, 400]
 rights = "otm"
 put_range = 0.40
 call_range = 0.15
@@ -49,13 +47,13 @@ strike_steps = [[0.10, 25], [1.0, 50]]
 every_minutes = 5
 
 [[chains]]
-name = "spx_leaps"        # SPXW lists ~1 year out; the AM-settled SPX monthlies go further
+name = "spx_leaps"        # beyond the monthlies: LEAPS out to ~2 years
 symbol = "SPX"
 sec_type = "IND"
 exchange = "CBOE"
 currency = "USD"
 trading_class = "SPX"
-target_dte = [365, 730]
+dte = [401, 800]
 rights = "otm"
 put_range = 0.40
 call_range = 0.15

@@ -13,7 +13,8 @@ import pandas as pd
 
 @cache
 def calendar():
-    return xcals.get_calendar("XNYS")
+    # Default bounds end a year ahead; option expiries (LEAPS) and the 2016 backfill need more.
+    return xcals.get_calendar("XNYS", start="2015-01-01", end=str(pd.Timestamp.now().year + 10) + "-12-31")
 
 
 def next_slot(after: datetime, every: timedelta, start_offset: timedelta, end_offset: timedelta) -> datetime:

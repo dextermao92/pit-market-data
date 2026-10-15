@@ -12,6 +12,7 @@ max_wait_seconds = 15    # keep waiting until every contract has ticked, up to t
 
 # Each chain: an underlying + trading class, which expiries, which strikes, how often.
 #   expiries: dte = [min, max]      every expiry with min <= DTE <= max
+#             monthly = true        ...standard monthlies only (third Friday), each followed through its life
 #             target_dte = [...]    the expiry nearest each target (deduplicated)
 #   strikes:  rights = "both" | "otm" (puts below spot, calls above; ITM follows from put-call parity)
 #             put_range / call_range: how far below / above spot, as a fraction
@@ -33,13 +34,14 @@ strike_steps = [[1.0, 5]]
 every_minutes = 5
 
 [[chains]]
-name = "spx_term"         # convexity / tail hedges: OTM wings out to -40% / +15%
+name = "spx_monthly"      # 30-45 DTE short puts, tail hedges: every monthly from 400 DTE to expiry, OTM wings
 symbol = "SPX"
 sec_type = "IND"
 exchange = "CBOE"
 currency = "USD"
 trading_class = "SPXW"
-target_dte = [7, 14, 30, 45, 60, 90, 120, 180, 270]
+dte = [3, 400]            # 0-2 DTE is the intraday chain's
+monthly = true
 rights = "otm"
 put_range = 0.40
 call_range = 0.15

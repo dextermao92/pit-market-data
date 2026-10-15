@@ -8,12 +8,14 @@ import os
 import sys
 import time
 import tomllib
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pandas as pd
 from ib_async import IB, Contract, Option, StartupFetch
 
+from pit.market_hours import calendar
 from pit.storage import write_raw
 
 TICKER_FIELDS = (
@@ -33,9 +35,19 @@ def _dte(expiry: str, today: date) -> int:
     return (date(int(expiry[:4]), int(expiry[4:6]), int(expiry[6:8])) - today).days
 
 
+def is_monthly(expiry: str) -> bool:
+    """Standard monthly: the third Friday, or the session before it when that Friday is an exchange holiday."""
+    d = date(int(expiry[:4]), int(expiry[4:6]), int(expiry[6:8]))
+    first = date(d.year, d.month, 1)
+    third_friday = first + timedelta(days=(4 - first.weekday()) % 7 + 14)
+    cal, ts = calendar(), pd.Timestamp(third_friday)
+    return d == cal.date_to_session(ts, "previous").date()
+
+
 def pick_expiries(expirations, today: date, chain: dict) -> list[str]:
-    """dte = [min, max]: every expiry in range. target_dte = [...]: the nearest expiry to each target."""
-    live = sorted(e for e in expirations if _dte(e, today) >= 0)
+    """dte = [min, max]: every expiry in range (monthly = true: standard monthlies only, so each one is
+    followed through its whole life). target_dte = [...]: the nearest expiry to each target."""
+    live = sorted(e for e in expirations if _dte(e, today) >= 0 and (not chain.get("monthly") or is_monthly(e)))
     if "dte" in chain:
         lo, hi = chain["dte"]
         return [e for e in live if lo <= _dte(e, today) <= hi]

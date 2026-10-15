@@ -1,18 +1,21 @@
 """One collection run per dataset: fetch -> raw -> staged (+ quarantine), recorded in pipeline_runs.
 
 Re-stage everything from raw (e.g. after a rule change): python -m pit.pipeline restage data
+Backfill equity bars: python -m pit.pipeline backfill config/alpaca_bars.toml 2025-10-15 2026-10-14
 """
 
 import json
 import os
 import sys
+import time
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import polars as pl
 
 from pit import alpaca_bars, assets, corporate_actions, ibkr_options, stage_options
+from pit.market_hours import calendar
 from pit.rules import missing_bars
 from pit.storage import TS, write_parquet
 
@@ -115,5 +118,20 @@ def restage(data_dir: Path) -> None:
             print(raw)
 
 
-if __name__ == "__main__" and sys.argv[1] == "restage":
-    restage(Path(sys.argv[2]))
+def backfill(config_path: str, start: date, end: date, run_id: str | None = None) -> None:
+    """Daily bars for the range, then every session's 5-min bars. ingested_at is the real fetch time: point in
+    time starts at first ingest, so as_of queries before today don't see backfilled history."""
+    run_id = run_id or f"backfill__{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}"
+    sessions = [s.date() for s in calendar().sessions_in_range(start, end)]
+    collect_daily_bars(config_path, sessions, run_id=run_id)
+    for s in sessions:
+        rec = collect_equity_bars(config_path, run_id=f"{run_id}__{s}", session=s)
+        print(s, rec["rows"], "missing", rec["missing_bars"])
+        time.sleep(0.6)  # ponytail: crude pacing under Alpaca's 200 calls/min (2 calls per session)
+
+
+if __name__ == "__main__":
+    if sys.argv[1] == "restage":
+        restage(Path(sys.argv[2]))
+    elif sys.argv[1] == "backfill":
+        backfill(sys.argv[2], date.fromisoformat(sys.argv[3]), date.fromisoformat(sys.argv[4]))

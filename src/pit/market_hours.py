@@ -4,7 +4,7 @@ A slot is a run time t = session open + start_offset + k * every, for t < sessio
 Pure functions: pit.airflow_timetable is a thin Airflow wrapper, so this is testable without Airflow.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import cache
 
 import exchange_calendars as xcals
@@ -18,6 +18,7 @@ def calendar():
 
 def next_slot(after: datetime, every: timedelta, start_offset: timedelta, end_offset: timedelta) -> datetime:
     """First slot strictly after `after` (tz-aware)."""
+    after = datetime.fromtimestamp(after.timestamp(), timezone.utc)  # Airflow passes pendulum DateTimes
     cal = calendar()
     first = cal.date_to_session(pd.Timestamp(after).tz_convert("America/New_York").date(), "next")
     for session in cal.sessions_in_range(first, first + pd.Timedelta(days=14)):

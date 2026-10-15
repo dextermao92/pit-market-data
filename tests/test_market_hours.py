@@ -30,3 +30,11 @@ def utc(*a):
 ])
 def test_next_slot(after, kw, expected):
     assert next_slot(after, **kw) == expected
+
+
+def test_accepts_datetime_subclasses():
+    # Airflow hands the Timetable pendulum DateTimes; subtracting those from datetimes broke `//`.
+    class Sub(datetime):
+        def __sub__(self, other):
+            return object()  # anything but a timedelta
+    assert next_slot(Sub(2026, 10, 14, 13, 31, tzinfo=UTC), **OPTIONS) == utc(2026, 10, 14, 13, 35)

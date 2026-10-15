@@ -35,7 +35,7 @@ dataset that can't be bought back later.
 | Daily bars | Alpaca, free plan | Daily OHLCV, unadjusted | Same | Reconciliation only (rule 14) |
 | Corporate actions | Alpaca, full history (2016 → +1 year) refetched daily by `eod` | Event: splits, stock and cash dividends staged; other types raw only | Same | Every fetch is a new version |
 | Asset attributes | Alpaca trading API `/v2/assets` (read-only GET) | Daily snapshot | Same | From first run; feeds the SCD2 security master |
-| Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | `[[chains]]` in `config/ibkr.toml`: SPX 0–2 DTE (both sides, ±5%); SPXW term buckets 7–270 DTE and SPX LEAPS 365/730 DTE (OTM wings to −40% / +15%, strikes every 25 within ±10%, every 50 beyond) | **From first run; no backfill** |
+| Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | `[[chains]]` in `config/ibkr.toml`: every SPX standard monthly 3–400 DTE followed through its life, plus LEAPS 401–800 DTE (OTM wings to −40% / +15%, strikes every 25 within ±10%, every 50 beyond; ~1,800 contracts, ~2.5 min warm); SPXW 0–2 DTE both sides ±5% every 15 min as context | **From first run; no backfill** |
 | Index levels | IBKR | Every 5 min with the chains | `[[indices]]`: VIX, VIX9D, VIX3M, VIX6M, VVIX, SKEW | From first run |
 
 **Alpaca** free plan serves SIP (all-exchange) historical bars except the latest

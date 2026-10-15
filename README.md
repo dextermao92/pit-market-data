@@ -35,7 +35,8 @@ dataset that can't be bought back later.
 | Daily bars | Alpaca, free plan | Daily OHLCV, unadjusted | Same | Reconciliation only (rule 14) |
 | Corporate actions | Alpaca, full history (2016 → +1 year) refetched daily by `eod` | Event: splits, stock and cash dividends staged; other types raw only | Same | Every fetch is a new version |
 | Asset attributes | Alpaca trading API `/v2/assets` (read-only GET) | Daily snapshot | Same | From first run; feeds the SCD2 security master |
-| Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | Per underlying in `config/ibkr_options.toml`: trading class, nearest N expiries, strikes within ±X% of spot at each snapshot (SPX example: SPXW, 3 expiries, ±5%) | **From first run; no backfill** |
+| Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | `[[chains]]` in `config/ibkr.toml`: SPX 0–2 DTE (both sides, ±5%); SPXW term buckets 7–270 DTE and SPX LEAPS 365/730 DTE (OTM wings to −40% / +15%, strikes every 25 within ±10%, every 50 beyond) | **From first run; no backfill** |
+| Index levels | IBKR | Every 5 min with the chains | `[[indices]]`: VIX, VIX9D, VIX3M, VIX6M, VVIX, SKEW | From first run |
 
 **Alpaca** free plan serves SIP (all-exchange) historical bars except the latest
 15 minutes, at 200 calls/min. Its free options feed is indicative
@@ -45,7 +46,9 @@ dataset that can't be bought back later.
 Gateway running and logged in — daily restarts and periodic 2FA make the
 options pipeline not fully unattended — and market-data line limits force
 batched snapshots. P1 must confirm a full cycle fits well inside 5 minutes;
-the universe shrinks if not. The Gateway is logged into a **paper account**
+the universe shrinks if not. Every chain is config: adding an underlying (NDX, RUT, a stock) or an
+index is a block in `config/ibkr.toml`; `every_minutes` lets secondary chains run less often when a
+single Gateway connection (~18 contracts/s on 100 market-data lines) becomes the limit. The Gateway is logged into a **paper account**
 with market-data sharing and **Read-Only API**, so the pipeline cannot touch
 the live account.
 
@@ -60,7 +63,7 @@ small synthetic sample only.
 
 ### Option snapshot fields
 
-bid, ask, last, volume, open interest, IBKR model IV and greeks, underlying
+chain, bid, ask, last, volume, open interest, IBKR model IV and greeks, underlying
 price, contract identifiers (incl. `multiplier`, `tradingClass`), request time,
 IBKR tick time, and a derived `quote_status`:
 
@@ -109,7 +112,7 @@ and both ingest DAGs fire at the same moment.
 
 | DAG | Schedule | Tasks |
 |---|---|---|
-| `option_snapshots` | `MarketHoursTimetable`: every 5 min in NYSE sessions, 09:30–15:55 ET | batched snapshots → raw → staged (+ quarantine) |
+| `option_snapshots` | `MarketHoursTimetable`: every 5 min, 09:10–15:55 ET (pre-open runs warm the Gateway after its nightly restart) | chains and index levels in parallel → raw → staged (+ quarantine) |
 | `equity_bars` | `MarketHoursTimetable`, open+20 min (first bar + 15-min lag) to close+30 min: 09:50–16:25 ET | the session's completed bars so far → raw → staged |
 | `eod` | 17:30 ET on weekdays | corporate actions, asset snapshot, daily bars, refetch of the last 10 sessions' 5-min bars → `dbt build` (runs even if a fetch failed; failing tests fail the task) |
 

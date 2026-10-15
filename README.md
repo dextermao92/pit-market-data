@@ -34,6 +34,7 @@ dataset that can't be bought back later.
 | Equity/ETF bars | Alpaca, free plan | 5-min OHLCV, unadjusted | 50 symbols in `config/alpaca_bars.toml` | Backfillable to 2016 |
 | Daily bars | Alpaca, free plan | Daily OHLCV, unadjusted | Same | Reconciliation only (rule 14) |
 | Corporate actions | Alpaca, full history (2016 → +1 year) refetched daily by `eod` | Event: splits, stock and cash dividends staged; other types raw only | Same | Every fetch is a new version |
+| Asset attributes | Alpaca trading API `/v2/assets` (read-only GET) | Daily snapshot | Same | From first run; feeds the SCD2 security master |
 | Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | Per underlying in `config/ibkr_options.toml`: trading class, nearest N expiries, strikes within ±X% of spot at each snapshot (SPX example: SPXW, 3 expiries, ±5%) | **From first run; no backfill** |
 
 **Alpaca** free plan serves SIP (all-exchange) historical bars except the latest
@@ -78,25 +79,26 @@ apart. The list of contracts requested is stored with each snapshot.
 ## Architecture
 
 ```
- Alpaca REST                                  IB Gateway container (paper, read-only)
-   bars, corporate actions                        option snapshots
+ Alpaca REST                                  IB Gateway container (read-only API)
+   bars, daily bars, corporate actions, assets    option snapshots
         │                                              │
         ▼                                              ▼
  raw/        source=<alpaca|ibkr>/ingest_date=YYYY-MM-DD/<dataset>/<ingested_at>.json
              one file per fetch, never overwritten
         │  parse + type + row rules (Polars)
-        ├────────► quarantine/      error rows + rule + run_id
+        ├────────► quarantine/      error rows + rules, 1:1 with raw
         ▼
  staged/     <dataset>/ingest_date=YYYY-MM-DD/<ingested_at>.parquet   (1:1 with raw; warn rows kept, flagged)
         │  dbt-duckdb (eod only)
         ▼
- curated     adjusted bars, chain views, security_master (SCD2), dbt tests
+ curated     bars_current, daily_bars_current, corporate_actions_current,
+             security_master (SCD2), option_quotes; dbt tests (data/curated.duckdb)
         │
         ▼
- query       DuckDB: get_bars(..., as_of), get_chain(...)
+ query       DuckDB + pit.adjust: get_bars(..., as_of), get_chain(...)   (adjustment at query time)
 
- pipeline_runs/   one file per run: run_id, dataset, interval, timings,
-                  rows in/out/quarantined, partition checks, status
+ pipeline_runs/   one file per run: run_id, dataset, timings, rows / quarantined / flagged,
+                  partition checks (missing bars, gap since last success), status, error
 ```
 
 Everything on disk is Parquet. Ingest only appends files; dbt in `eod` is the
@@ -107,13 +109,15 @@ and both ingest DAGs fire at the same moment.
 
 | DAG | Schedule | Tasks |
 |---|---|---|
-| `equity_bars` | Custom Timetable: every 5 min in NYSE sessions (`exchange_calendars`: holidays, half days, DST), from open+20 min (first bar + 15-min lag) to close+30 min | fetch the session's completed bars so far → raw → staged |
-| `option_snapshots` | Same Timetable | Gateway health sensor → batched snapshots → raw → staged |
-| `eod` | 17:30 ET on weekdays | corporate actions (P2); P3 adds daily bars → refetch last 10 trading days of 5-min bars → `dbt build` (runs tests) |
+| `option_snapshots` | `MarketHoursTimetable`: every 5 min in NYSE sessions, 09:30–15:55 ET | batched snapshots → raw → staged (+ quarantine) |
+| `equity_bars` | `MarketHoursTimetable`, open+20 min (first bar + 15-min lag) to close+30 min: 09:50–16:25 ET | the session's completed bars so far → raw → staged |
+| `eod` | 17:30 ET on weekdays | corporate actions, asset snapshot, daily bars, refetch of the last 10 sessions' 5-min bars → `dbt build` (runs even if a fetch failed; failing tests fail the task) |
 
-Ingest DAGs declare their staged datasets as Assets for lineage.
-`equity_bars` supports catchup/backfill; `option_snapshots` does not — a
-missed snapshot is recorded in `pipeline_runs` as missed, never imputed.
+`MarketHoursTimetable` (`src/pit/airflow_timetable.py`, registered by `plugins/market_hours.py`) wraps
+`pit.market_hours`, which derives run slots from `exchange_calendars` (holidays, half days, DST).
+Option snapshots are never backfilled: a missed one shows up as a `gap_s` jump in `pipeline_runs`,
+never imputed. Equity history is backfilled with
+`python -m pit.pipeline backfill config/alpaca_bars.toml <start> <end>`.
 
 ### Key decisions
 
@@ -125,7 +129,7 @@ missed snapshot is recorded in `pipeline_runs` as missed, never imputed.
 | Bars lag 15 minutes | The free plan withholds the latest 15 min, so a run fetches bars ending ≥ 15 min ago. Bar timestamps are bar start, UTC. |
 | Atomic writes: temp file → `rename` | A crash mid-write leaves the old partition intact; rerunning is always safe. |
 | Compute adjustments; store unadjusted bars | Vendor-adjusted prices bake in today's knowledge. `pit.adjust` uses only actions known by `as_of` (latest version per id) with `ex_date <= as_of`: splits by ratio, cash dividends CRSP-style (`1 - cash / previous session close`). |
-| `security_master` SCD2 keyed on `ingested_at` | dbt snapshot's default validity time is run time, wrong on backfill/replay. Use the `check` strategy with an explicit timestamp, or a hand-written model. |
+| `security_master`: hand-written SCD2 on Alpaca `asset_id`, validity from `ingested_at` | `asset_id` survives renames; dbt snapshot's validity is run time, wrong on backfill/replay. Source: daily read-only snapshot of `/v2/assets` per symbol. |
 
 ## Quality rules
 
@@ -189,7 +193,7 @@ dbt tests (curated):
 | IBKR client | ib_async (maintained ib_insync fork); raw = received fields serialized to JSON |
 | Transform | Polars |
 | Storage | Parquet, Hive-style partitions on local FS (same layout as an S3 data lake) |
-| Query / curated | DuckDB, dbt-duckdb |
+| Query / curated | DuckDB, dbt-core 1.11 + dbt-duckdb (in its own venv in the image; `uv` group `dbt` locally) |
 | Trading calendar | exchange_calendars (Timetable + rule 9) |
 | Config | `universe.toml` via stdlib `tomllib`; API keys in env vars |
 | Retries | Airflow task retries |

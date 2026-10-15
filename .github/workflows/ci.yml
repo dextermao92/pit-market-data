@@ -1,0 +1,19 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - name: Unit tests
+        run: uv run pytest -q
+      - name: dbt build on the synthetic sample
+        run: |
+          uv run python -m pit.sample sample_data
+          DATA_DIR=sample_data uv run dbt build --project-dir dbt --profiles-dir dbt

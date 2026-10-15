@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: staged
+    description: Typed Parquet, one file per raw fetch; every fetch of the same thing is a new version (ingested_at).
+    meta:
+      external_location: "read_parquet('{{ env_var('DATA_DIR', 'data') }}/staged/{name}/*/*.parquet', union_by_name = true)"
+    tables:
+      - name: equity_bars
+      - name: daily_bars
+      - name: option_snapshots
+      - name: corporate_actions
+      - name: assets

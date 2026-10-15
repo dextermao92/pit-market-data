@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: bars_current
+    data_tests:
+      - unique: {column_name: "symbol || '|' || bar_start::varchar"}
+    columns:
+      - name: close
+        data_tests: [not_null]
+  - name: daily_bars_current
+    data_tests:
+      - unique: {column_name: "symbol || '|' || bar_start::varchar"}
+  - name: corporate_actions_current
+    columns:
+      - name: id
+        data_tests: [unique, not_null]
+      - name: type
+        data_tests:
+          - accepted_values:
+              arguments: {values: [forward_split, reverse_split, stock_dividend, cash_dividend]}
+  - name: security_master
+    data_tests:
+      - unique: {column_name: "asset_id || '|' || valid_from::varchar"}
+      - unique: {column_name: "case when is_current then asset_id end"}
+  - name: option_quotes
+    columns:
+      - name: mid
+        data_tests: [not_null]

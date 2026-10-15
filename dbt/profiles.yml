@@ -1,0 +1,7 @@
+pit:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('DATA_DIR', 'data') }}/curated.duckdb"
+      threads: 4

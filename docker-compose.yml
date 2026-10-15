@@ -53,6 +53,7 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./plugins:/opt/airflow/plugins
+      - ./dbt:/opt/airflow/dbt
       - ./src:/opt/airflow/src
       - ./config:/opt/airflow/config
       - ./data:/opt/airflow/data

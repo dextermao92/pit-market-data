@@ -12,7 +12,7 @@ from pathlib import Path
 
 import polars as pl
 
-from pit import alpaca_bars, corporate_actions, ibkr_options, stage_options
+from pit import alpaca_bars, assets, corporate_actions, ibkr_options, stage_options
 from pit.rules import missing_bars
 from pit.storage import TS, write_parquet
 
@@ -31,6 +31,7 @@ STAGERS = {
     "equity_bars": alpaca_bars.stage_file,
     "daily_bars": alpaca_bars.stage_file,
     "corporate_actions": corporate_actions.stage_file,
+    "assets": assets.stage_file,
 }
 
 
@@ -98,6 +99,10 @@ def collect_daily_bars(config_path: str, sessions: list, run_id: str | None = No
 def collect_corporate_actions(config_path: str, run_id: str | None = None) -> dict:
     return _recorded("corporate_actions", run_id,
                      lambda: _stage("corporate_actions", corporate_actions.run(config_path))[0])
+
+
+def collect_assets(config_path: str, run_id: str | None = None) -> dict:
+    return _recorded("assets", run_id, lambda: _stage("assets", assets.run(config_path))[0])
 
 
 def restage(data_dir: Path) -> None:

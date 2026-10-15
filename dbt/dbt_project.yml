@@ -1,0 +1,12 @@
+name: pit
+version: "1.0"
+config-version: 2
+profile: pit
+model-paths: [models]
+test-paths: [tests]
+
+models:
+  pit:
+    # Tables, not views: a view would bake in the Parquet path of whichever host or container ran dbt.
+    # ponytail: full rebuilds each eod; switch the big ones to incremental when a rebuild gets slow.
+    +materialized: table

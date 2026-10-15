@@ -1,5 +1,6 @@
 import hashlib
 import json
+from datetime import datetime, timedelta, timezone
 
 import duckdb
 import polars as pl
@@ -40,7 +41,7 @@ PAYLOAD = {
 
 def write_raw(tmp_path, payload=PAYLOAD):
     d = tmp_path / "raw/source=ibkr/ingest_date=2026-10-14/option_snapshots"
-    d.mkdir(parents=True)
+    d.mkdir(parents=True, exist_ok=True)
     p = d / "20261014T143000000000Z.json"
     p.write_text(json.dumps(payload))
     return p
@@ -92,3 +93,17 @@ def test_pipeline_runs_records_success_and_failure(tmp_path, monkeypatch):
     runs = pl.read_parquet(tmp_path / "pipeline_runs/**/*.parquet").sort("run_id")
     assert runs["status"].to_list() == ["success", "failed"]
     assert "gateway down" in runs["error"][1]
+
+
+def test_pipeline_runs_survive_older_schema(tmp_path, monkeypatch):
+    # A pipeline_runs file written before columns were added must not break the next run's freshness check.
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    earlier = datetime.now(timezone.utc) - timedelta(minutes=5)  # today's partition, so the freshness check reads it
+    old = tmp_path / f"pipeline_runs/dataset=option_snapshots/ingest_date={earlier:%Y-%m-%d}/old.parquet"
+    old.parent.mkdir(parents=True)
+    pl.DataFrame({"run_id": ["old"], "status": ["success"], "started_at": [earlier]}).write_parquet(old)
+    monkeypatch.setattr(pipeline.ibkr_options, "run", lambda cfg: write_raw(tmp_path))
+    first = pipeline.collect_option_snapshots("cfg.toml", run_id="r1")
+    second = pipeline.collect_option_snapshots("cfg.toml", run_id="r2")  # now reads old + new schema files
+    assert first["status"] == second["status"] == "success"
+    assert second["gap_s"] is not None and second["gap_s"] < first["gap_s"]

@@ -40,17 +40,20 @@ def _previous_success(data_dir: Path, dataset: str, now: datetime) -> datetime |
              for f in (data_dir / "pipeline_runs" / f"dataset={dataset}" / f"ingest_date={d:%Y-%m-%d}").glob("*.parquet")]
     if not files:
         return None
-    runs = pl.read_parquet(files, columns=["started_at", "status"]).filter(pl.col("status") == "success")
+    # One file at a time: files written before a schema change lack newer columns.
+    runs = pl.concat([pl.read_parquet(f, columns=["started_at", "status"]) for f in files]).filter(
+        pl.col("status") == "success")
     return runs["started_at"].max() if runs.height else None
 
 
 def _recorded(dataset: str, run_id: str | None, collect) -> dict:
     data_dir = Path(os.environ.get("DATA_DIR", "data"))
     started = datetime.now(timezone.utc)
-    prev = _previous_success(data_dir, dataset, started)
     rec = {"run_id": run_id or f"cli__{started:%Y%m%dT%H%M%SZ}", "dataset": dataset, "started_at": started,
-           "status": "failed", "gap_s": (started - prev).total_seconds() if prev else None}
-    try:
+           "status": "failed"}
+    try:  # everything inside, so any failure is still recorded
+        prev = _previous_success(data_dir, dataset, started)
+        rec["gap_s"] = (started - prev).total_seconds() if prev else None
         rec |= collect() | {"status": "success"}
         return rec
     except Exception as e:

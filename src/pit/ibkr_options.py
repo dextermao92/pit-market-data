@@ -3,6 +3,7 @@
 Usage: python -m pit.ibkr_options config/ibkr.toml
 """
 
+import json
 import math
 import os
 import sys
@@ -96,6 +97,27 @@ def spot_of(ib: IB, ib_cfg: dict, chain: dict) -> tuple[Contract, float, str | N
     return und, spot, t.time.isoformat() if t.time else None
 
 
+CONTRACT_FIELDS = ("symbol", "lastTradeDateOrContractMonth", "strike", "right", "multiplier", "currency",
+                   "conId", "localSymbol", "tradingClass")
+
+
+def listed_contracts(ib: IB, chain: dict, expiry: str, today: date) -> list[Option]:
+    """Every contract listed for one expiry. Specs don't change intraday, so the contract-details answer
+    (~1 min per run across ~15 expiries) is cached on disk per New York day. Derived and safe to delete."""
+    path = (Path(os.environ.get("DATA_DIR", "data")) / "cache" / "ibkr_contracts" / str(today)
+            / f"{chain['symbol']}_{chain['trading_class']}_{expiry}.json")
+    if path.exists():
+        return [Option(exchange="SMART", **d) for d in json.loads(path.read_text())]
+    template = Option(chain["symbol"], expiry, exchange="SMART", currency=chain["currency"],
+                      tradingClass=chain["trading_class"])
+    contracts = [d.contract for d in ib.reqContractDetails(template)]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps([{f: getattr(c, f) for f in CONTRACT_FIELDS} for c in contracts]))
+    tmp.replace(path)
+    return [Option(exchange="SMART", **{f: getattr(c, f) for f in CONTRACT_FIELDS}) for c in contracts]
+
+
 def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, taken: set) -> dict:
     key = (chain["symbol"], chain["sec_type"], chain["exchange"])
     if key not in spots:  # one spot per underlying per run, shared by its chains
@@ -106,13 +128,9 @@ def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, 
         c for c in ib.reqSecDefOptParams(und.symbol, "", und.secType, und.conId)
         if c.tradingClass == chain["trading_class"] and c.exchange == "SMART"
     )
-    # One contract-details request per expiry returns the strikes that really exist for it.
     contracts = []
     for exp in pick_expiries(params.expirations, today, chain):
-        template = Option(chain["symbol"], exp, exchange="SMART", currency=chain["currency"],
-                          tradingClass=chain["trading_class"])
-        for d in ib.reqContractDetails(template):
-            c = d.contract
+        for c in listed_contracts(ib, chain, exp, today):
             if c.conId not in taken and keep_strike(c.strike, c.right, spot, chain):
                 taken.add(c.conId)
                 contracts.append(c)

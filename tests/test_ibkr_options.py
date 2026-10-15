@@ -79,3 +79,25 @@ def test_index_snapshot_staging(tmp_path):
     assert quarantined.height == 0 and staged["bid"].to_list() == [None, None]
     assert staged["flags"].to_list() == [[], ["no_live_price"]]
 
+
+
+def test_listed_contracts_cached_per_day(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from pit.ibkr_options import listed_contracts
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    calls = []
+
+    class FakeIB:
+        def reqContractDetails(self, template):
+            calls.append(template.lastTradeDateOrContractMonth)
+            return [SimpleNamespace(contract=Option("SPX", "20261119", k, r, "SMART", "100", "USD", conId=k * 10 + (r == "P"),
+                                                    localSymbol=f"SPX {k}{r}", tradingClass="SPX"))
+                    for k in (7000.0, 7025.0) for r in ("C", "P")]
+
+    chain = {"symbol": "SPX", "trading_class": "SPX", "currency": "USD"}
+    first = listed_contracts(FakeIB(), chain, "20261119", TODAY)
+    second = listed_contracts(FakeIB(), chain, "20261119", TODAY)       # served from the day's cache
+    assert calls == ["20261119"] and len(first) == len(second) == 4
+    assert [(c.conId, c.strike, c.right, c.localSymbol) for c in second] == [(c.conId, c.strike, c.right, c.localSymbol) for c in first]
+    listed_contracts(FakeIB(), chain, "20261119", date(2026, 10, 15))  # a new day asks again
+    assert calls == ["20261119", "20261119"]

@@ -49,6 +49,7 @@ services:
       IB_PORT: ${IB_PORT:-4004}
       DATA_DIR: /opt/airflow/data
       DBT_TARGET: /opt/airflow/dbt/target
+      IBKR_CONFIG: /opt/airflow/config/ibkr.toml
       APCA_API_KEY_ID: ${APCA_API_KEY_ID:-}
       APCA_API_SECRET_KEY: ${APCA_API_SECRET_KEY:-}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}

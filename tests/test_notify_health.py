@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 import polars as pl
 
 from pit import notify
-from pit.health import yesterday
+from pit.health import day_summary
 from pit.pipeline import RUN_SCHEMA
 
 
@@ -41,8 +41,8 @@ def test_yesterday_summary_flags_failures_and_gaps(tmp_path):
     d = tmp_path / "pipeline_runs/dataset=all/ingest_date=2026-10-15"
     d.mkdir(parents=True)
     pl.DataFrame(rows, schema=RUN_SCHEMA).write_parquet(d / "runs.parquet")
-    ok, lines = yesterday(tmp_path, date(2026, 10, 15))
+    ok, lines = day_summary(tmp_path, date(2026, 10, 15))
     text = "\n".join(lines)
     assert not ok
-    assert "option_snapshots   78 ok, 1 failed, RTH 5-min slots covered: 78/78" in text
-    assert "missing bars at close: 700" in text
+    assert "option_snapshots   78 ok, 1 failed, rows 0, RTH slots 78/78" in text
+    assert "missing bars at close 700" in text

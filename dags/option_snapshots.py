@@ -1,7 +1,7 @@
 import pendulum
 from airflow.sdk import dag, task
 
-from pit.notify import task_failed
+from pit.notify import CALLBACKS
 from pit.airflow_timetable import MarketHoursTimetable
 from pit.pipeline import collect_index_snapshots, collect_option_snapshots
 
@@ -16,7 +16,7 @@ CONFIG = "/opt/airflow/config/ibkr.toml"
     start_date=pendulum.datetime(2026, 10, 1, tz="America/New_York"),
     catchup=False,  # a missed snapshot can't be fetched later
     max_active_runs=1,
-    default_args={"on_failure_callback": task_failed},  # after retries are exhausted
+    default_args=CALLBACKS,  # failure (after retries) and recovery notifications
 )
 def option_snapshots():
     @task(retries=1)

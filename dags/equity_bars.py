@@ -1,7 +1,7 @@
 import pendulum
 from airflow.sdk import dag, task
 
-from pit.notify import task_failed
+from pit.notify import CALLBACKS
 from pit.airflow_timetable import MarketHoursTimetable
 from pit.pipeline import collect_equity_bars
 
@@ -13,7 +13,7 @@ from pit.pipeline import collect_equity_bars
     start_date=pendulum.datetime(2026, 10, 1, tz="America/New_York"),
     catchup=False,
     max_active_runs=1,
-    default_args={"on_failure_callback": task_failed},  # after retries are exhausted
+    default_args=CALLBACKS,  # failure (after retries) and recovery notifications
 )
 def equity_bars():
     @task(retries=2)

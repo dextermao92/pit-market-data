@@ -57,8 +57,28 @@ def alert_once(key: str, subject: str, body: str) -> bool:
     return True
 
 
+def _failing_marker(ti) -> Path:
+    return Path(os.environ.get("DATA_DIR", "data")) / "cache" / "failing" / f"{ti.dag_id}.{ti.task_id}"
+
+
 def task_failed(context) -> None:
     """Airflow on_failure_callback: fires once a task has failed for good (after its retries)."""
     ti = context["ti"]
+    marker = _failing_marker(ti)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(str(context.get("run_id")))
     send(f"FAILED {ti.dag_id}.{ti.task_id}",
          f"run: {context.get('run_id')}\ntry: {ti.try_number}\nerror: {context.get('exception')!r}"[:3000])
+
+
+def task_succeeded(context) -> None:
+    """Airflow on_success_callback: tell when a task that had failed works again."""
+    marker = _failing_marker(context["ti"])
+    if marker.exists():
+        failed_run = marker.read_text()
+        marker.unlink()
+        send(f"RECOVERED {context['ti'].dag_id}.{context['ti'].task_id}",
+             f"succeeded in {context.get('run_id')}\nlast failure: {failed_run}")
+
+
+CALLBACKS = {"on_failure_callback": task_failed, "on_success_callback": task_succeeded}

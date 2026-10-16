@@ -11,6 +11,7 @@ import time
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import polars as pl
 
@@ -22,6 +23,9 @@ from pit.storage import TS, write_parquet
 
 QUOTE_STATUSES = ("two_sided", "ask_only", "bid_only", "no_quote", "crossed")
 IBKR_INFO_CODES = {2104, 2106, 2107, 2108, 2119, 2158}  # data-farm status messages, not errors
+NY = ZoneInfo("America/New_York")
+INTRADAY = {"option_snapshots", "index_snapshots", "equity_bars"}
+STALE_AFTER_S = 15 * 60
 IBKR_ALERT_CODES = {  # worth a notification (once per day per code)
     354: "market data not subscribed", 10089: "API market data needs an extra subscription",
     10090: "part of the market data not subscribed", 10197: "no market data during a competing live session",
@@ -65,6 +69,10 @@ def _recorded(dataset: str, run_id: str | None, collect) -> dict:
     try:  # everything inside, so any failure is still recorded
         prev = _previous_success(data_dir, dataset, started)
         rec["gap_s"] = (started - prev).total_seconds() if prev else None
+        if dataset in INTRADAY and prev and prev.astimezone(NY).date() == started.astimezone(NY).date() \
+                and rec["gap_s"] > STALE_AFTER_S:  # same session, data stopped arriving: once per gap
+            alert_once(f"stale_{dataset}_{prev:%H%M}", f"STALE {dataset}: no successful run for {rec['gap_s'] / 60:.0f} min",
+                       f"last success {prev.astimezone(NY):%H:%M} ET; this run started {started.astimezone(NY):%H:%M} ET")
         rec |= collect() | {"status": "success"}
         return rec
     except Exception as e:

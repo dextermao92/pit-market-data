@@ -2,7 +2,8 @@ import pendulum
 from airflow.sdk import dag, task
 
 from pit.market_hours import recent_sessions
-from pit.notify import task_failed
+from pit.health import report
+from pit.notify import CALLBACKS, send
 from pit.pipeline import collect_assets, collect_corporate_actions, collect_daily_bars, collect_equity_bars
 
 CONFIG = "/opt/airflow/config/alpaca_bars.toml"
@@ -14,7 +15,7 @@ REFETCH_SESSIONS = 10  # vendor revisions to recent bars show up as new versions
     start_date=pendulum.datetime(2026, 10, 1, tz="America/New_York"),
     catchup=False,
     max_active_runs=1,
-    default_args={"on_failure_callback": task_failed},  # after retries are exhausted
+    default_args=CALLBACKS,  # failure (after retries) and recovery notifications
 )
 def eod():
     @task(retries=2)
@@ -40,7 +41,13 @@ def eod():
     def dbt_build() -> str:
         return "cd /opt/airflow && /home/airflow/dbt/bin/dbt build --project-dir dbt --profiles-dir dbt"
 
-    [corporate_actions(), assets(), daily_bars(), refetch_recent_bars()] >> dbt_build()
+    @task(trigger_rule="all_done")
+    def close_summary() -> bool:
+        ok, title, text = report("summary")
+        send(title, text)  # sent whatever happened upstream; failures show up in it
+        return ok
+
+    [corporate_actions(), assets(), daily_bars(), refetch_recent_bars()] >> dbt_build() >> close_summary()
 
 
 eod()

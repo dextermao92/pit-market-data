@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 from ib_async import IB, Contract, Option, StartupFetch
 
+from pit import ibc
 from pit.storage import write_raw
 
 TICKER_FIELDS = (
@@ -93,7 +94,14 @@ def spot_of(ib: IB, ib_cfg: dict, chain: dict) -> tuple[Contract, float, str | N
     ib.cancelMktData(und)
     spot = clean(t.marketPrice()) or clean(t.close)  # indices only calculate in RTH; fall back to close
     if spot is None:
-        raise RuntimeError(f"{chain['symbol']}: no spot price; check the market-data subscription for the underlying")
+        # Usually the US data farm dropped (seen after overnight server reconnects): ask IBC to reconnect it
+        # so the task's retry finds it back, then fail this attempt.
+        try:
+            reply = ibc.command("RECONNECTDATA")
+        except OSError as e:
+            reply = f"IBC unreachable: {e!r}"
+        raise RuntimeError(f"{chain['symbol']}: no spot price; sent RECONNECTDATA ({reply}); "
+                           "if it persists, check the market-data subscription for the underlying")
     return und, spot, t.time.isoformat() if t.time else None
 
 

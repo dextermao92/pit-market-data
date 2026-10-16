@@ -1,7 +1,7 @@
 """Status reports (Chinese cards), each sent every session day whatever the result (a missing one means the host
 is down):
 
-  gateway  09:08 ET  after the 09:05 Gateway auto-restart: login, US data farm, quotes; Alpaca reachable
+  gateway  09:02 ET  login, US data farm, quotes; Alpaca reachable. Self-heals: RECONNECTDATA, then RESTART
   warmup   09:28 ET  pre-open runs since 09:05: are the option/index snapshots warm and inside the 5-min budget?
   summary  after eod  the session's runs, data collected, gaps, quality, dbt, disk, alerts sent
 
@@ -14,6 +14,7 @@ import json
 import os
 import shutil
 import sys
+import time
 import tomllib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -22,6 +23,7 @@ from zoneinfo import ZoneInfo
 import polars as pl
 from ib_async import Index, Stock
 
+from pit import ibc
 from pit.alpaca_bars import client
 from pit.ibkr_options import clean, connect, wait_for_ticks
 from pit.market_hours import recent_sessions
@@ -60,6 +62,32 @@ def check_gateway(ibkr_cfg: dict) -> Check:
     if us_farm and not down:
         return "ok", [("✅ Gateway", "已登录，美股行情正常", False), *quotes]
     return "error", [("❌ Gateway", f"美股报价：{'有' if us_farm else '无'}；服务器断开错误码：{down or '无'}", False), *quotes]
+
+
+HEAL_STEPS = (("RECONNECTDATA", "重连数据服务器", 20), ("RESTART", "重启 Gateway（不需要 2FA）", 120))
+
+
+def gateway_with_healing(ibkr_cfg: dict, check=None, send_command=None, sleep=time.sleep) -> Check:
+    """Check; if broken, try IBC's RECONNECTDATA, then RESTART, re-checking after each. Healed -> warn (yellow)."""
+    check, send_command = check or check_gateway, send_command or ibc.command
+    level, fields = check(ibkr_cfg)
+    if level == "ok":
+        return level, fields
+    log = ["发现 Gateway 异常"]
+    for cmd, label, wait in HEAL_STEPS:
+        try:
+            reply = send_command(cmd)
+            log.append(f"→ {label}（IBC 回复：{reply or '无'}）")
+        except OSError as e:
+            log.append(f"→ {label}失败：无法连接 IBC 命令服务器（{e!r}）")
+            continue
+        sleep(wait)
+        level, fields = check(ibkr_cfg)
+        if level == "ok":
+            log.append("→ ✅ 已恢复")
+            return "warn", [("🔧 自动修复", "\n".join(log), False), *fields]
+    log.append("→ ❌ 自动修复失败，需要人工处理（可能要在手机上确认 2FA）")
+    return "error", [("🔧 自动修复", "\n".join(log), False), *fields]
 
 
 def check_alpaca() -> Check:
@@ -156,7 +184,7 @@ def disk(data_dir: Path) -> Check:
 
 
 HEADLINE = {  # description per report and level
-    "gateway": {"ok": "Gateway 和数据源都正常，可以开始预热", "warn": "有非致命问题，请留意", "error": "Gateway 或数据源异常，开盘采集可能失败"},
+    "gateway": {"ok": "Gateway 和数据源都正常，可以开始预热", "warn": "发现异常，已自动修复", "error": "Gateway 或数据源异常，自动修复失败，开盘采集可能失败"},
     "warmup": {"ok": "🚀 预热完成，可以开盘", "warn": "预热基本完成，但有问题", "error": "🛑 预热未完成，开盘采集可能受影响"},
     "summary": {"ok": "今天一切正常", "warn": "我们这边正常，但数据源有缺口", "error": "今天有运行失败，请查看下面标 ❌ 的项目"},
 }
@@ -168,7 +196,7 @@ def report(kind: str) -> tuple[str, str, str, list[Field]]:
     now = datetime.now(timezone.utc)
     if kind == "gateway":
         ibkr_cfg = tomllib.loads(Path(os.environ.get("IBKR_CONFIG", "config/ibkr.toml")).read_text())["ibkr"]
-        checks, title = [check_gateway(ibkr_cfg), check_alpaca()], "Gateway 检查（9:05 重启后）"
+        checks, title = [gateway_with_healing(ibkr_cfg), check_alpaca()], "Gateway 检查（开盘前）"
     elif kind == "warmup":
         checks, title = [warmup(data_dir, now)], "开盘预热检查"
     else:

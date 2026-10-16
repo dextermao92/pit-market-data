@@ -1,0 +1,63 @@
+import socket
+import threading
+
+from pit import ibc
+from pit.health import gateway_with_healing
+
+
+def test_command_round_trip(monkeypatch):
+    srv = socket.create_server(("127.0.0.1", 0))
+    got = []
+
+    def serve():
+        conn, _ = srv.accept()
+        with conn:
+            got.append(conn.recv(1024).decode())
+            conn.sendall(b"OK\n")
+            got.append(conn.recv(1024).decode())
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    monkeypatch.setenv("IB_HOST", "127.0.0.1")
+    monkeypatch.setenv("IBC_COMMAND_PORT", str(srv.getsockname()[1]))
+    assert ibc.command("RECONNECTDATA") == "OK"
+    server.join(timeout=5)
+    assert got == ["RECONNECTDATA\n", "EXIT\n"]
+
+
+def healing(results, failing_commands=()):
+    """Run gateway_with_healing with scripted check results; returns (level, fields, commands sent)."""
+    checks, sent = iter(results), []
+
+    def send(cmd):
+        sent.append(cmd)
+        if cmd in failing_commands:
+            raise ConnectionRefusedError("no command server")
+        return "OK"
+
+    level, fields = gateway_with_healing({}, check=lambda cfg: next(checks), send_command=send, sleep=lambda s: None)
+    return level, fields, sent
+
+
+OK, BAD = ("ok", [("✅ Gateway", "已登录", False)]), ("error", [("❌ Gateway", "美股报价：无", False)])
+
+
+def test_healthy_gateway_is_left_alone():
+    assert healing([OK]) == ("ok", OK[1], [])
+
+
+def test_reconnect_heals_and_is_reported_yellow():
+    level, fields, sent = healing([BAD, OK])
+    assert level == "warn" and sent == ["RECONNECTDATA"]
+    assert fields[0][0] == "🔧 自动修复" and "✅ 已恢复" in fields[0][1] and fields[1] == OK[1][0]
+
+
+def test_escalates_to_restart_then_gives_up_red():
+    level, fields, sent = healing([BAD, BAD, BAD])
+    assert level == "error" and sent == ["RECONNECTDATA", "RESTART"]
+    assert "自动修复失败" in fields[0][1]
+
+
+def test_unreachable_command_server_still_tries_next_step():
+    level, fields, sent = healing([BAD, OK], failing_commands={"RECONNECTDATA"})
+    assert level == "warn" and sent == ["RECONNECTDATA", "RESTART"] and "无法连接 IBC 命令服务器" in fields[0][1]

@@ -26,5 +26,5 @@ def status_dag(dag_id: str, cron: str, kind: str):
     return status()
 
 
-gateway_check = status_dag("gateway_check", "8 9 * * 1-5", "gateway")   # after the 09:05 Gateway auto-restart
+gateway_check = status_dag("gateway_check", "2 9 * * 1-5", "gateway")   # leaves time to self-heal before 09:10
 warmup_check = status_dag("warmup_check", "28 9 * * 1-5", "warmup")     # pre-open runs started 09:10

@@ -122,6 +122,23 @@ Option snapshots are never backfilled: a missed one shows up as a `gap_s` jump i
 never imputed. Equity history is backfilled with
 `python -m pit.pipeline backfill config/alpaca_bars.toml <start> <end>`.
 
+### Monitoring and self-healing
+
+Notifications go to a Discord channel (webhook; email via SMTP is also supported) as cards coloured green / yellow /
+red. Three status cards are sent on every session day **whether or not anything is wrong**, so a missing one means
+the host or Docker is down:
+
+| ET | Card | |
+|---|---|---|
+| 09:02 | Gateway check | Login, US data farm (SPY pre-market quote), SPX/VIX, Alpaca. If the US farm is down (seen after IBKR's overnight server reconnects), it self-heals through IBC's command server: `RECONNECTDATA`, then `RESTART` (no 2FA), re-checking after each; the card shows what was done |
+| 09:28 | Warm-up check | Pre-open option/index runs since 09:05, last run time vs the 5-min budget, contract cache |
+| ~17:40 | Close summary | Per dataset: runs ok/failed, rows, RTH slot coverage, run times, missing bars, quarantine; MB written; dbt; alerts sent; disk |
+
+Alerts, once per New York day per problem: a task failed after its retries (and a RECOVERED card when it works
+again), an intraday dataset with no successful run for 15 min, an Alpaca bar gap of at least one full slot, IBKR
+codes for missing subscriptions / competing sessions / broken data farms. A collector that finds no underlying
+price also asks IBC to `RECONNECTDATA` before failing, so its retry usually succeeds.
+
 ### Key decisions
 
 | Decision | Why |
@@ -191,7 +208,7 @@ dbt tests (curated):
 | Orchestration | Airflow 3, LocalExecutor |
 | Runtime | Docker Compose: Postgres (Airflow metadata), Airflow (`standalone`, image extended from `apache/airflow`), IB Gateway. Postgres lets both ingest DAGs run in parallel (SQLite would not). `src/`, `dags/`, `config/`, `data/` are bind-mounted. |
 | Data dir | `./data` bind-mounted, so Parquet stays on the host and is queryable locally |
-| IB Gateway | `gnzsnz/ib-gateway` image (Gateway + IBC: daily auto-restart; VNC on localhost for 2FA/UI). Gateway, not TWS: no trading UI, lighter, built for API use |
+| IB Gateway | `gnzsnz/ib-gateway` image (Gateway + IBC: daily auto-restart at 23:45 ET; IBC command server enabled for the airflow container only, for self-healing; VNC on localhost for 2FA/UI). Gateway, not TWS: no trading UI, lighter, built for API use |
 | Alpaca client | httpx, not the SDK — raw stores the response as received |
 | IBKR client | ib_async (maintained ib_insync fork); raw = received fields serialized to JSON |
 | Transform | Polars |
@@ -216,7 +233,7 @@ New machine:
    (System Settings → Battery → Options, or `caffeinate -s`); consider pausing automatic macOS update installs.
 2. `git clone` the repo; copy `.env` over by hand (AirDrop / USB, not chat or email).
 3. **Stop the old machine first** (`docker compose down`): two Gateways on one IBKR username kick each other.
-   Do it after the close summary (~17:40 ET) and before the 09:05 ET restart, ideally on a weekend.
+   Do it after the close summary (~17:40 ET) and before the 09:02 ET gateway check, ideally on a weekend.
 4. Copy `data/` into the repo directory.
 5. `docker compose up -d --build`, approve the IBKR 2FA push, then unpause every DAG (a fresh Airflow DB pauses
    new DAGs): `docker compose exec airflow airflow dags unpause <dag_id>` for `option_snapshots`, `equity_bars`,

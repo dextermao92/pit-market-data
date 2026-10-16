@@ -51,8 +51,8 @@ def check_gateway(ibkr_cfg: dict) -> Check:
         tickers = [ib.reqMktData(c) for c in contracts]
         # SPY quotes pre-market only if the US farm is up; indices may only have yesterday's close before the open.
         wait_for_ticks(ib, ibkr_cfg, tickers, lambda t: clean(t.bid) or clean(t.last) or clean(t.close))
-        quotes = [(f"📈 {t.contract.symbol}", f"最新 {_num(clean(t.last))}\n买价 {_num(clean(t.bid))}\n昨收 {_num(clean(t.close))}", True)
-                  for t in tickers]
+        quotes = [("📈 行情", "\n".join(f"{t.contract.symbol}　最新 {_num(clean(t.last))}｜买价 {_num(clean(t.bid))}｜昨收 {_num(clean(t.close))}"
+                                       for t in tickers), False)]
         us_farm = clean(tickers[0].bid) is not None or clean(tickers[0].last) is not None
         down = sorted({e["code"] for e in errors} & FARM_DOWN)
     finally:
@@ -98,21 +98,22 @@ def day_summary(data_dir: Path, session) -> Check:
         good = r.filter(pl.col("status") == "success")
         bad = r.height - good.height
         lv = "ok" if bad == 0 and good.height else "error"
-        lines = [f"成功 {good.height} · 失败 {bad}"]
+        head = f"成功 {good.height} · 失败 {bad}"  # line 1: counts; line 2: what's specific to the dataset
         if good.height:
-            lines.append(f"{good['rows'].sum():,} 行" + (f" · 隔离 {good['quarantined'].sum():,}" if good["quarantined"].sum() else ""))
+            head += f" · {good['rows'].sum():,} 行" + (f" · 隔离 {good['quarantined'].sum():,}" if good["quarantined"].sum() else "")
+        detail = ""
         if ds == "option_snapshots" and good.height:
             slots = good.filter(_mins(pl.col("et")).is_between(570, 959))["et"].dt.truncate("5m").n_unique()
-            lines += [f"正规时段覆盖 {slots}/78", f"耗时中位 {good['run_s'].median():.0f}s · 最长 {good['run_s'].max():.0f}s"]
+            detail = f"正规时段覆盖 {slots}/78 · 耗时中位 {good['run_s'].median():.0f}s / 最长 {good['run_s'].max():.0f}s"
             lv = _worst(lv, "ok" if slots == 78 else "warn")
         if ds == "equity_bars" and good.height:
             last = good.sort("started_at")["missing_bars"][-1]
-            lines.append(f"收盘时缺 {last} 根 bar")
+            detail = f"收盘时缺 {last} 根 bar"
             lv = _worst(lv, "warn" if last else "ok")
         level = _worst(level, lv)
-        fields.append((f"{LEVEL_MARK[lv]} {DATASET_ZH[ds]}", "\n".join(lines), True))
+        fields.append((f"{LEVEL_MARK[lv]} {DATASET_ZH[ds]}", "\n".join(x for x in (head, detail) if x), False))
     added = sum(f.stat().st_size for layer in ("raw", "staged") for f in data_dir.glob(f"{layer}/**/ingest_date={session}/**/*") if f.is_file())
-    fields.append(("💾 当日写入", f"{added / 1e6:,.0f} MB（raw + staged）", True))
+    fields.append(("💾 当日写入", f"{added / 1e6:,.0f} MB（raw + staged）", False))
     results = Path(os.environ.get("DBT_TARGET", "dbt/target")) / "run_results.json"
     if results.exists():
         rr = json.loads(results.read_text())
@@ -121,7 +122,7 @@ def day_summary(data_dir: Path, session) -> Check:
         lv = "error" if failed else "ok"
         level = _worst(level, lv)
         fields.append((f"{LEVEL_MARK[lv]} dbt build", (f"{len(rr['results'])} 个节点全部通过" if not failed
-                                                       else "失败：" + "、".join(failed)) + f"\n美东 {at:%m-%d %H:%M}", True))
+                                                       else "失败：" + "、".join(failed)) + f" · 美东 {at:%m-%d %H:%M}", False))
     alerts = sorted(p.read_text() for p in (data_dir / "cache" / "alerts" / str(session)).glob("*"))
     fields.append(("🔔 当日告警", "\n".join(f"• {a}" for a in alerts) or "无", False))
     return level, fields
@@ -136,22 +137,22 @@ def warmup(data_dir: Path, now: datetime) -> Check:
         good = r.filter(pl.col("status") == "success") if not r.is_empty() else r
         if good.is_empty():
             level = "error"
-            fields.append((f"❌ {DATASET_ZH[ds]}", f"9:05 以来没有成功的运行\n失败 {r.height} 次", True))
+            fields.append((f"❌ {DATASET_ZH[ds]}", f"9:05 以来没有成功的运行\n失败 {r.height} 次", False))
             continue
         last = good.sort("started_at").row(-1, named=True)
         lv = "ok" if last["run_s"] < 270 else "error"  # warm and inside the 5-min budget
         level = _worst(level, lv)
         fields.append((f"{LEVEL_MARK[lv]} {DATASET_ZH[ds]}", f"成功 {good.height} · 失败 {r.height - good.height}\n"
-                       f"最近一次 {last['et']:%H:%M}\n耗时 {last['run_s']:.0f}s · {last['rows']:,} 行", True))
+                       f"最近一次 {last['et']:%H:%M} · 耗时 {last['run_s']:.0f}s · {last['rows']:,} 行", False))
     cache = list((data_dir / "cache" / "ibkr_contracts" / str(now.astimezone(ZoneInfo(NY)).date())).glob("*.json"))
-    fields.append(("🗂️ 合约缓存", f"{len(cache)} 个到期日", True))
+    fields.append(("🗂️ 合约缓存", f"{len(cache)} 个到期日", False))
     return level, fields
 
 
 def disk(data_dir: Path) -> Check:
     free = shutil.disk_usage(data_dir).free
     lv = "ok" if free > 20e9 else "warn"
-    return lv, [(f"{LEVEL_MARK[lv]} 磁盘", f"剩余 {free / 1e9:,.0f} GB", True)]
+    return lv, [(f"{LEVEL_MARK[lv]} 磁盘", f"剩余 {free / 1e9:,.0f} GB", False)]
 
 
 HEADLINE = {  # description per report and level

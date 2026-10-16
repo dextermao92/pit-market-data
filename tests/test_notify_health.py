@@ -46,5 +46,5 @@ def test_yesterday_summary_flags_failures_and_gaps(tmp_path):
     level, fields = day_summary(tmp_path, date(2026, 10, 15))
     by_name = {n: v for n, v, _ in fields}
     assert level == "error"
-    assert by_name["❌ 期权快照"].startswith("成功 78 · 失败 1") and "正规时段覆盖 78/78" in by_name["❌ 期权快照"]
+    assert by_name["❌ 期权快照"].startswith("成功 78 · 失败 1 · 0 行\n正规时段覆盖 78/78")
     assert "收盘时缺 700 根 bar" in by_name["⚠️ 股票 5 分钟 bar"]

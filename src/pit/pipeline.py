@@ -71,7 +71,8 @@ def _recorded(dataset: str, run_id: str | None, collect) -> dict:
         if dataset in INTRADAY and prev and prev.astimezone(NY).date() == started.astimezone(NY).date() \
                 and rec["gap_s"] > STALE_AFTER_S:  # same session, data stopped arriving: once per gap
             alert_once(f"stale_{dataset}_{prev:%H%M}", f"⏸️ 数据停滞：{DATASET_ZH[dataset]}已 {rec['gap_s'] / 60:.0f} 分钟没有成功运行",
-                       f"🕘 上次成功：美东 {prev.astimezone(NY):%H:%M}\n🕒 本次开始：美东 {started.astimezone(NY):%H:%M}")
+                       f"🕘 上次成功：美东 {prev.astimezone(NY):%H:%M}\n🕒 本次开始：美东 {started.astimezone(NY):%H:%M}",
+                       level="error")
         rec |= collect() | {"status": "success"}
         return rec
     except Exception as e:
@@ -99,7 +100,8 @@ def _ibkr_codes(dataset: str, payload: dict) -> list[int]:
         msgs = sorted({e["msg"][:200] for e in payload["errors"] if e["code"] == code})
         at = datetime.fromisoformat(payload["ingested_at"]).astimezone(NY)
         alert_once(f"ibkr_{code}", f"⚠️ IBKR 错误 {code}：{IBKR_ALERT_CODES[code]}",
-                   f"📍 首次出现：{DATASET_ZH[dataset]}，美东 {at:%H:%M}\n📝 原始信息：\n" + "\n".join(f"　• {m}" for m in msgs[:5]))
+                   f"📍 首次出现：{DATASET_ZH[dataset]}，美东 {at:%H:%M}\n📝 原始信息：\n" + "\n".join(f"• {m}" for m in msgs[:5]),
+                   level="error" if code == 1100 else "warn")
     return codes
 
 
@@ -130,7 +132,7 @@ def collect_equity_bars(config_path: str, run_id: str | None = None, session=Non
             alert_once(f"missing_bars_{payload['session']}", f"⚠️ Alpaca 数据缺失：{payload['session']} 缺 {missing} 根 bar",
                        f"📉 {len(symbols)} 个代码在美东 {datetime.fromisoformat(req['start']).astimezone(NY):%H:%M}–"
                        f"{datetime.fromisoformat(req['end']).astimezone(NY):%H:%M} 之间共缺 {missing} 根 5 分钟 bar\n"
-                       "🔍 请对照同一时段的 IBKR 快照核实；如果 Alpaca 之后补上，eod 回拉会自动拿到新版本")
+                       "🔍 请对照同一时段的 IBKR 快照核实；如果 Alpaca 之后补上，eod 回拉会自动拿到新版本", level="warn")
         return rec | {"missing_bars": missing}
     return _recorded("equity_bars", run_id, collect)
 

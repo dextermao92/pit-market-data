@@ -1,9 +1,11 @@
-"""Notifications by email (SMTP) and/or Discord webhook, whichever is configured in the environment.
+"""Notifications by Discord webhook (as embed cards) and/or email (SMTP), whichever is configured.
 
+  DISCORD_WEBHOOK_URL
   ALERT_EMAIL_TO, SMTP_USER, SMTP_PASSWORD   Gmail: SMTP_PASSWORD is an app password, not the account password
   SMTP_HOST (default smtp.gmail.com), SMTP_PORT (default 465)
-  DISCORD_WEBHOOK_URL
 Nothing configured -> the message is only logged. A failing channel never fails the caller.
+
+A message is a title, an optional description, fields (name, value, inline) and a level that colours the card.
 """
 
 import logging
@@ -17,48 +19,62 @@ from zoneinfo import ZoneInfo
 import httpx
 
 log = logging.getLogger(__name__)
+LEVEL_COLOR = {"ok": 0x2ECC71, "warn": 0xF1C40F, "error": 0xE74C3C, "info": 0x3498DB}  # green, yellow, red, blue
+LEVEL_MARK = {"ok": "✅", "warn": "⚠️", "error": "❌", "info": "ℹ️"}
 DATASET_ZH = {"option_snapshots": "期权快照", "index_snapshots": "指数快照", "equity_bars": "股票 5 分钟 bar",
               "corporate_actions": "公司行为", "assets": "资产快照", "daily_bars": "日线 bar"}
 TASK_ZH = {"chains": "期权快照", "indices": "指数快照", "fetch": "股票 bar", "corporate_actions": "公司行为",
            "assets": "资产快照", "daily_bars": "日线 bar", "refetch_recent_bars": "回拉最近 10 个交易日",
            "dbt_build": "dbt build", "close_summary": "收盘总结", "check_and_send": "状态检查"}
 
+Field = tuple[str, str, bool]  # name, value, inline
 
-def send(subject: str, body: str) -> list[str]:
+
+def _embed(title: str, body: str, fields: list[Field], level: str) -> dict:
+    # Discord limits: title 256, description 4096, 25 fields, field name 256 / value 1024.
+    return {"title": title[:256], "description": body[:4000], "color": LEVEL_COLOR[level],
+            "fields": [{"name": n[:256], "value": (v or "—")[:1024], "inline": i} for n, v, i in fields[:25]],
+            "footer": {"text": "pit-market-data"}, "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+def as_text(body: str, fields: list[Field]) -> str:
+    return "\n".join([body] * bool(body) + [f"{n}\n  " + v.replace("\n", "\n  ") for n, v, _ in fields])
+
+
+def send(title: str, body: str = "", fields: list[Field] = (), level: str = "info") -> list[str]:
     """Send to every configured channel; returns the channels that succeeded."""
-    sent = []
-    env = os.environ
+    fields, sent, env = list(fields), [], os.environ
+    if env.get("DISCORD_WEBHOOK_URL"):
+        try:
+            payload = {"embeds": [_embed(title, body, fields, level)]}
+            httpx.post(env["DISCORD_WEBHOOK_URL"], json=payload, timeout=15).raise_for_status()
+            sent.append("discord")
+        except Exception:
+            log.exception("discord notification failed")
     if env.get("ALERT_EMAIL_TO") and env.get("SMTP_USER") and env.get("SMTP_PASSWORD"):
         try:
             msg = EmailMessage()
-            msg["Subject"], msg["From"], msg["To"] = f"[pit-market-data] {subject}", env["SMTP_USER"], env["ALERT_EMAIL_TO"]
-            msg.set_content(body)
+            msg["Subject"], msg["From"], msg["To"] = f"[pit-market-data] {title}", env["SMTP_USER"], env["ALERT_EMAIL_TO"]
+            msg.set_content(as_text(body, fields))
             with smtplib.SMTP_SSL(env.get("SMTP_HOST", "smtp.gmail.com"), int(env.get("SMTP_PORT", "465")), timeout=30) as s:
                 s.login(env["SMTP_USER"], env["SMTP_PASSWORD"])
                 s.send_message(msg)
             sent.append("email")
         except Exception:
             log.exception("email notification failed")
-    if env.get("DISCORD_WEBHOOK_URL"):
-        try:
-            text = f"**{subject}**\n{body}"[:1990]  # Discord caps messages at 2000 chars
-            httpx.post(env["DISCORD_WEBHOOK_URL"], json={"content": text}, timeout=15).raise_for_status()
-            sent.append("discord")
-        except Exception:
-            log.exception("discord notification failed")
-    log.warning("notification %r -> %s\n%s", subject, sent or "no channel configured", body)
+    log.warning("notification %r -> %s\n%s", title, sent or "no channel configured", as_text(body, fields))
     return sent
 
 
-def alert_once(key: str, subject: str, body: str) -> bool:
+def alert_once(key: str, title: str, body: str = "", fields: list[Field] = (), level: str = "warn") -> bool:
     """Send at most once per New York day per key, so a problem seen every 5 minutes alerts once."""
     day = datetime.now(timezone.utc).astimezone(ZoneInfo("America/New_York")).date()
     marker = Path(os.environ.get("DATA_DIR", "data")) / "cache" / "alerts" / str(day) / key
     if marker.exists():
         return False
     marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(subject)
-    send(subject, body)
+    marker.write_text(title)
+    send(title, body, fields, level)
     return True
 
 
@@ -72,19 +88,20 @@ def task_failed(context) -> None:
     marker = _failing_marker(ti)
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(str(context.get("run_id")))
-    send(f"❌ 任务失败：{TASK_ZH.get(ti.task_id, ti.task_id)}（{ti.dag_id}.{ti.task_id}）",
-         f"🕒 运行：{context.get('run_id')}\n🔁 已重试到第 {ti.try_number} 次\n💥 错误：{context.get('exception')!r}"[:1800])
+    send(f"❌ 任务失败：{TASK_ZH.get(ti.task_id, ti.task_id)}", f"`{ti.dag_id}.{ti.task_id}` 重试用完后仍然失败",
+         [("🕒 运行", str(context.get("run_id")), True), ("🔁 尝试次数", str(ti.try_number), True),
+          ("💥 错误", f"```{context.get('exception')!r}"[:1000] + "```", False)], level="error")
 
 
 def task_succeeded(context) -> None:
     """Airflow on_success_callback: tell when a task that had failed works again."""
-    marker = _failing_marker(context["ti"])
+    ti = context["ti"]
+    marker = _failing_marker(ti)
     if marker.exists():
         failed_run = marker.read_text()
         marker.unlink()
-        ti = context["ti"]
-        send(f"✅ 已恢复：{TASK_ZH.get(ti.task_id, ti.task_id)}（{ti.dag_id}.{ti.task_id}）",
-             f"🕒 本次成功：{context.get('run_id')}\n🕘 上次失败：{failed_run}")
+        send(f"✅ 已恢复：{TASK_ZH.get(ti.task_id, ti.task_id)}", f"`{ti.dag_id}.{ti.task_id}` 重新成功",
+             [("🕒 本次成功", str(context.get("run_id")), True), ("🕘 上次失败", failed_run, True)], level="ok")
 
 
 CALLBACKS = {"on_failure_callback": task_failed, "on_success_callback": task_succeeded}

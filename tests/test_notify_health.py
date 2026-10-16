@@ -22,10 +22,12 @@ def test_send_discord_and_alert_once(tmp_path, monkeypatch):
         def raise_for_status(self):
             pass
 
-    monkeypatch.setattr(notify.httpx, "post", lambda url, json, timeout: posted.append(json["content"]) or Ok())
-    assert notify.alert_once("gap", "Alpaca gap", "details") is True
+    monkeypatch.setattr(notify.httpx, "post", lambda url, json, timeout: posted.append(json["embeds"][0]) or Ok())
+    assert notify.alert_once("gap", "Alpaca gap", "details", [("rows", "700", True)]) is True
     assert notify.alert_once("gap", "Alpaca gap", "details") is False   # same key, same day: silent
-    assert len(posted) == 1 and "Alpaca gap" in posted[0]
+    card = posted[0]
+    assert len(posted) == 1 and card["title"] == "Alpaca gap" and card["color"] == notify.LEVEL_COLOR["warn"]
+    assert card["fields"] == [{"name": "rows", "value": "700", "inline": True}]
 
 
 def run(ds, status, h, m, **kw):
@@ -41,8 +43,8 @@ def test_yesterday_summary_flags_failures_and_gaps(tmp_path):
     d = tmp_path / "pipeline_runs/dataset=all/ingest_date=2026-10-15"
     d.mkdir(parents=True)
     pl.DataFrame(rows, schema=RUN_SCHEMA).write_parquet(d / "runs.parquet")
-    ok, lines = day_summary(tmp_path, date(2026, 10, 15))
-    text = "\n".join(lines)
-    assert not ok
-    assert "期权快照：成功 78 次，失败 1 次，0 行，正规时段覆盖 78/78" in text
-    assert "收盘时缺 700 根 bar" in text
+    level, fields = day_summary(tmp_path, date(2026, 10, 15))
+    by_name = {n: v for n, v, _ in fields}
+    assert level == "error"
+    assert by_name["❌ 期权快照"].startswith("成功 78 · 失败 1") and "正规时段覆盖 78/78" in by_name["❌ 期权快照"]
+    assert "收盘时缺 700 根 bar" in by_name["⚠️ 股票 5 分钟 bar"]

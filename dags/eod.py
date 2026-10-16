@@ -42,10 +42,10 @@ def eod():
         return "cd /opt/airflow && /home/airflow/dbt/bin/dbt build --project-dir dbt --profiles-dir dbt"
 
     @task(trigger_rule="all_done")
-    def close_summary() -> bool:
-        ok, title, text = report("summary")
-        send(title, text)  # sent whatever happened upstream; failures show up in it
-        return ok
+    def close_summary() -> str:
+        level, title, body, fields = report("summary")
+        send(title, body, fields, level)  # sent whatever happened upstream; failures show up in it
+        return level
 
     [corporate_actions(), assets(), daily_bars(), refetch_recent_bars()] >> dbt_build() >> close_summary()
 

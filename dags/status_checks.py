@@ -16,10 +16,10 @@ def status_dag(dag_id: str, cron: str, kind: str):
             return calendar().is_session(pendulum.now("America/New_York").date().isoformat())
 
         @task
-        def check_and_send() -> bool:
-            ok, title, text = report(kind)
-            send(title, text)
-            return ok
+        def check_and_send() -> str:
+            level, title, body, fields = report(kind)
+            send(title, body, fields, level)
+            return level
 
         session_today() >> check_and_send()
 

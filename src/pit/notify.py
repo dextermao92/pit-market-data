@@ -27,7 +27,7 @@ TASK_ZH = {"chains": "期权快照", "indices": "指数快照", "fetch": "股票
            "assets": "资产快照", "daily_bars": "日线 bar", "refetch_recent_bars": "回拉最近 10 个交易日",
            "dbt_build": "dbt build", "close_summary": "收盘总结", "check_and_send": "状态检查"}
 
-Field = tuple[str, str, bool]  # name, value, inline (we keep everything stacked: inline cramps CJK text)
+Field = tuple[str, str, bool]  # name, value, inline (side by side; only for short values)
 
 
 def _embed(title: str, body: str, fields: list[Field], level: str) -> dict:
@@ -89,7 +89,7 @@ def task_failed(context) -> None:
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(str(context.get("run_id")))
     send(f"❌ 任务失败：{TASK_ZH.get(ti.task_id, ti.task_id)}", f"`{ti.dag_id}.{ti.task_id}` 重试用完后仍然失败",
-         [("🕒 运行", str(context.get("run_id")), False), ("🔁 尝试次数", str(ti.try_number), False),
+         [("🕒 运行", str(context.get("run_id")), True), ("🔁 尝试次数", str(ti.try_number), True),
           ("💥 错误", f"```{context.get('exception')!r}"[:1000] + "```", False)], level="error")
 
 

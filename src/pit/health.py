@@ -51,8 +51,8 @@ def check_gateway(ibkr_cfg: dict) -> Check:
         tickers = [ib.reqMktData(c) for c in contracts]
         # SPY quotes pre-market only if the US farm is up; indices may only have yesterday's close before the open.
         wait_for_ticks(ib, ibkr_cfg, tickers, lambda t: clean(t.bid) or clean(t.last) or clean(t.close))
-        quotes = [("📈 行情", "\n".join(f"{t.contract.symbol}　最新 {_num(clean(t.last))}｜买价 {_num(clean(t.bid))}｜昨收 {_num(clean(t.close))}"
-                                       for t in tickers), False)]
+        quotes = [(f"📈 {t.contract.symbol}", f"最新 {_num(clean(t.last))}\n买价 {_num(clean(t.bid))}\n昨收 {_num(clean(t.close))}", True)
+                  for t in tickers]  # side by side
         us_farm = clean(tickers[0].bid) is not None or clean(tickers[0].last) is not None
         down = sorted({e["code"] for e in errors} & FARM_DOWN)
     finally:
@@ -137,15 +137,15 @@ def warmup(data_dir: Path, now: datetime) -> Check:
         good = r.filter(pl.col("status") == "success") if not r.is_empty() else r
         if good.is_empty():
             level = "error"
-            fields.append((f"❌ {DATASET_ZH[ds]}", f"9:05 以来没有成功的运行\n失败 {r.height} 次", False))
+            fields.append((f"❌ {DATASET_ZH[ds]}", f"9:05 以来没有成功的运行\n失败 {r.height} 次", True))
             continue
         last = good.sort("started_at").row(-1, named=True)
         lv = "ok" if last["run_s"] < 270 else "error"  # warm and inside the 5-min budget
         level = _worst(level, lv)
         fields.append((f"{LEVEL_MARK[lv]} {DATASET_ZH[ds]}", f"成功 {good.height} · 失败 {r.height - good.height}\n"
-                       f"最近一次 {last['et']:%H:%M} · 耗时 {last['run_s']:.0f}s · {last['rows']:,} 行", False))
+                       f"最近一次 {last['et']:%H:%M}\n耗时 {last['run_s']:.0f}s · {last['rows']:,} 行", True))
     cache = list((data_dir / "cache" / "ibkr_contracts" / str(now.astimezone(ZoneInfo(NY)).date())).glob("*.json"))
-    fields.append(("🗂️ 合约缓存", f"{len(cache)} 个到期日", False))
+    fields.append(("🗂️ 合约缓存", f"{len(cache)} 个到期日", True))
     return level, fields
 
 

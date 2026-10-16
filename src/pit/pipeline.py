@@ -17,7 +17,7 @@ import polars as pl
 
 from pit import alpaca_bars, assets, corporate_actions, ibkr_indices, ibkr_options, stage_options
 from pit.market_hours import calendar
-from pit.notify import alert_once
+from pit.notify import DATASET_ZH, alert_once
 from pit.rules import missing_bars
 from pit.storage import TS, write_parquet
 
@@ -27,10 +27,9 @@ NY = ZoneInfo("America/New_York")
 INTRADAY = {"option_snapshots", "index_snapshots", "equity_bars"}
 STALE_AFTER_S = 15 * 60
 IBKR_ALERT_CODES = {  # worth a notification (once per day per code)
-    354: "market data not subscribed", 10089: "API market data needs an extra subscription",
-    10090: "part of the market data not subscribed", 10197: "no market data during a competing live session",
-    1100: "Gateway lost connectivity to IBKR", 2103: "a market data farm connection is broken",
-    2105: "a historical data farm connection is broken", 2157: "a sec-def data farm connection is broken",
+    354: "行情未订阅", 10089: "API 行情需要额外订阅", 10090: "部分行情未订阅",
+    10197: "与真实账户登录冲突，行情被占用", 1100: "Gateway 与 IBKR 断开连接",
+    2103: "行情服务器连接断开", 2105: "历史数据服务器连接断开", 2157: "合约定义服务器连接断开",
 }
 RUN_SCHEMA = {
     "run_id": pl.String, "dataset": pl.String, "started_at": TS, "finished_at": TS, "status": pl.String,
@@ -71,8 +70,8 @@ def _recorded(dataset: str, run_id: str | None, collect) -> dict:
         rec["gap_s"] = (started - prev).total_seconds() if prev else None
         if dataset in INTRADAY and prev and prev.astimezone(NY).date() == started.astimezone(NY).date() \
                 and rec["gap_s"] > STALE_AFTER_S:  # same session, data stopped arriving: once per gap
-            alert_once(f"stale_{dataset}_{prev:%H%M}", f"STALE {dataset}: no successful run for {rec['gap_s'] / 60:.0f} min",
-                       f"last success {prev.astimezone(NY):%H:%M} ET; this run started {started.astimezone(NY):%H:%M} ET")
+            alert_once(f"stale_{dataset}_{prev:%H%M}", f"⏸️ 数据停滞：{DATASET_ZH[dataset]}已 {rec['gap_s'] / 60:.0f} 分钟没有成功运行",
+                       f"🕘 上次成功：美东 {prev.astimezone(NY):%H:%M}\n🕒 本次开始：美东 {started.astimezone(NY):%H:%M}")
         rec |= collect() | {"status": "success"}
         return rec
     except Exception as e:
@@ -98,8 +97,9 @@ def _ibkr_codes(dataset: str, payload: dict) -> list[int]:
     codes = sorted({e["code"] for e in payload["errors"]} - IBKR_INFO_CODES)
     for code in set(codes) & IBKR_ALERT_CODES.keys():
         msgs = sorted({e["msg"][:200] for e in payload["errors"] if e["code"] == code})
-        alert_once(f"ibkr_{code}", f"IBKR {code}: {IBKR_ALERT_CODES[code]}",
-                   f"first seen in {dataset} at {payload['ingested_at']}\n" + "\n".join(msgs[:5]))
+        at = datetime.fromisoformat(payload["ingested_at"]).astimezone(NY)
+        alert_once(f"ibkr_{code}", f"⚠️ IBKR 错误 {code}：{IBKR_ALERT_CODES[code]}",
+                   f"📍 首次出现：{DATASET_ZH[dataset]}，美东 {at:%H:%M}\n📝 原始信息：\n" + "\n".join(f"　• {m}" for m in msgs[:5]))
     return codes
 
 
@@ -127,9 +127,10 @@ def collect_equity_bars(config_path: str, run_id: str | None = None, session=Non
         missing = missing_bars(present, symbols, datetime.fromisoformat(req["start"]),
                                datetime.fromisoformat(req["end"]), timedelta(minutes=int(req["timeframe"].removesuffix("Min"))))
         if missing >= len(symbols):  # a whole slot's worth: a vendor gap, not one quiet symbol
-            alert_once(f"missing_bars_{payload['session']}", f"Alpaca: {missing} bars missing for {payload['session']}",
-                       f"{missing} (symbol, 5-min bar) slots missing between {req['start']} and {req['end']}.\n"
-                       "Cross-check IBKR snapshots for the same window; the eod refetch picks up a later repair.")
+            alert_once(f"missing_bars_{payload['session']}", f"⚠️ Alpaca 数据缺失：{payload['session']} 缺 {missing} 根 bar",
+                       f"📉 {len(symbols)} 个代码在美东 {datetime.fromisoformat(req['start']).astimezone(NY):%H:%M}–"
+                       f"{datetime.fromisoformat(req['end']).astimezone(NY):%H:%M} 之间共缺 {missing} 根 5 分钟 bar\n"
+                       "🔍 请对照同一时段的 IBKR 快照核实；如果 Alpaca 之后补上，eod 回拉会自动拿到新版本")
         return rec | {"missing_bars": missing}
     return _recorded("equity_bars", run_id, collect)
 

@@ -44,5 +44,5 @@ def test_yesterday_summary_flags_failures_and_gaps(tmp_path):
     ok, lines = day_summary(tmp_path, date(2026, 10, 15))
     text = "\n".join(lines)
     assert not ok
-    assert "option_snapshots   78 ok, 1 failed, rows 0, RTH slots 78/78" in text
-    assert "missing bars at close 700" in text
+    assert "期权快照：成功 78 次，失败 1 次，0 行，正规时段覆盖 78/78" in text
+    assert "收盘时缺 700 根 bar" in text

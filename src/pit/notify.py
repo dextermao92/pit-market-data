@@ -17,6 +17,11 @@ from zoneinfo import ZoneInfo
 import httpx
 
 log = logging.getLogger(__name__)
+DATASET_ZH = {"option_snapshots": "期权快照", "index_snapshots": "指数快照", "equity_bars": "股票 5 分钟 bar",
+              "corporate_actions": "公司行为", "assets": "资产快照", "daily_bars": "日线 bar"}
+TASK_ZH = {"chains": "期权快照", "indices": "指数快照", "fetch": "股票 bar", "corporate_actions": "公司行为",
+           "assets": "资产快照", "daily_bars": "日线 bar", "refetch_recent_bars": "回拉最近 10 个交易日",
+           "dbt_build": "dbt build", "close_summary": "收盘总结", "check_and_send": "状态检查"}
 
 
 def send(subject: str, body: str) -> list[str]:
@@ -36,7 +41,7 @@ def send(subject: str, body: str) -> list[str]:
             log.exception("email notification failed")
     if env.get("DISCORD_WEBHOOK_URL"):
         try:
-            text = f"**{subject}**\n```\n{body[:1800]}\n```"  # Discord caps messages at 2000 chars
+            text = f"**{subject}**\n{body}"[:1990]  # Discord caps messages at 2000 chars
             httpx.post(env["DISCORD_WEBHOOK_URL"], json={"content": text}, timeout=15).raise_for_status()
             sent.append("discord")
         except Exception:
@@ -67,8 +72,8 @@ def task_failed(context) -> None:
     marker = _failing_marker(ti)
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(str(context.get("run_id")))
-    send(f"FAILED {ti.dag_id}.{ti.task_id}",
-         f"run: {context.get('run_id')}\ntry: {ti.try_number}\nerror: {context.get('exception')!r}"[:3000])
+    send(f"❌ 任务失败：{TASK_ZH.get(ti.task_id, ti.task_id)}（{ti.dag_id}.{ti.task_id}）",
+         f"🕒 运行：{context.get('run_id')}\n🔁 已重试到第 {ti.try_number} 次\n💥 错误：{context.get('exception')!r}"[:1800])
 
 
 def task_succeeded(context) -> None:
@@ -77,8 +82,9 @@ def task_succeeded(context) -> None:
     if marker.exists():
         failed_run = marker.read_text()
         marker.unlink()
-        send(f"RECOVERED {context['ti'].dag_id}.{context['ti'].task_id}",
-             f"succeeded in {context.get('run_id')}\nlast failure: {failed_run}")
+        ti = context["ti"]
+        send(f"✅ 已恢复：{TASK_ZH.get(ti.task_id, ti.task_id)}（{ti.dag_id}.{ti.task_id}）",
+             f"🕒 本次成功：{context.get('run_id')}\n🕘 上次失败：{failed_run}")
 
 
 CALLBACKS = {"on_failure_callback": task_failed, "on_success_callback": task_succeeded}

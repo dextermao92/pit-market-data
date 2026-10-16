@@ -203,6 +203,29 @@ dbt tests (curated):
 | Test / lint | pytest, ruff — run locally with uv, no container rebuild |
 | CI | GitHub Actions: pytest + `dbt build` on the synthetic sample (P3) |
 
+## Running it / moving to another machine
+
+Everything runs in Docker Compose on one always-on Mac (Apple Silicon or Intel; the images are multi-arch and the
+Airflow image is built locally). State that matters lives in two places: `.env` (credentials, never in git) and
+`data/` (`raw/` is the irreplaceable part; `staged/`, `quarantine/` and `curated.duckdb` can be rebuilt from it).
+The Airflow metadata DB (Postgres volume) does not need to move: run history is in `data/pipeline_runs/`.
+
+New machine:
+
+1. Install Docker Desktop and enable "Start Docker Desktop when you sign in"; keep the Mac awake on power
+   (System Settings → Battery → Options, or `caffeinate -s`); consider pausing automatic macOS update installs.
+2. `git clone` the repo; copy `.env` over by hand (AirDrop / USB, not chat or email).
+3. **Stop the old machine first** (`docker compose down`): two Gateways on one IBKR username kick each other.
+   Do it after the close summary (~17:40 ET) and before the 09:05 ET restart, ideally on a weekend.
+4. Copy `data/` into the repo directory.
+5. `docker compose up -d --build`, approve the IBKR 2FA push, then unpause every DAG (a fresh Airflow DB pauses
+   new DAGs): `docker compose exec airflow airflow dags unpause <dag_id>` for `option_snapshots`, `equity_bars`,
+   `eod`, `gateway_check`, `warmup_check`.
+6. Check: `docker compose exec airflow python -m pit.health gateway --send` should post a green card.
+7. Optional, for local tests and queries: `uv sync`, then `uv run pytest`.
+
+If `data/` is lost but `raw/` survives: `uv run python -m pit.pipeline restage data`, then `dbt build`.
+
 ## Milestones
 
 | Phase | Scope | Done when |

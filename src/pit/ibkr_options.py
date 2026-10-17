@@ -170,6 +170,10 @@ def connect(ib_cfg: dict, client_offset: int = 0) -> tuple[IB, list]:
         readonly=True,
         fetchFields=StartupFetch(0),  # don't pull positions/orders/account into a data pipeline
     )
+    # ib_async waits forever by default; after "1100 connectivity lost" a pending request then hangs the whole run
+    # (2026-10-16: 26 min). Fail it instead, so the task records the failure and retries. Above the slowest cold
+    # contract-details answer seen (208 s).
+    ib.RequestTimeout = ib_cfg.get("request_timeout", 300)
     ib.reqMarketDataType(ib_cfg["market_data_type"])
     return ib, errors
 

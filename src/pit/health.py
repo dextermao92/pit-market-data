@@ -142,11 +142,13 @@ def day_summary(data_dir: Path, session) -> Check:
         fields.append((f"{LEVEL_MARK[lv]} {DATASET_ZH[ds]}", "\n".join(x for x in (head, detail) if x), False))
     added = sum(f.stat().st_size for layer in ("raw", "staged") for f in data_dir.glob(f"{layer}/**/ingest_date={session}/**/*") if f.is_file())
     fields.append(("💾 当日写入", f"{added / 1e6:,.0f} MB（raw + staged）", False))
-    results = Path(os.environ.get("DBT_TARGET", "dbt/target")) / "run_results.json"
+    results = Path(os.environ.get("DBT_RESULTS_DIR", "dbt/target")) / "run_results.json"
     if results.exists():
         rr = json.loads(results.read_text())
         failed = [x["unique_id"].split(".")[-1] for x in rr["results"] if x["status"] in ("fail", "error")]
         at = datetime.fromisoformat(rr["metadata"]["generated_at"].replace("Z", "+00:00")).astimezone(ZoneInfo(NY))
+        if at.date() < session:  # dbt didn't run (or crashed before writing results) for this session
+            failed = failed or [f"本交易日没有运行结果（最近一次是 {at:%m-%d}）"]
         lv = "error" if failed else "ok"
         level = _worst(level, lv)
         fields.append((f"{LEVEL_MARK[lv]} dbt build", (f"{len(rr['results'])} 个节点全部通过" if not failed

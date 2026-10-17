@@ -54,7 +54,7 @@ services:
       IB_HOST: ib-gateway
       IB_PORT: ${IB_PORT:-4004}
       DATA_DIR: /opt/airflow/data
-      DBT_TARGET: /opt/airflow/dbt/target
+      DBT_RESULTS_DIR: /opt/airflow/dbt/target  # not DBT_TARGET: dbt reads that as the profile target name
       IBKR_CONFIG: /opt/airflow/config/ibkr.toml
       APCA_API_KEY_ID: ${APCA_API_KEY_ID:-}
       APCA_API_SECRET_KEY: ${APCA_API_SECRET_KEY:-}

@@ -178,6 +178,28 @@ def connect(ib_cfg: dict, client_offset: int = 0) -> tuple[IB, list]:
     return ib, errors
 
 
+def warm_cache(config_path: str) -> dict:
+    """Pre-open: fill today's contract cache for every chain (no market data). Cold answers take 1-3 min per
+    expiry, so doing this at 08:15 keeps the 09:10+ snapshots fast."""
+    cfg = tomllib.loads(Path(config_path).read_text())
+    t0, today = time.monotonic(), datetime.now(ZoneInfo("America/New_York")).date()
+    ib, errors = connect(cfg["ibkr"], client_offset=8)
+    expiries = 0
+    try:
+        for chain in cfg["chains"]:
+            und = Contract(symbol=chain["symbol"], secType=chain["sec_type"], exchange=chain["exchange"],
+                           currency=chain["currency"])
+            ib.qualifyContracts(und)
+            params = next(c for c in ib.reqSecDefOptParams(und.symbol, "", und.secType, und.conId)
+                          if c.tradingClass == chain["trading_class"] and c.exchange == "SMART")
+            for exp in pick_expiries(params.expirations, today, chain):
+                listed_contracts(ib, chain, exp, today)
+                expiries += 1
+    finally:
+        ib.disconnect()
+    return {"expiries": expiries, "seconds": round(time.monotonic() - t0)}
+
+
 def run(config_path: str) -> Path:
     cfg = tomllib.loads(Path(config_path).read_text())
     ingested_at, t0 = datetime.now(timezone.utc), time.monotonic()

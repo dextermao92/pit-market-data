@@ -130,12 +130,14 @@ the host or Docker is down:
 
 | ET | Card | |
 |---|---|---|
+| 08:15 | (no card) `contract_cache` | Fills today's option contract cache, so the first snapshot isn't a cold start (1–3 min per expiry cold) |
 | 09:02 | Gateway check | Login, US data farm (SPY pre-market quote), SPX/VIX, Alpaca. If the US farm is down (seen after IBKR's overnight server reconnects), it self-heals through IBC's command server: `RECONNECTDATA`, then `RESTART` (no 2FA), re-checking after each; the card shows what was done |
 | 09:28 | Warm-up check | Pre-open option/index runs since 09:05, last run time vs the 5-min budget, contract cache |
 | ~17:40 | Close summary | Per dataset: runs ok/failed, rows, RTH slot coverage, run times, missing bars, quarantine; MB written; dbt; alerts sent; disk |
 
 Alerts, once per New York day per problem: a task failed after its retries (and a RECOVERED card when it works
-again), an intraday dataset with no successful run for 15 min, an Alpaca bar gap of at least one full slot, IBKR
+again), an intraday dataset with no new data for 15 min (the `watchdog_check` DAG, every 5 min and independent of
+the collectors, so a stuck run that blocks its own DAG is still caught; collectors also have execution timeouts), an Alpaca bar gap of at least one full slot, IBKR
 codes for missing subscriptions / competing sessions / broken data farms. A collector that finds no underlying
 price also asks IBC to `RECONNECTDATA` before failing, so its retry usually succeeds.
 

@@ -179,6 +179,47 @@ def warmup(data_dir: Path, now: datetime) -> Check:
     return level, fields
 
 
+STALE_AFTER = timedelta(minutes=15)
+WATCH = {  # dataset: (data expected from, until) as offsets from the session open / close
+    "option_snapshots": (timedelta(0), timedelta(0)),
+    "index_snapshots": (timedelta(0), timedelta(0)),
+    "equity_bars": (timedelta(minutes=20), timedelta(minutes=30)),
+}
+
+
+def stale_datasets(data_dir: Path, now: datetime) -> list[tuple[str, int, datetime]]:
+    """(dataset, minutes without new data, since) for intraday datasets whose last successful run *finished*
+    more than STALE_AFTER ago inside their window. Runs on its own, so a stuck collector can't hide it."""
+    from pit.market_hours import calendar
+    cal, day = calendar(), now.astimezone(ZoneInfo(NY)).date()
+    if not cal.is_session(str(day)):
+        return []
+    open_, close = cal.session_open(str(day)).to_pydatetime(), cal.session_close(str(day)).to_pydatetime()
+    runs = _runs(data_dir, day)
+    out = []
+    for ds, (start_off, end_off) in WATCH.items():
+        start, end = open_ + start_off, close + end_off
+        if not (start + STALE_AFTER <= now <= end + STALE_AFTER):
+            continue
+        done = runs.filter((pl.col("dataset") == ds) & (pl.col("status") == "success")) if not runs.is_empty() else runs
+        since = max([start, *([done["finished_at"].max()] if not done.is_empty() else [])])
+        if now - since > STALE_AFTER:
+            out.append((ds, int((now - since).total_seconds() // 60), since))
+    return out
+
+
+def watchdog(now: datetime | None = None) -> list[str]:
+    from pit.notify import alert_once
+    now = now or datetime.now(timezone.utc)
+    sent = []
+    for ds, minutes, since in stale_datasets(Path(os.environ.get("DATA_DIR", "data")), now):
+        if alert_once(f"watchdog_{ds}_{since:%H%M}", f"⏸️ 数据停滞：{DATASET_ZH[ds]}已 {minutes} 分钟没有新数据",
+                      f"🕘 上次成功完成：美东 {since.astimezone(ZoneInfo(NY)):%H:%M}\n"
+                      "可能原因：Gateway 或数据源断开、采集任务卡住。恢复后会自动继续，这条只提醒一次。", level="error"):
+            sent.append(ds)
+    return sent
+
+
 def disk(data_dir: Path) -> Check:
     free = shutil.disk_usage(data_dir).free
     lv = "ok" if free > 20e9 else "warn"

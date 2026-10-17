@@ -101,7 +101,7 @@ def test_pipeline_runs_survive_older_schema(tmp_path, monkeypatch):
     earlier = datetime.now(timezone.utc) - timedelta(minutes=5)  # today's partition, so the freshness check reads it
     old = tmp_path / f"pipeline_runs/dataset=option_snapshots/ingest_date={earlier:%Y-%m-%d}/old.parquet"
     old.parent.mkdir(parents=True)
-    pl.DataFrame({"run_id": ["old"], "status": ["success"], "started_at": [earlier]}).write_parquet(old)
+    pl.DataFrame({"run_id": ["old"], "status": ["success"], "started_at": [earlier], "finished_at": [earlier]}).write_parquet(old)
     monkeypatch.setattr(pipeline.ibkr_options, "run", lambda cfg: write_raw(tmp_path))
     first = pipeline.collect_option_snapshots("cfg.toml", run_id="r1")
     second = pipeline.collect_option_snapshots("cfg.toml", run_id="r2")  # now reads old + new schema files

@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pendulum
 from airflow.sdk import dag, task
 
@@ -16,7 +18,7 @@ from pit.pipeline import collect_equity_bars
     default_args=CALLBACKS,  # failure (after retries) and recovery notifications
 )
 def equity_bars():
-    @task(retries=2)
+    @task(retries=2, retry_delay=timedelta(minutes=1), execution_timeout=timedelta(minutes=3))
     def fetch(**context) -> str:
         return collect_equity_bars("/opt/airflow/config/alpaca_bars.toml", run_id=context["run_id"])["staged_path"]
 

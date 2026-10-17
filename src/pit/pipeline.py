@@ -24,8 +24,6 @@ from pit.storage import TS, write_parquet
 QUOTE_STATUSES = ("two_sided", "ask_only", "bid_only", "no_quote", "crossed")
 IBKR_INFO_CODES = {2104, 2106, 2107, 2108, 2119, 2158}  # data-farm status messages, not errors
 NY = ZoneInfo("America/New_York")
-INTRADAY = {"option_snapshots", "index_snapshots", "equity_bars"}
-STALE_AFTER_S = 15 * 60
 IBKR_ALERT_CODES = {  # worth a notification (once per day per code)
     354: "行情未订阅", 10089: "API 行情需要额外订阅", 10090: "部分行情未订阅",
     10197: "与真实账户登录冲突，行情被占用", 1100: "Gateway 与 IBKR 断开连接",
@@ -55,9 +53,9 @@ def _previous_success(data_dir: Path, dataset: str, now: datetime) -> datetime |
     if not files:
         return None
     # One file at a time: files written before a schema change lack newer columns.
-    runs = pl.concat([pl.read_parquet(f, columns=["started_at", "status"]) for f in files]).filter(
+    runs = pl.concat([pl.read_parquet(f, columns=["finished_at", "status"]) for f in files]).filter(
         pl.col("status") == "success")
-    return runs["started_at"].max() if runs.height else None
+    return runs["finished_at"].max() if runs.height else None  # when the data actually landed
 
 
 def _recorded(dataset: str, run_id: str | None, collect) -> dict:
@@ -66,13 +64,8 @@ def _recorded(dataset: str, run_id: str | None, collect) -> dict:
     rec = {"run_id": run_id or f"cli__{started:%Y%m%dT%H%M%SZ}", "dataset": dataset, "started_at": started,
            "status": "failed"}
     try:  # everything inside, so any failure is still recorded
-        prev = _previous_success(data_dir, dataset, started)
+        prev = _previous_success(data_dir, dataset, started)  # stale alerts: the watchdog DAG, not here
         rec["gap_s"] = (started - prev).total_seconds() if prev else None
-        if dataset in INTRADAY and prev and prev.astimezone(NY).date() == started.astimezone(NY).date() \
-                and rec["gap_s"] > STALE_AFTER_S:  # same session, data stopped arriving: once per gap
-            alert_once(f"stale_{dataset}_{prev:%H%M}", f"⏸️ 数据停滞：{DATASET_ZH[dataset]}已 {rec['gap_s'] / 60:.0f} 分钟没有成功运行",
-                       f"🕘 上次成功：美东 {prev.astimezone(NY):%H:%M}\n🕒 本次开始：美东 {started.astimezone(NY):%H:%M}",
-                       level="error")
         rec |= collect() | {"status": "success"}
         return rec
     except Exception as e:

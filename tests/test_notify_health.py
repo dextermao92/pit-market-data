@@ -48,3 +48,20 @@ def test_yesterday_summary_flags_failures_and_gaps(tmp_path):
     assert level == "error"
     assert by_name["❌ 期权快照"].startswith("成功 78 · 失败 1 · 0 行\n正规时段覆盖 78/78")
     assert "收盘时缺 700 根 bar" in by_name["⚠️ 股票 5 分钟 bar"]
+
+
+def test_watchdog_flags_only_stale_datasets_in_their_window(tmp_path):
+    from datetime import timedelta
+    from pit.health import stale_datasets
+    at = lambda h, m: datetime(2026, 10, 16, h, m, tzinfo=timezone.utc)  # EDT: 13:30 UTC = 09:30 ET
+    rec = lambda ds, start, end: {"run_id": ds, "dataset": ds, "status": "success", "started_at": start, "finished_at": end}
+    rows = [rec("option_snapshots", at(13, 15), at(13, 42)),   # long run: data landed 09:42 ET
+            rec("index_snapshots", at(14, 30), at(14, 30))]    # last data 10:30 ET
+    d = tmp_path / "pipeline_runs/dataset=all/ingest_date=2026-10-16"
+    d.mkdir(parents=True)
+    pl.DataFrame(rows, schema=RUN_SCHEMA).write_parquet(d / "runs.parquet")
+    got = {ds: m for ds, m, _ in stale_datasets(tmp_path, at(14, 35))}       # 10:35 ET
+    # options stale since 09:42 (53 min); indices fresh; equity never ran since its 09:50 start (45 min)
+    assert got == {"option_snapshots": 53, "equity_bars": 45}
+    assert stale_datasets(tmp_path, at(13, 40)) == []                          # 09:40 ET: inside the grace period
+    assert stale_datasets(tmp_path, datetime(2026, 10, 17, 15, 0, tzinfo=timezone.utc)) == []   # Saturday

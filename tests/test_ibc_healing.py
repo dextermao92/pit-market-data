@@ -61,3 +61,13 @@ def test_escalates_to_restart_then_gives_up_red():
 def test_unreachable_command_server_still_tries_next_step():
     level, fields, sent = healing([BAD, OK], failing_commands={"RECONNECTDATA"})
     assert level == "warn" and sent == ["RECONNECTDATA", "RESTART"] and "无法连接 IBC 命令服务器" in fields[0][1]
+
+
+def test_command_without_reply_raises(monkeypatch):
+    import pytest
+    srv = socket.create_server(("127.0.0.1", 0))
+    threading.Thread(target=lambda: srv.accept()[0].close(), daemon=True).start()  # IBC denying: hangs up
+    monkeypatch.setenv("IB_HOST", "127.0.0.1")
+    monkeypatch.setenv("IBC_COMMAND_PORT", str(srv.getsockname()[1]))
+    with pytest.raises(ConnectionError, match="no reply"):
+        ibc.command("RECONNECTDATA")

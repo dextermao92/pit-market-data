@@ -17,10 +17,11 @@ services:
 
   ib-gateway:  # IB Gateway + IBC; read-only API. TRADING_MODE/IB_PORT in .env: paper/4004 (default) or live/4003
     image: ghcr.io/gnzsnz/ib-gateway:10.50.1f
-    # The image hard-codes IBC's command server off; enable it for the airflow container only
+    # The image hard-codes IBC's command server off; enable it for the airflow container only (by its fixed IP:
+    # IBC matches ControlFrom against the reverse-resolved peer, which is the long compose container name)
     # (RECONNECTDATA / RESTART for self-healing), then start as the image does.
     command: >
-      sh -c "sed -i -e 's/^CommandServerPort=0/CommandServerPort=7462/' -e 's/^ControlFrom=.*/ControlFrom=airflow/'
+      sh -c "sed -i -e 's/^CommandServerPort=0/CommandServerPort=7462/' -e 's/^ControlFrom=.*/ControlFrom=172.30.0.10/'
       /home/ibgateway/ibc/config.ini.tmpl && exec /home/ibgateway/scripts/run.sh"
     environment:
       TWS_USERID: ${TWS_USERID}
@@ -39,6 +40,9 @@ services:
     restart: unless-stopped
 
   airflow:  # `standalone` = scheduler + dag-processor + api-server + triggerer in one container
+    networks:
+      default:
+        ipv4_address: 172.30.0.10  # IBC ControlFrom
     build: .
     command: standalone
     user: "${AIRFLOW_UID:-50000}:0"
@@ -72,6 +76,12 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     restart: unless-stopped
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
 
 volumes:
   pgdata:

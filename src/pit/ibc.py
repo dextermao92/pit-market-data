@@ -23,7 +23,13 @@ def command(cmd: str, timeout: float = 10) -> str:
                 reply += chunk
                 if b"\n" in chunk:
                     break
-        except TimeoutError:
+        except (TimeoutError, ConnectionResetError):  # IBC may hang up without a word when it denies access
             pass
-        s.sendall(b"EXIT\n")
-    return reply.decode(errors="replace").strip()
+        try:
+            s.sendall(b"EXIT\n")
+        except OSError:
+            pass  # the server may already have closed (e.g. after denying access)
+    reply = reply.decode(errors="replace").strip()
+    if not reply:
+        raise ConnectionError(f"IBC sent no reply to {cmd} (access denied? check ControlFrom)")
+    return reply

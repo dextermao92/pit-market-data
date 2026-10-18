@@ -61,13 +61,22 @@ def check_gateway(ibkr_cfg: dict) -> Check:
         wait_for_ticks(ib, ibkr_cfg, tickers, lambda t: _price(t.bid) or _price(t.last) or _price(t.close))
         quotes = [(f"📈 {t.contract.symbol}", f"最新 {_num(_price(t.last))}\n买价 {_num(_price(t.bid))}\n昨收 {_num(_price(t.close))}", True)
                   for t in tickers]  # side by side
-        us_farm = _price(tickers[0].bid) is not None or _price(tickers[0].last) is not None
+        # Either a live SPY quote, or the Gateway saying the US farm is connected (works off-hours too).
+        us_farm = (_price(tickers[0].bid) is not None or _price(tickers[0].last) is not None
+                   or any(e["code"] == 2104 and "usfarm" in e["msg"] for e in errors))
         down = sorted({e["code"] for e in errors} & FARM_DOWN)
     finally:
         ib.disconnect()
     if us_farm and not down:
         return "ok", [("✅ Gateway", "已登录，美股行情正常", False), *quotes]
     return "error", [("❌ Gateway", f"美股报价：{'有' if us_farm else '无'}；服务器断开错误码：{down or '无'}", False), *quotes]
+
+
+def heal_window(now: datetime) -> bool:
+    """Self-healing only on session days between 04:00 and 20:00 ET (extended hours)."""
+    from pit.market_hours import calendar
+    et = now.astimezone(ZoneInfo(NY))
+    return calendar().is_session(str(et.date())) and 4 <= et.hour < 20
 
 
 HEAL_STEPS = (("RECONNECTDATA", "重连数据服务器", 20), ("RESTART", "重启 Gateway（不需要 2FA）", 120))
@@ -77,8 +86,8 @@ def gateway_with_healing(ibkr_cfg: dict, check=None, send_command=None, sleep=ti
     """Check; if broken, try IBC's RECONNECTDATA, then RESTART, re-checking after each. Healed -> warn (yellow)."""
     check, send_command = check or check_gateway, send_command or ibc.command
     level, fields = check(ibkr_cfg)
-    if level == "ok":
-        return level, fields
+    if level == "ok" or not heal_window(datetime.now(timezone.utc)):
+        return level, fields  # off-hours (weekends, holidays, night): report only, never restart
     log = ["发现 Gateway 异常"]
     for cmd, label, wait in HEAL_STEPS:
         try:

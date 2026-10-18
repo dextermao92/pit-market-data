@@ -109,12 +109,15 @@ CONTRACT_FIELDS = ("symbol", "lastTradeDateOrContractMonth", "strike", "right", 
                    "conId", "localSymbol", "tradingClass")
 
 
-def listed_contracts(ib: IB, chain: dict, expiry: str, today: date) -> list[Option]:
+def _cache_root() -> Path:
+    return Path(os.environ.get("DATA_DIR", "data")) / "cache" / "ibkr_contracts"
+
+
+def listed_contracts(ib: IB, chain: dict, expiry: str, today: date, refresh: bool = False) -> list[Option]:
     """Every contract listed for one expiry. Specs don't change intraday, so the contract-details answer
     (~1 min per run across ~15 expiries) is cached on disk per New York day. Derived and safe to delete."""
-    path = (Path(os.environ.get("DATA_DIR", "data")) / "cache" / "ibkr_contracts" / str(today)
-            / f"{chain['symbol']}_{chain['trading_class']}_{expiry}.json")
-    if path.exists():
+    path = _cache_root() / str(today) / f"{chain['symbol']}_{chain['trading_class']}_{expiry}.json"
+    if path.exists() and not refresh:
         return [Option(exchange="SMART", **d) for d in json.loads(path.read_text())]
     template = Option(chain["symbol"], expiry, exchange="SMART", currency=chain["currency"],
                       tradingClass=chain["trading_class"])
@@ -184,7 +187,7 @@ def warm_cache(config_path: str) -> dict:
     cfg = tomllib.loads(Path(config_path).read_text())
     t0, today = time.monotonic(), datetime.now(ZoneInfo("America/New_York")).date()
     ib, errors = connect(cfg["ibkr"], client_offset=8)
-    expiries = 0
+    todo, carried = [], 0
     try:
         for chain in cfg["chains"]:
             und = Contract(symbol=chain["symbol"], secType=chain["sec_type"], exchange=chain["exchange"],
@@ -192,12 +195,30 @@ def warm_cache(config_path: str) -> dict:
             ib.qualifyContracts(und)
             params = next(c for c in ib.reqSecDefOptParams(und.symbol, "", und.secType, und.conId)
                           if c.tradingClass == chain["trading_class"] and c.exchange == "SMART")
-            for exp in pick_expiries(params.expirations, today, chain):
-                listed_contracts(ib, chain, exp, today)
-                expiries += 1
+            todo += [(chain, exp) for exp in pick_expiries(params.expirations, today, chain)]
+        carried = carry_forward(todo, today)  # usable at once, even if IBKR answers slowly today
+        for chain, exp in todo:  # then refresh each from IBKR (newly listed strikes)
+            listed_contracts(ib, chain, exp, today, refresh=True)
     finally:
         ib.disconnect()
-    return {"expiries": expiries, "seconds": round(time.monotonic() - t0)}
+    return {"expiries": len(todo), "carried_forward": carried, "seconds": round(time.monotonic() - t0)}
+
+
+def carry_forward(todo: list, today: date) -> int:
+    """Copy each expiry's contract list from the latest earlier day's cache into today's, if today lacks it."""
+    root = _cache_root()
+    earlier = sorted(d for d in root.glob("*") if d.is_dir() and d.name < str(today))
+    if not earlier:
+        return 0
+    copied = 0
+    for chain, exp in todo:
+        name = f"{chain['symbol']}_{chain['trading_class']}_{exp}.json"
+        src, dst = earlier[-1] / name, root / str(today) / name
+        if src.exists() and not dst.exists():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(src.read_bytes())
+            copied += 1
+    return copied
 
 
 def run(config_path: str) -> Path:

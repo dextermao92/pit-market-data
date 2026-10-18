@@ -101,3 +101,20 @@ def test_listed_contracts_cached_per_day(tmp_path, monkeypatch):
     assert [(c.conId, c.strike, c.right, c.localSymbol) for c in second] == [(c.conId, c.strike, c.right, c.localSymbol) for c in first]
     listed_contracts(FakeIB(), chain, "20261119", date(2026, 10, 15))  # a new day asks again
     assert calls == ["20261119", "20261119"]
+
+
+def test_carry_forward_copies_latest_earlier_day_only_when_missing(tmp_path, monkeypatch):
+    from pit.ibkr_options import carry_forward
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    root = tmp_path / "cache/ibkr_contracts"
+    for day, body in (("2026-10-14", "old"), ("2026-10-16", "friday")):
+        (root / day).mkdir(parents=True)
+        (root / day / "SPX_SPX_20261119.json").write_text(body)
+    (root / "2026-10-19").mkdir(parents=True)
+    (root / "2026-10-19" / "SPX_SPX_20261217.json").write_text("fresh")
+    chain = {"symbol": "SPX", "trading_class": "SPX"}
+    n = carry_forward([(chain, "20261119"), (chain, "20261217"), (chain, "20270115")], date(2026, 10, 19))
+    assert n == 1
+    assert (root / "2026-10-19/SPX_SPX_20261119.json").read_text() == "friday"   # latest earlier day
+    assert (root / "2026-10-19/SPX_SPX_20261217.json").read_text() == "fresh"    # today's kept
+    assert not (root / "2026-10-19/SPX_SPX_20270115.json").exists()            # nothing to carry

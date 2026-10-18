@@ -39,6 +39,12 @@ def _worst(*levels: str) -> str:
     return max(levels, key=RANK.get, default="ok")
 
 
+def _price(x):
+    """IBKR quote value or None: NaN and -1 (its "no value") both mean nothing."""
+    x = clean(x)
+    return x if x is not None and x > 0 else None
+
+
 def _num(x) -> str:
     return "—" if x is None else f"{x:,.2f}".rstrip("0").rstrip(".")
 
@@ -52,10 +58,10 @@ def check_gateway(ibkr_cfg: dict) -> Check:
         contracts = ib.qualifyContracts(Stock("SPY", "SMART", "USD"), Index("SPX", "CBOE", "USD"), Index("VIX", "CBOE", "USD"))
         tickers = [ib.reqMktData(c) for c in contracts]
         # SPY quotes pre-market only if the US farm is up; indices may only have yesterday's close before the open.
-        wait_for_ticks(ib, ibkr_cfg, tickers, lambda t: clean(t.bid) or clean(t.last) or clean(t.close))
-        quotes = [(f"📈 {t.contract.symbol}", f"最新 {_num(clean(t.last))}\n买价 {_num(clean(t.bid))}\n昨收 {_num(clean(t.close))}", True)
+        wait_for_ticks(ib, ibkr_cfg, tickers, lambda t: _price(t.bid) or _price(t.last) or _price(t.close))
+        quotes = [(f"📈 {t.contract.symbol}", f"最新 {_num(_price(t.last))}\n买价 {_num(_price(t.bid))}\n昨收 {_num(_price(t.close))}", True)
                   for t in tickers]  # side by side
-        us_farm = clean(tickers[0].bid) is not None or clean(tickers[0].last) is not None
+        us_farm = _price(tickers[0].bid) is not None or _price(tickers[0].last) is not None
         down = sorted({e["code"] for e in errors} & FARM_DOWN)
     finally:
         ib.disconnect()

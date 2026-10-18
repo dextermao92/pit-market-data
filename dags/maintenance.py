@@ -22,7 +22,7 @@ def contract_cache():
     def is_session() -> bool:
         return session_today()
 
-    @task(retries=1, retry_delay=timedelta(minutes=2), execution_timeout=timedelta(minutes=50))
+    @task(retries=1, retry_delay=timedelta(minutes=2), execution_timeout=timedelta(minutes=90))  # refresh may be slow; carry-forward is instant
     def warm() -> dict:
         return warm_cache("/opt/airflow/config/ibkr.toml")
 

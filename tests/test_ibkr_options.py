@@ -140,3 +140,23 @@ def test_monthly_filter_ignores_leaps_beyond_calendar():
     assert pick_expiries(exps, TODAY, {"dte": [3, 120], "monthly": True}) == ["20261120", "20261218", "20270115"]
     from pit.ibkr_options import is_monthly
     assert is_monthly("20290119")  # far beyond the calendar: plain third Friday
+
+
+def test_one_failing_chain_does_not_sink_the_run(tmp_path, monkeypatch):
+    import pit.ibkr_options as io
+    cfg = tmp_path / "ibkr.toml"
+    cfg.write_text('[ibkr]\nhost="x"\nport=1\nclient_id=1\nmarket_data_type=1\n'
+                   '[[chains]]\nname="good"\n[[chains]]\nname="bad"\n')
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(io, "connect", lambda cfg, client_offset=0: (type("IB", (), {"disconnect": lambda self: None})(), []))
+    monkeypatch.setattr(io, "due", lambda chain, now: True)
+
+    def snap(ib, ib_cfg, chain, today, spots, taken):
+        if chain["name"] == "bad":
+            raise TimeoutError()
+        return {"chain": "good", "contracts": []}
+
+    monkeypatch.setattr(io, "snapshot_chain", snap)
+    payload = json.loads(io.run(str(cfg)).read_text())
+    assert [u["chain"] for u in payload["underlyings"]] == ["good"]
+    assert payload["chain_errors"][0]["chain"] == "bad" and "TimeoutError" in payload["chain_errors"][0]["error"]

@@ -102,6 +102,9 @@ def collect_option_snapshots(config_path: str, run_id: str | None = None) -> dic
     def collect():
         rec, payload, staged, quarantined = _stage("option_snapshots", ibkr_options.run(config_path))
         counts = Counter(staged["quote_status"].to_list() + quarantined["quote_status"].to_list())
+        for ce in payload.get("chain_errors", []):
+            alert_once(f"chain_failed_{ce['chain']}", f"⚠️ 期权链采集失败：{ce['chain']}",
+                       f"其他链照常写入。\n💥 {ce['error']}", level="warn")
         return rec | {s: counts[s] for s in QUOTE_STATUSES} | {"ibkr_error_codes": _ibkr_codes("option_snapshots", payload)}
     return _recorded("option_snapshots", run_id, collect)
 

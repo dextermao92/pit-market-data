@@ -247,18 +247,25 @@ def run(config_path: str) -> Path:
     ingested_at, t0 = datetime.now(timezone.utc), time.monotonic()
     now_et = datetime.now(ZoneInfo("America/New_York"))
     ib, errors = connect(cfg["ibkr"])
+    chains, chain_errors = [], []
     try:
         spots, taken = {}, set()
-        chains = [snapshot_chain(ib, cfg["ibkr"], c, now_et.date(), spots, taken)
-                  for c in cfg["chains"] if due(c, now_et)]
+        for c in (c for c in cfg["chains"] if due(c, now_et)):
+            try:  # one bad chain (e.g. a cold contract-details timeout) must not cost the others their snapshot
+                chains.append(snapshot_chain(ib, cfg["ibkr"], c, now_et.date(), spots, taken))
+            except Exception as e:
+                chain_errors.append({"chain": c["name"], "error": repr(e)[:500]})
     finally:
         ib.disconnect()
+    if not chains and chain_errors:
+        raise RuntimeError(f"every chain failed: {chain_errors}")
 
     payload = {
         "ingested_at": ingested_at.isoformat(),
         "duration_s": round(time.monotonic() - t0, 1),
         "config": cfg,
         "underlyings": chains,  # one entry per chain (key kept from the single-underlying layout)
+        "chain_errors": chain_errors,
         "errors": errors,
     }
     return write_raw(Path(os.environ.get("DATA_DIR", "data")), "ibkr", "option_snapshots", payload, ingested_at)

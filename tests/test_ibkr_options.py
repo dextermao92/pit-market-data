@@ -133,3 +133,10 @@ def test_due_with_offset():
     at = lambda h, m: datetime(2026, 10, 19, h, m)
     chain = {"every_minutes": 15, "offset_minutes": 5}
     assert due(chain, at(9, 35)) and due(chain, at(9, 50)) and not due(chain, at(9, 30)) and not due(chain, at(9, 45))
+
+
+def test_monthly_filter_ignores_leaps_beyond_calendar():
+    exps = ["20261023", "20261120", "20261218", "20270115", "20271217", "20290119"]
+    assert pick_expiries(exps, TODAY, {"dte": [3, 120], "monthly": True}) == ["20261120", "20261218", "20270115"]
+    from pit.ibkr_options import is_monthly
+    assert is_monthly("20290119")  # far beyond the calendar: plain third Friday

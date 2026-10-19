@@ -41,16 +41,23 @@ def is_monthly(expiry: str) -> bool:
     d = date(int(expiry[:4]), int(expiry[4:6]), int(expiry[6:8]))
     first = date(d.year, d.month, 1)
     third_friday = first + timedelta(days=(4 - first.weekday()) % 7 + 14)
-    return d == calendar().date_to_session(str(third_friday), "previous").date()
+    try:
+        return d == calendar().date_to_session(str(third_friday), "previous").date()
+    except Exception:  # beyond the calendar's horizon (LEAPS): no holiday adjustment
+        return d == third_friday
 
 
 def pick_expiries(expirations, today: date, chain: dict) -> list[str]:
     """dte = [min, max]: every expiry in range (monthly = true: third-Friday expiries only, for underlyings that
     list dailies/weeklies). target_dte = [...]: the nearest expiry to each target."""
-    live = sorted(e for e in expirations if _dte(e, today) >= 0 and (not chain.get("monthly") or is_monthly(e)))
+    live = sorted(e for e in expirations if _dte(e, today) >= 0)
     if "dte" in chain:
         lo, hi = chain["dte"]
-        return [e for e in live if lo <= _dte(e, today) <= hi]
+        live = [e for e in live if lo <= _dte(e, today) <= hi]
+    if chain.get("monthly"):
+        live = [e for e in live if is_monthly(e)]
+    if "dte" in chain:
+        return live
     return sorted({min(live, key=lambda e: abs(_dte(e, today) - t)) for t in chain["target_dte"]})
 
 

@@ -107,3 +107,14 @@ def test_pipeline_runs_survive_older_schema(tmp_path, monkeypatch):
     second = pipeline.collect_option_snapshots("cfg.toml", run_id="r2")  # now reads old + new schema files
     assert first["status"] == second["status"] == "success"
     assert second["gap_s"] is not None and second["gap_s"] < first["gap_s"]
+
+
+def test_farm_drop_alerts_only_when_not_recovered():
+    from pit.pipeline import unrecovered
+    broken = {"code": 2103, "msg": "Market data farm connection is broken:hfarm"}
+    back = {"code": 2104, "msg": "Market data farm connection is OK:hfarm"}
+    other_back = {"code": 2104, "msg": "Market data farm connection is OK:usfarm"}
+    assert unrecovered([broken, back]) == set()
+    assert unrecovered([broken, other_back]) == {2103}     # a different farm coming back doesn't count
+    assert unrecovered([back, broken]) == {2103}           # recovery must come after the drop
+    assert unrecovered([{"code": 1100, "msg": "Connectivity lost"}, {"code": 1102, "msg": "restored"}]) == set()

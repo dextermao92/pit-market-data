@@ -107,12 +107,9 @@ def spot_of(ib: IB, ib_cfg: dict, chain: dict) -> tuple[Contract, float, str | N
     und = Contract(symbol=chain["symbol"], secType=chain["sec_type"], exchange=chain["exchange"],
                    currency=chain["currency"])
     ib.qualifyContracts(und)
-    if chain.get("spot_market_data_type"):  # e.g. 3 = delayed, for an index we don't subscribe to (NDX):
-        ib.reqMarketDataType(chain["spot_market_data_type"])  # only picks the strike window
     t = ib.reqMktData(und)  # streamed, not snapshot: a snapshot of an index outside RTH returns nothing
     wait_for_ticks(ib, ib_cfg, [t], lambda t: clean(t.marketPrice()) or clean(t.close))
     ib.cancelMktData(und)
-    ib.reqMarketDataType(ib_cfg["market_data_type"])  # option quotes stay live
     spot = clean(t.marketPrice()) or clean(t.close)  # indices only calculate in RTH; fall back to close
     if spot is None:
         # Usually the US data farm dropped (seen after overnight server reconnects): ask IBC to reconnect it
@@ -150,7 +147,11 @@ def listed_contracts(ib: IB, chain: dict, expiry: str, today: date, refresh: boo
     return [Option(exchange="SMART", **{f: getattr(c, f) for f in CONTRACT_FIELDS}) for c in contracts]
 
 
-def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, taken: set) -> dict:
+def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, taken: set,
+                   deadline: float | None = None) -> dict:
+    def check_budget():
+        if deadline is not None and time.monotonic() > deadline:
+            raise TimeoutError("run budget used up")
     key = (chain["symbol"], chain["sec_type"], chain["exchange"])
     if key not in spots:  # one spot per underlying per run, shared by its chains
         spots[key] = spot_of(ib, ib_cfg, chain)
@@ -162,6 +163,7 @@ def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, 
     )
     contracts = []
     for exp in pick_expiries(params.expirations, today, chain):
+        check_budget()  # a cold contract-details answer can take minutes
         for c in listed_contracts(ib, chain, exp, today):
             if c.conId not in taken and keep_strike(c.strike, c.right, spot, chain):
                 taken.add(c.conId)
@@ -170,6 +172,7 @@ def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, 
     # Stream a batch, wait, read, cancel: keeps us under the market-data line limit.
     rows, n = [], ib_cfg["batch_size"]
     for i in range(0, len(contracts), n):
+        check_budget()
         chunk = contracts[i : i + n]
         tickers = [ib.reqMktData(c, OPEN_INTEREST) for c in chunk]
         wait_for_ticks(ib, ib_cfg, tickers, lambda t: t.time)
@@ -250,9 +253,13 @@ def run(config_path: str) -> Path:
     chains, chain_errors = [], []
     try:
         spots, taken = {}, set()
+        deadline = t0 + cfg["ibkr"].get("run_budget_seconds", 360)
         for c in (c for c in cfg["chains"] if due(c, now_et)):
+            if time.monotonic() > deadline:  # write what we have rather than hit the task timeout
+                chain_errors.append({"chain": c["name"], "error": "skipped: run budget used up"})
+                continue
             try:  # one bad chain (e.g. a cold contract-details timeout) must not cost the others their snapshot
-                chains.append(snapshot_chain(ib, cfg["ibkr"], c, now_et.date(), spots, taken))
+                chains.append(snapshot_chain(ib, cfg["ibkr"], c, now_et.date(), spots, taken, deadline))
             except Exception as e:
                 chain_errors.append({"chain": c["name"], "error": repr(e)[:500]})
     finally:

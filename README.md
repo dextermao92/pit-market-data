@@ -35,7 +35,7 @@ dataset that can't be bought back later.
 | Daily bars | Alpaca, free plan | Daily OHLCV, unadjusted | Same | Reconciliation only (rule 14) |
 | Corporate actions | Alpaca, full history (2016 → +1 year) refetched daily by `eod` | Event: splits, stock and cash dividends staged; other types raw only | Same | Every fetch is a new version |
 | Asset attributes | Alpaca trading API `/v2/assets` (read-only GET) | Daily snapshot | Same | From first run; feeds the SCD2 security master |
-| Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | `[[chains]]` in `config/ibkr.toml`: every SPX standard monthly 3–400 DTE followed through its life, plus LEAPS 401–800 DTE (OTM wings to −40% / +15%, strikes every 25 within ±10%, every 50 beyond; ~1,800 contracts, ~2.5 min warm); SPXW 0–2 DTE both sides ±5% every 15 min as context | **From first run; no backfill** |
+| Option chain snapshots | IBKR, OPRA subscription | Every 5 min in market hours | `[[chains]]` in `config/ibkr.toml`: every SPX standard monthly 3–400 DTE followed through its life, plus LEAPS 401–800 DTE (OTM wings to −40% / +15%, strikes every 25 within ±10%, every 50 beyond; ~1,800 contracts, ~2.5 min warm); SPXW 0–2 DTE both sides ±5% every 15 min as context; QQQ, SPY, TSM, NVDA, AAPL nearest monthlies (3–120 DTE, OTM −20% / +10%) every 15 min, staggered to :05/:20/:35/:50. A run has a 6-min budget: chains run in config order (SPX first) and whatever is done is written | **From first run; no backfill** |
 | Index levels | IBKR | Every 5 min with the chains | `[[indices]]`: VIX, VIX9D, VIX3M, VIX6M, VVIX, SKEW | From first run |
 
 **Alpaca** free plan serves SIP (all-exchange) historical bars except the latest
@@ -46,7 +46,7 @@ dataset that can't be bought back later.
 Gateway running and logged in — daily restarts and periodic 2FA make the
 options pipeline not fully unattended — and market-data line limits force
 batched snapshots. P1 must confirm a full cycle fits well inside 5 minutes;
-the universe shrinks if not. Every chain is config: adding an underlying (NDX, RUT, a stock) or an
+the universe shrinks if not. Every chain is config: adding an underlying (RUT, a stock; NDX needs a Nasdaq index data subscription) or an
 index is a block in `config/ibkr.toml`; `every_minutes` lets secondary chains run less often when a
 single Gateway connection (~18 contracts/s on 100 market-data lines) becomes the limit. The Gateway is logged into a **paper account**
 with market-data sharing and **Read-Only API**, so the pipeline cannot touch

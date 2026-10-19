@@ -9,6 +9,7 @@ market_data_type = 1     # 1 live, 2 frozen, 3 delayed, 4 delayed-frozen
 batch_size = 90          # contracts streamed at once; default account limit is 100 lines
 wait_seconds = 3         # min time to collect ticks per batch
 max_wait_seconds = 15    # keep waiting until every contract has ticked, up to this
+run_budget_seconds = 360 # a run stops starting work after this (task timeout is 8 min); chains go in config order
 
 # Each chain: an underlying + trading class, which expiries, which strikes, how often.
 #   expiries: dte = [min, max]      every expiry with min <= DTE <= max
@@ -17,8 +18,6 @@ max_wait_seconds = 15    # keep waiting until every contract has ticked, up to t
 #             put_range / call_range: how far below / above spot, as a fraction
 #             strike_steps = [[max |moneyness|, step], ...]: keep strikes that are multiples of step
 #             monthly = true        ...third-Friday expiries only (underlyings that list dailies/weeklies)
-#   spot_market_data_type: e.g. 3 (delayed) for an underlying whose own quotes we don't subscribe to;
-#             the spot only sets the strike window, option quotes stay live
 #   every_minutes: multiple of 5 (the DAG cadence); offset_minutes staggers it (slot % every == offset).
 #   Contracts already taken by an earlier chain are skipped.
 
@@ -65,22 +64,6 @@ strike_steps = [[0.10, 25], [1.0, 50]]
 every_minutes = 5
 
 # Second-tier underlyings: nearest monthlies (~4), narrower OTM wings, every 15 min.
-[[chains]]
-name = "ndx_monthly"
-symbol = "NDX"
-sec_type = "IND"
-exchange = "NASDAQ"
-currency = "USD"
-trading_class = "NDX"
-dte = [3, 120]
-spot_market_data_type = 3  # NDX index quotes not subscribed: delayed spot
-rights = "otm"
-put_range = 0.20
-call_range = 0.10
-strike_steps = [[0.10, 250], [1.0, 500]]
-every_minutes = 15
-offset_minutes = 5        # :05/:20/:35/:50, off the SPX 0-2 DTE chain's :00/:15/:30/:45
-
 [[chains]]
 name = "qqq_monthly"
 symbol = "QQQ"

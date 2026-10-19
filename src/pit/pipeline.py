@@ -22,7 +22,8 @@ from pit.rules import missing_bars
 from pit.storage import TS, write_parquet
 
 QUOTE_STATUSES = ("two_sided", "ask_only", "bid_only", "no_quote", "crossed")
-IBKR_INFO_CODES = {2104, 2106, 2107, 2108, 2119, 2158}  # data-farm status messages, not errors
+IBKR_INFO_CODES = {2104, 2106, 2107, 2108, 2119, 2158, 10167}  # farm status / delayed-data notices, not errors
+FARM_RECOVERY = {2103: {2104}, 2105: {2106}, 2157: {2158}, 1100: {1101, 1102}}  # broken -> back again
 NY = ZoneInfo("America/New_York")
 IBKR_ALERT_CODES = {  # worth a notification (once per day per code)
     354: "行情未订阅", 10089: "API 行情需要额外订阅", 10090: "部分行情未订阅",
@@ -87,9 +88,25 @@ def _stage(dataset: str, raw: Path) -> tuple[dict, dict, pl.DataFrame, pl.DataFr
     return rec, payload, staged, quarantined
 
 
+def unrecovered(errors: list[dict]) -> set[int]:
+    """Farm/connectivity codes with no matching recovery later in the same run (same farm name)."""
+    out = set()
+    for i, e in enumerate(errors):
+        ok_codes = FARM_RECOVERY.get(e["code"])
+        if ok_codes is None:
+            continue
+        farm = e["msg"].rsplit(":", 1)[-1].strip()
+        if not any(x["code"] in ok_codes and (e["code"] == 1100 or x["msg"].rsplit(":", 1)[-1].strip() == farm)
+                   for x in errors[i + 1:]):
+            out.add(e["code"])
+    return out
+
+
 def _ibkr_codes(dataset: str, payload: dict) -> list[int]:
     codes = sorted({e["code"] for e in payload["errors"]} - IBKR_INFO_CODES)
-    for code in set(codes) & IBKR_ALERT_CODES.keys():
+    # a farm that dropped and came back within the run is routine (IBKR's Asia servers): no alert
+    transient = (set(codes) & FARM_RECOVERY.keys()) - unrecovered(payload["errors"])
+    for code in (set(codes) & IBKR_ALERT_CODES.keys()) - transient:
         msgs = sorted({e["msg"][:200] for e in payload["errors"] if e["code"] == code})
         at = datetime.fromisoformat(payload["ingested_at"]).astimezone(NY)
         alert_once(f"ibkr_{code}", f"⚠️ IBKR 错误 {code}：{IBKR_ALERT_CODES[code]}",

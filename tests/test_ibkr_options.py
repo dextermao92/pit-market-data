@@ -151,7 +151,7 @@ def test_one_failing_chain_does_not_sink_the_run(tmp_path, monkeypatch):
     monkeypatch.setattr(io, "connect", lambda cfg, client_offset=0: (type("IB", (), {"disconnect": lambda self: None})(), []))
     monkeypatch.setattr(io, "due", lambda chain, now: True)
 
-    def snap(ib, ib_cfg, chain, today, spots, taken):
+    def snap(ib, ib_cfg, chain, today, spots, taken, deadline=None):
         if chain["name"] == "bad":
             raise TimeoutError()
         return {"chain": "good", "contracts": []}
@@ -160,3 +160,23 @@ def test_one_failing_chain_does_not_sink_the_run(tmp_path, monkeypatch):
     payload = json.loads(io.run(str(cfg)).read_text())
     assert [u["chain"] for u in payload["underlyings"]] == ["good"]
     assert payload["chain_errors"][0]["chain"] == "bad" and "TimeoutError" in payload["chain_errors"][0]["error"]
+
+
+def test_run_budget_skips_remaining_chains_but_keeps_the_done_ones(tmp_path, monkeypatch):
+    import time as _time
+    import pit.ibkr_options as io
+    cfg = tmp_path / "ibkr.toml"
+    cfg.write_text('[ibkr]\nhost="x"\nport=1\nclient_id=1\nmarket_data_type=1\nrun_budget_seconds=0.05\n'
+                   '[[chains]]\nname="spx"\n[[chains]]\nname="late"\n')
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(io, "connect", lambda cfg, client_offset=0: (type("IB", (), {"disconnect": lambda self: None})(), []))
+    monkeypatch.setattr(io, "due", lambda chain, now: True)
+
+    def snap(ib, ib_cfg, chain, today, spots, taken, deadline=None):
+        _time.sleep(0.1)  # the first chain uses up the budget
+        return {"chain": chain["name"], "contracts": []}
+
+    monkeypatch.setattr(io, "snapshot_chain", snap)
+    payload = json.loads(io.run(str(cfg)).read_text())
+    assert [u["chain"] for u in payload["underlyings"]] == ["spx"]
+    assert payload["chain_errors"] == [{"chain": "late", "error": "skipped: run budget used up"}]

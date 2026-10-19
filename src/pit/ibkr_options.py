@@ -9,13 +9,14 @@ import os
 import sys
 import time
 import tomllib
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from ib_async import IB, Contract, Option, StartupFetch
 
 from pit import ibc
+from pit.market_hours import calendar
 from pit.storage import write_raw
 
 TICKER_FIELDS = (
@@ -35,9 +36,18 @@ def _dte(expiry: str, today: date) -> int:
     return (date(int(expiry[:4]), int(expiry[4:6]), int(expiry[6:8])) - today).days
 
 
+def is_monthly(expiry: str) -> bool:
+    """Standard monthly for stock/ETF options: the third Friday, or the session before it if that's a holiday."""
+    d = date(int(expiry[:4]), int(expiry[4:6]), int(expiry[6:8]))
+    first = date(d.year, d.month, 1)
+    third_friday = first + timedelta(days=(4 - first.weekday()) % 7 + 14)
+    return d == calendar().date_to_session(str(third_friday), "previous").date()
+
+
 def pick_expiries(expirations, today: date, chain: dict) -> list[str]:
-    """dte = [min, max]: every expiry in range. target_dte = [...]: the nearest expiry to each target."""
-    live = sorted(e for e in expirations if _dte(e, today) >= 0)
+    """dte = [min, max]: every expiry in range (monthly = true: third-Friday expiries only, for underlyings that
+    list dailies/weeklies). target_dte = [...]: the nearest expiry to each target."""
+    live = sorted(e for e in expirations if _dte(e, today) >= 0 and (not chain.get("monthly") or is_monthly(e)))
     if "dte" in chain:
         lo, hi = chain["dte"]
         return [e for e in live if lo <= _dte(e, today) <= hi]
@@ -55,9 +65,10 @@ def keep_strike(strike: float, right: str, spot: float, chain: dict) -> bool:
 
 
 def due(chain: dict, now_et: datetime) -> bool:
-    """Run cadence is 5 min; a chain with every_minutes = 15 is taken on the 5-min slots divisible by 15."""
+    """Run cadence is 5 min; a chain with every_minutes = 15 is taken on the 5-min slots where
+    slot % 15 == offset_minutes (default 0), so heavy chains can be staggered."""
     slot = (now_et.hour * 60 + now_et.minute) // 5 * 5
-    return slot % chain.get("every_minutes", 5) == 0
+    return slot % chain.get("every_minutes", 5) == chain.get("offset_minutes", 0)
 
 
 def ticker_row(t) -> dict:
@@ -89,9 +100,12 @@ def spot_of(ib: IB, ib_cfg: dict, chain: dict) -> tuple[Contract, float, str | N
     und = Contract(symbol=chain["symbol"], secType=chain["sec_type"], exchange=chain["exchange"],
                    currency=chain["currency"])
     ib.qualifyContracts(und)
+    if chain.get("spot_market_data_type"):  # e.g. 3 = delayed, for an index we don't subscribe to (NDX):
+        ib.reqMarketDataType(chain["spot_market_data_type"])  # only picks the strike window
     t = ib.reqMktData(und)  # streamed, not snapshot: a snapshot of an index outside RTH returns nothing
     wait_for_ticks(ib, ib_cfg, [t], lambda t: clean(t.marketPrice()) or clean(t.close))
     ib.cancelMktData(und)
+    ib.reqMarketDataType(ib_cfg["market_data_type"])  # option quotes stay live
     spot = clean(t.marketPrice()) or clean(t.close)  # indices only calculate in RTH; fall back to close
     if spot is None:
         # Usually the US data farm dropped (seen after overnight server reconnects): ask IBC to reconnect it

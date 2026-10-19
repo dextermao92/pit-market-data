@@ -16,7 +16,11 @@ max_wait_seconds = 15    # keep waiting until every contract has ticked, up to t
 #   strikes:  rights = "both" | "otm" (puts below spot, calls above; ITM follows from put-call parity)
 #             put_range / call_range: how far below / above spot, as a fraction
 #             strike_steps = [[max |moneyness|, step], ...]: keep strikes that are multiples of step
-#   every_minutes: multiple of 5 (the DAG cadence); contracts already taken by an earlier chain are skipped.
+#             monthly = true        ...third-Friday expiries only (underlyings that list dailies/weeklies)
+#   spot_market_data_type: e.g. 3 (delayed) for an underlying whose own quotes we don't subscribe to;
+#             the spot only sets the strike window, option quotes stay live
+#   every_minutes: multiple of 5 (the DAG cadence); offset_minutes staggers it (slot % every == offset).
+#   Contracts already taken by an earlier chain are skipped.
 
 [[chains]]
 name = "spx_intraday"     # short-dated context (vol premium, intraday skew); not traded, so every 15 min
@@ -59,6 +63,103 @@ put_range = 0.40
 call_range = 0.15
 strike_steps = [[0.10, 25], [1.0, 50]]
 every_minutes = 5
+
+# Second-tier underlyings: nearest monthlies (~4), narrower OTM wings, every 15 min.
+[[chains]]
+name = "ndx_monthly"
+symbol = "NDX"
+sec_type = "IND"
+exchange = "NASDAQ"
+currency = "USD"
+trading_class = "NDX"
+dte = [3, 120]
+spot_market_data_type = 3  # NDX index quotes not subscribed: delayed spot
+rights = "otm"
+put_range = 0.20
+call_range = 0.10
+strike_steps = [[0.10, 250], [1.0, 500]]
+every_minutes = 15
+offset_minutes = 5        # :05/:20/:35/:50, off the SPX 0-2 DTE chain's :00/:15/:30/:45
+
+[[chains]]
+name = "qqq_monthly"
+symbol = "QQQ"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+trading_class = "QQQ"
+dte = [3, 120]
+monthly = true
+rights = "otm"
+put_range = 0.20
+call_range = 0.10
+strike_steps = [[0.10, 5], [1.0, 10]]
+every_minutes = 15
+offset_minutes = 5        # :05/:20/:35/:50, off the SPX 0-2 DTE chain's :00/:15/:30/:45
+
+[[chains]]
+name = "spy_monthly"
+symbol = "SPY"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+trading_class = "SPY"
+dte = [3, 120]
+monthly = true
+rights = "otm"
+put_range = 0.20
+call_range = 0.10
+strike_steps = [[0.10, 5], [1.0, 10]]
+every_minutes = 15
+offset_minutes = 5        # :05/:20/:35/:50, off the SPX 0-2 DTE chain's :00/:15/:30/:45
+
+[[chains]]
+name = "tsm_monthly"
+symbol = "TSM"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+trading_class = "TSM"
+dte = [3, 120]
+monthly = true
+rights = "otm"
+put_range = 0.20
+call_range = 0.10
+strike_steps = [[0.10, 5], [1.0, 10]]
+every_minutes = 15
+offset_minutes = 5        # :05/:20/:35/:50, off the SPX 0-2 DTE chain's :00/:15/:30/:45
+
+[[chains]]
+name = "nvda_monthly"
+symbol = "NVDA"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+trading_class = "NVDA"
+dte = [3, 120]
+monthly = true
+rights = "otm"
+put_range = 0.20
+call_range = 0.10
+strike_steps = [[0.10, 2.5], [1.0, 5]]
+every_minutes = 15
+offset_minutes = 5        # :05/:20/:35/:50, off the SPX 0-2 DTE chain's :00/:15/:30/:45
+
+[[chains]]
+name = "aapl_monthly"
+symbol = "AAPL"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+trading_class = "AAPL"
+dte = [3, 120]
+monthly = true
+rights = "otm"
+put_range = 0.20
+call_range = 0.10
+strike_steps = [[0.10, 5], [1.0, 10]]
+every_minutes = 15
+offset_minutes = 5        # :05/:20/:35/:50, off the SPX 0-2 DTE chain's :00/:15/:30/:45
 
 # Index levels snapshotted with the chains: vol term structure, tail and vol-of-vol gauges.
 [[indices]]

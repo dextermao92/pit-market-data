@@ -118,3 +118,18 @@ def test_carry_forward_copies_latest_earlier_day_only_when_missing(tmp_path, mon
     assert (root / "2026-10-19/SPX_SPX_20261119.json").read_text() == "friday"   # latest earlier day
     assert (root / "2026-10-19/SPX_SPX_20261217.json").read_text() == "fresh"    # today's kept
     assert not (root / "2026-10-19/SPX_SPX_20270115.json").exists()            # nothing to carry
+
+
+@pytest.mark.parametrize("expiry, monthly", [
+    ("20261016", True), ("20261009", False), ("20261023", False), ("20261015", False),
+    ("20250417", True), ("20250418", False),   # Good Friday 18 Apr 2025 (third Friday): monthly moved to Thursday
+])
+def test_is_monthly(expiry, monthly):
+    from pit.ibkr_options import is_monthly
+    assert is_monthly(expiry) is monthly
+
+
+def test_due_with_offset():
+    at = lambda h, m: datetime(2026, 10, 19, h, m)
+    chain = {"every_minutes": 15, "offset_minutes": 5}
+    assert due(chain, at(9, 35)) and due(chain, at(9, 50)) and not due(chain, at(9, 30)) and not due(chain, at(9, 45))

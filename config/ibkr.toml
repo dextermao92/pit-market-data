@@ -50,6 +50,20 @@ strike_steps = [[0.10, 25], [1.0, 50]]
 every_minutes = 5
 
 [[chains]]
+name = "spx_weekly"       # 30-45 DTE entry/management band: every SPXW expiry (weeklies, dailies, PM monthlies)
+symbol = "SPX"            # 20-60 DTE (~17 expiries). Narrower wings than the monthlies, which carry the deep tails.
+sec_type = "IND"
+exchange = "CBOE"
+currency = "USD"
+trading_class = "SPXW"
+dte = [20, 60]
+rights = "otm"
+put_range = 0.25
+call_range = 0.10
+strike_steps = [[0.10, 25], [1.0, 50]]
+every_minutes = 5
+
+[[chains]]
 name = "spx_leaps"        # beyond the monthlies: LEAPS out to ~2 years
 symbol = "SPX"
 sec_type = "IND"

@@ -77,6 +77,21 @@ call_range = 0.15
 strike_steps = [[0.10, 25], [1.0, 50]]
 every_minutes = 5
 
+[[chains]]
+name = "xsp_weekly"       # Mini-SPX (1/10 SPX, $1 strikes): its own spreads/liquidity for small-size put selling.
+symbol = "XSP"            # The SPX chains carry the surface, so every 15 min in the free slot, narrower wings.
+sec_type = "IND"
+exchange = "CBOE"
+currency = "USD"
+trading_class = "XSP"
+dte = [20, 60]
+rights = "otm"
+put_range = 0.15
+call_range = 0.05
+strike_steps = [[0.10, 2.5], [1.0, 5]]   # same grid as SPX's 25 / 50
+every_minutes = 15
+offset_minutes = 10       # :10/:25/:40/:55: no other 15-min chain runs then
+
 # Second-tier underlyings: nearest monthlies (~4), narrower OTM wings, every 15 min.
 [[chains]]
 name = "qqq_monthly"

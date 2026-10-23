@@ -9,12 +9,13 @@ import sys
 import time
 import tomllib
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 import polars as pl
-from ib_async import Index
+from ib_async import Contract, Index
 
-from pit.ibkr_options import clean, connect, wait_for_ticks
+from pit.ibkr_options import UNDERLYING_FIELDS, clean, connect, day_cached, wait_for_ticks
 from pit.rules import apply
 from pit.storage import TS, write_raw, write_staged
 
@@ -28,7 +29,13 @@ def run(config_path: str) -> Path:
     ingested_at, t0 = datetime.now(timezone.utc), time.monotonic()
     ib, errors = connect(cfg["ibkr"], client_offset=1)
     try:
-        contracts = ib.qualifyContracts(*[Index(i["symbol"], i["exchange"], "USD") for i in cfg["indices"]])
+        wanted = [Index(i["symbol"], i["exchange"], "USD") for i in cfg["indices"]]
+        fetch = lambda: [{f: getattr(c, f) for f in UNDERLYING_FIELDS} for c in ib.qualifyContracts(*wanted)]
+        today = datetime.now(ZoneInfo("America/New_York")).date()
+        cached = day_cached("indices.json", today, fetch)  # no secdef request per run (see day_cached)
+        if [c["symbol"] for c in cached] != [i.symbol for i in wanted]:  # config changed today
+            cached = day_cached("indices.json", today, fetch, refresh=True)
+        contracts = [Contract(**c) for c in cached]
         tickers = [ib.reqMktData(c) for c in contracts]
         wait_for_ticks(ib, cfg["ibkr"], tickers, lambda t: clean(t.marketPrice()) or clean(t.close))
         rows = [{"symbol": t.contract.symbol, "exchange": t.contract.exchange, "price": clean(t.marketPrice()),

@@ -180,3 +180,32 @@ def test_run_budget_skips_remaining_chains_but_keeps_the_done_ones(tmp_path, mon
     payload = json.loads(io.run(str(cfg)).read_text())
     assert [u["chain"] for u in payload["underlyings"]] == ["spx"]
     assert payload["chain_errors"] == [{"chain": "late", "error": "skipped: run budget used up"}]
+
+
+def test_warm_cache_makes_runs_free_of_secdef_requests(tmp_path, monkeypatch):
+    # After the day's first answer, underlying + expirations come from the cache: a stalled secdef server can't hang a run.
+    from types import SimpleNamespace
+    from pit.ibkr_options import underlying
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    calls = []
+
+    class FakeIB:
+        def qualifyContracts(self, c):
+            calls.append("qualify")
+            c.conId = 416904
+            return [c]
+
+        def reqSecDefOptParams(self, *a):
+            calls.append("secdef")
+            return [SimpleNamespace(tradingClass="SPXW", exchange="SMART", expirations={"20261120", "20261113"}),
+                    SimpleNamespace(tradingClass="SPX", exchange="SMART", expirations={"20261119"})]
+
+    class Stalled:
+        def __getattr__(self, name):
+            raise AssertionError(f"{name} called: the run should be served from the cache")
+
+    chain = {"symbol": "SPX", "sec_type": "IND", "exchange": "CBOE", "currency": "USD", "trading_class": "SPXW"}
+    und, exps = underlying(FakeIB(), chain, TODAY, refresh=True)                # warm_cache
+    assert calls == ["qualify", "secdef"] and exps == ["20261113", "20261120"]
+    und2, exps2 = underlying(Stalled(), chain, TODAY)                           # a run later that day
+    assert (und2.conId, und2.secType, und2.exchange, exps2) == (416904, "IND", "CBOE", exps)

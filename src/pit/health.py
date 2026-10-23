@@ -190,7 +190,7 @@ def warmup(data_dir: Path, now: datetime) -> Check:
         level = _worst(level, lv)
         fields.append((f"{LEVEL_MARK[lv]} {DATASET_ZH[ds]}", f"成功 {good.height} · 失败 {r.height - good.height}\n"
                        f"最近一次 {last['et']:%H:%M}\n耗时 {last['run_s']:.0f}s · {last['rows']:,} 行", True))
-    cache = list((data_dir / "cache" / "ibkr_contracts" / str(now.astimezone(ZoneInfo(NY)).date())).glob("*.json"))
+    cache = list((data_dir / "cache" / "ibkr_contracts" / str(now.astimezone(ZoneInfo(NY)).date())).glob("*_" + "[0-9]" * 8 + ".json"))
     fields.append(("🗂️ 合约缓存", f"{len(cache)} 个到期日", True))
     return level, fields
 

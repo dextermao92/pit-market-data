@@ -103,10 +103,7 @@ def wait_for_ticks(ib: IB, ib_cfg: dict, tickers, ready) -> None:
         ib.sleep(0.25)
 
 
-def spot_of(ib: IB, ib_cfg: dict, chain: dict) -> tuple[Contract, float, str | None]:
-    und = Contract(symbol=chain["symbol"], secType=chain["sec_type"], exchange=chain["exchange"],
-                   currency=chain["currency"])
-    ib.qualifyContracts(und)
+def spot_of(ib: IB, ib_cfg: dict, und: Contract) -> tuple[float, str | None]:
     t = ib.reqMktData(und)  # streamed, not snapshot: a snapshot of an index outside RTH returns nothing
     wait_for_ticks(ib, ib_cfg, [t], lambda t: clean(t.marketPrice()) or clean(t.close))
     ib.cancelMktData(und)
@@ -118,11 +115,12 @@ def spot_of(ib: IB, ib_cfg: dict, chain: dict) -> tuple[Contract, float, str | N
             reply = ibc.command("RECONNECTDATA")
         except OSError as e:
             reply = f"IBC unreachable: {e!r}"
-        raise RuntimeError(f"{chain['symbol']}: no spot price; sent RECONNECTDATA ({reply}); "
+        raise RuntimeError(f"{und.symbol}: no spot price; sent RECONNECTDATA ({reply}); "
                            "if it persists, check the market-data subscription for the underlying")
-    return und, spot, t.time.isoformat() if t.time else None
+    return spot, t.time.isoformat() if t.time else None
 
 
+UNDERLYING_FIELDS = ("conId", "symbol", "secType", "exchange", "currency")
 CONTRACT_FIELDS = ("symbol", "lastTradeDateOrContractMonth", "strike", "right", "multiplier", "currency",
                    "conId", "localSymbol", "tradingClass")
 
@@ -131,20 +129,42 @@ def _cache_root() -> Path:
     return Path(os.environ.get("DATA_DIR", "data")) / "cache" / "ibkr_contracts"
 
 
-def listed_contracts(ib: IB, chain: dict, expiry: str, today: date, refresh: bool = False) -> list[Option]:
-    """Every contract listed for one expiry. Specs don't change intraday, so the contract-details answer
-    (~1 min per run across ~15 expiries) is cached on disk per New York day. Derived and safe to delete."""
-    path = _cache_root() / str(today) / f"{chain['symbol']}_{chain['trading_class']}_{expiry}.json"
+def day_cached(name: str, today: date, fetch, refresh: bool = False):
+    """JSON from today's cache file, else fetch() and store it. Contract definitions don't change intraday, so a run
+    asks IBKR's contract-definition (secdef) server nothing once warm_cache has run: on 2026-10-23 10:35 that server
+    stalled ~5 min while quotes kept flowing, and took a whole run with it. Derived and safe to delete."""
+    path = _cache_root() / str(today) / name
     if path.exists() and not refresh:
-        return [Option(exchange="SMART", **d) for d in json.loads(path.read_text())]
-    template = Option(chain["symbol"], expiry, exchange="SMART", currency=chain["currency"],
-                      tradingClass=chain["trading_class"])
-    contracts = [d.contract for d in ib.reqContractDetails(template)]
+        return json.loads(path.read_text())
+    data = fetch()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps([{f: getattr(c, f) for f in CONTRACT_FIELDS} for c in contracts]))
+    tmp.write_text(json.dumps(data))
     tmp.replace(path)
-    return [Option(exchange="SMART", **{f: getattr(c, f) for f in CONTRACT_FIELDS}) for c in contracts]
+    return data
+
+
+def underlying(ib: IB, chain: dict, today: date, refresh: bool = False) -> tuple[Contract, list[str]]:
+    """The chain's qualified underlying and the expirations listed for its trading class."""
+    def fetch():
+        und = Contract(symbol=chain["symbol"], secType=chain["sec_type"], exchange=chain["exchange"],
+                       currency=chain["currency"])
+        ib.qualifyContracts(und)
+        params = next(c for c in ib.reqSecDefOptParams(und.symbol, "", und.secType, und.conId)
+                      if c.tradingClass == chain["trading_class"] and c.exchange == "SMART")
+        return {"underlying": {f: getattr(und, f) for f in UNDERLYING_FIELDS}, "expirations": sorted(params.expirations)}
+    d = day_cached(f"{chain['symbol']}_{chain['trading_class']}_params.json", today, fetch, refresh)
+    return Contract(**d["underlying"]), d["expirations"]
+
+
+def listed_contracts(ib: IB, chain: dict, expiry: str, today: date, refresh: bool = False) -> list[Option]:
+    """Every contract listed for one expiry (cold: 1-3 min)."""
+    def fetch():
+        template = Option(chain["symbol"], expiry, exchange="SMART", currency=chain["currency"],
+                          tradingClass=chain["trading_class"])
+        return [{f: getattr(d.contract, f) for f in CONTRACT_FIELDS} for d in ib.reqContractDetails(template)]
+    rows = day_cached(f"{chain['symbol']}_{chain['trading_class']}_{expiry}.json", today, fetch, refresh)
+    return [Option(exchange="SMART", **d) for d in rows]
 
 
 def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, taken: set,
@@ -152,17 +172,13 @@ def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, 
     def check_budget():
         if deadline is not None and time.monotonic() > deadline:
             raise TimeoutError("run budget used up")
-    key = (chain["symbol"], chain["sec_type"], chain["exchange"])
-    if key not in spots:  # one spot per underlying per run, shared by its chains
-        spots[key] = spot_of(ib, ib_cfg, chain)
-    und, spot, spot_time = spots[key]
+    und, expirations = underlying(ib, chain, today)
+    if und.conId not in spots:  # one spot per underlying per run, shared by its chains
+        spots[und.conId] = spot_of(ib, ib_cfg, und)
+    spot, spot_time = spots[und.conId]
 
-    params = next(
-        c for c in ib.reqSecDefOptParams(und.symbol, "", und.secType, und.conId)
-        if c.tradingClass == chain["trading_class"] and c.exchange == "SMART"
-    )
     contracts = []
-    for exp in pick_expiries(params.expirations, today, chain):
+    for exp in pick_expiries(expirations, today, chain):
         check_budget()  # a cold contract-details answer can take minutes
         for c in listed_contracts(ib, chain, exp, today):
             if c.conId not in taken and keep_strike(c.strike, c.right, spot, chain):
@@ -213,13 +229,9 @@ def warm_cache(config_path: str) -> dict:
     ib, errors = connect(cfg["ibkr"], client_offset=8)
     todo, carried = [], 0
     try:
-        for chain in cfg["chains"]:
-            und = Contract(symbol=chain["symbol"], secType=chain["sec_type"], exchange=chain["exchange"],
-                           currency=chain["currency"])
-            ib.qualifyContracts(und)
-            params = next(c for c in ib.reqSecDefOptParams(und.symbol, "", und.secType, und.conId)
-                          if c.tradingClass == chain["trading_class"] and c.exchange == "SMART")
-            todo += [(chain, exp) for exp in pick_expiries(params.expirations, today, chain)]
+        for chain in cfg["chains"]:  # underlyings + expirations first (fast), so runs can start from the cache
+            _, expirations = underlying(ib, chain, today, refresh=True)
+            todo += [(chain, exp) for exp in pick_expiries(expirations, today, chain)]
         carried = carry_forward(todo, today)  # usable at once, even if IBKR answers slowly today
         for chain, exp in todo:  # then refresh each from IBKR (newly listed strikes)
             listed_contracts(ib, chain, exp, today, refresh=True)
@@ -265,7 +277,7 @@ def run(config_path: str) -> Path:
     finally:
         ib.disconnect()
     if not chains and chain_errors:
-        raise RuntimeError(f"every chain failed: {chain_errors}")
+        raise RuntimeError(f"every chain failed: {chain_errors}; IBKR codes: {sorted({e['code'] for e in errors})}")
 
     payload = {
         "ingested_at": ingested_at.isoformat(),

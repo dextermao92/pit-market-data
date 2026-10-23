@@ -65,3 +65,21 @@ def test_watchdog_flags_only_stale_datasets_in_their_window(tmp_path):
     assert got == {"option_snapshots": 53, "equity_bars": 45}
     assert stale_datasets(tmp_path, at(13, 40)) == []                          # 09:40 ET: inside the grace period
     assert stale_datasets(tmp_path, datetime(2026, 10, 17, 15, 0, tzinfo=timezone.utc)) == []   # Saturday
+
+
+def test_hourly_progress_counts_due_slots_and_recovered_failures(tmp_path):
+    from pit.health import progress
+    opt = [run("option_snapshots", "success", 13 + (i * 5 + 30) // 60, (i * 5 + 30) % 60, rows=100) for i in range(12) if i != 3]
+    rows = (opt + [run("option_snapshots", "failed", 13, 20)]            # 09:20 pre-open failure, recovered since
+            + [run("index_snapshots", "failed", 14, 25)]                  # still failing
+            + [run("equity_bars", "success", 14, 20, rows=50, missing_bars=2)])
+    d = tmp_path / "pipeline_runs/dataset=all/ingest_date=2026-10-15"
+    d.mkdir(parents=True)
+    pl.DataFrame(rows, schema=RUN_SCHEMA).write_parquet(d / "runs.parquet")
+    level, fields = progress(tmp_path, datetime(2026, 10, 15, 14, 30, tzinfo=timezone.utc))   # 10:30 ET
+    by_name = {n: v for n, v, _ in fields}
+    assert level == "error"
+    # slots due 09:30-10:20 = 11; 09:45 missing -> 10/11; the old failure only makes it yellow
+    assert "正规时段覆盖 10/11" in by_name["⚠️ 期权快照"] and by_name["⚠️ 期权快照"].startswith("成功 11 · 失败 1 · 1,100 行")
+    assert by_name["❌ 指数快照"].startswith("成功 0 · 失败 1")
+    assert "最近一次缺 2 根 bar" in by_name["⚠️ 股票 5 分钟 bar"]

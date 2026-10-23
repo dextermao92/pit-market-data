@@ -3,10 +3,11 @@ is down):
 
   gateway  09:02 ET  login, US data farm, quotes; Alpaca reachable. Self-heals: RECONNECTDATA, then RESTART
   warmup   09:28 ET  pre-open runs since 09:05: are the option/index snapshots warm and inside the 5-min budget?
+  progress hourly    10:00-15:00 ET: the session so far (runs, coverage, timings, alerts)
   summary  after eod  the session's runs, data collected, gaps, quality, dbt, disk, alerts sent
 
 Each check returns (level, fields); level is ok | warn | error (warn: a problem that isn't ours, e.g. a vendor gap).
-Usage: python -m pit.health gateway|warmup|summary [--send]
+Usage: python -m pit.health gateway|warmup|progress|summary [--send]
 """
 
 import glob
@@ -194,6 +195,47 @@ def warmup(data_dir: Path, now: datetime) -> Check:
     return level, fields
 
 
+def progress(data_dir: Path, now: datetime) -> Check:
+    """Hourly in market hours: the session so far for the intraday datasets."""
+    from pit.market_hours import calendar
+    et = now.astimezone(ZoneInfo(NY))
+    runs = _runs(data_dir, et.date())
+    if runs.is_empty():
+        return "error", [("❌ 运行记录", "今天还没有任何运行记录", False)]
+    cal = calendar()
+    open_min, close_min = (_minutes_et(cal.session_open(str(et.date()))), _minutes_et(cal.session_close(str(et.date()))))
+    level, fields = "ok", []
+    for ds in ("option_snapshots", "index_snapshots", "equity_bars"):
+        r = runs.filter(pl.col("dataset") == ds).sort("started_at")
+        good = r.filter(pl.col("status") == "success")
+        bad = r.height - good.height
+        # red only while it's still failing; an earlier failure that recovered is yellow
+        lv = "error" if good.is_empty() or r["status"][-1] != "success" else ("warn" if bad else "ok")
+        lines = [f"成功 {good.height} · 失败 {bad}" + (f" · {good['rows'].sum():,} 行" if good.height else "")]
+        if good.height:
+            last = good.row(-1, named=True)
+            lines.append(f"最近一次 {last['et']:%H:%M} · 耗时 {last['run_s']:.0f}s · {last['rows']:,} 行")
+        if ds == "option_snapshots" and good.height:
+            hi = min(et.hour * 60 + et.minute - 10, close_min - 5)  # slots that should have finished by now
+            expected = max(0, (hi - open_min) // 5 + 1)
+            slots = good.filter(_mins(pl.col("et")).is_between(open_min, hi))["et"].dt.truncate("5m").n_unique()
+            lines.append(f"正规时段覆盖 {slots}/{expected} · 耗时中位 {good['run_s'].median():.0f}s / 最长 {good['run_s'].max():.0f}s")
+            lv = _worst(lv, "ok" if slots >= expected else "warn")
+        if ds == "equity_bars" and good.height and last["missing_bars"]:
+            lines.append(f"最近一次缺 {last['missing_bars']} 根 bar")
+            lv = _worst(lv, "warn")
+        level = _worst(level, lv)
+        fields.append((f"{LEVEL_MARK[lv]} {DATASET_ZH[ds]}", "\n".join(lines), False))
+    alerts = sorted(p.read_text() for p in (data_dir / "cache" / "alerts" / str(et.date())).glob("*"))
+    fields.append(("🔔 今日告警", "\n".join(f"• {a}" for a in alerts) or "无", False))
+    return level, fields
+
+
+def _minutes_et(ts) -> int:
+    t = ts.tz_convert(NY)
+    return t.hour * 60 + t.minute
+
+
 STALE_AFTER = timedelta(minutes=15)
 WATCH = {  # dataset: (data expected from, until) as offsets from the session open / close
     "option_snapshots": (timedelta(0), timedelta(0)),
@@ -244,12 +286,13 @@ def disk(data_dir: Path) -> Check:
 HEADLINE = {  # description per report and level
     "gateway": {"ok": "Gateway 和数据源都正常，可以开始预热", "warn": "发现异常，已自动修复", "error": "Gateway 或数据源异常，自动修复失败，开盘采集可能失败"},
     "warmup": {"ok": "🚀 预热完成，可以开盘", "warn": "预热基本完成，但有问题", "error": "🛑 预热未完成，开盘采集可能受影响"},
+    "progress": {"ok": "采集正常进行中", "warn": "采集在进行，但有缺口或出过错（已恢复）", "error": "有数据集正在失败，请查看标 ❌ 的项目"},
     "summary": {"ok": "今天一切正常", "warn": "我们这边正常，但数据源有缺口", "error": "今天有运行失败，请查看下面标 ❌ 的项目"},
 }
 
 
 def report(kind: str) -> tuple[str, str, str, list[Field]]:
-    """(level, title, description, fields) for kind in gateway | warmup | summary."""
+    """(level, title, description, fields) for kind in gateway | warmup | progress | summary."""
     data_dir = Path(os.environ.get("DATA_DIR", "data"))
     now = datetime.now(timezone.utc)
     if kind == "gateway":
@@ -257,6 +300,8 @@ def report(kind: str) -> tuple[str, str, str, list[Field]]:
         checks, title = [gateway_with_healing(ibkr_cfg), check_alpaca()], "Gateway 检查（开盘前）"
     elif kind == "warmup":
         checks, title = [warmup(data_dir, now)], "开盘预热检查"
+    elif kind == "progress":
+        checks, title = [progress(data_dir, now)], f"盘中进度 · 美东 {now.astimezone(ZoneInfo(NY)):%H:%M}"
     else:
         session = recent_sessions(now, 1)[0]
         checks, title = [day_summary(data_dir, session), disk(data_dir)], f"收盘总结 · {session}"

@@ -125,7 +125,7 @@ never imputed. Equity history is backfilled with
 ### Monitoring and self-healing
 
 Notifications go to a Discord channel (webhook; email via SMTP is also supported) as cards coloured green / yellow /
-red. Three status cards are sent on every session day **whether or not anything is wrong**, so a missing one means
+red. Four status cards are sent on every session day **whether or not anything is wrong**, so a missing one means
 the host or Docker is down:
 
 | ET | Card | |
@@ -133,6 +133,7 @@ the host or Docker is down:
 | 08:15 | (no card) `contract_cache` | Fills today's option contract cache, so the first snapshot isn't a cold start (1–3 min per expiry cold) |
 | 09:02 | Gateway check | Login, US data farm (SPY pre-market quote), SPX/VIX, Alpaca. If the US farm is down (seen after IBKR's overnight server reconnects), it self-heals through IBC's command server: `RECONNECTDATA`, then `RESTART` (no 2FA), re-checking after each; the card shows what was done |
 | 09:28 | Warm-up check | Pre-open option/index runs since 09:05, last run time vs the 5-min budget, contract cache |
+| 10:00–15:00 hourly | Progress | The session so far: option/index/equity runs ok/failed, rows, last run, RTH slot coverage vs slots due, run times, missing bars, alerts (red only while a dataset is still failing) |
 | ~17:40 | Close summary | Per dataset: runs ok/failed, rows, RTH slot coverage, run times, missing bars, quarantine; MB written; dbt; alerts sent; disk |
 
 Alerts, once per New York day per problem: a task failed after its retries (and a RECOVERED card when it works
@@ -239,7 +240,7 @@ New machine:
 4. Copy `data/` into the repo directory.
 5. `docker compose up -d --build`, approve the IBKR 2FA push, then unpause every DAG (a fresh Airflow DB pauses
    new DAGs): `docker compose exec airflow airflow dags unpause <dag_id>` for `option_snapshots`, `equity_bars`,
-   `eod`, `gateway_check`, `warmup_check`.
+   `eod`, `gateway_check`, `warmup_check`, `progress_check`.
 6. Check: `docker compose exec airflow python -m pit.health gateway --send` should post a green card.
 7. Optional, for local tests and queries: `uv sync`, then `uv run pytest`.
 

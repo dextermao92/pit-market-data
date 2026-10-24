@@ -83,3 +83,16 @@ def test_hourly_progress_counts_due_slots_and_recovered_failures(tmp_path):
     assert "正规时段覆盖 10/11" in by_name["⚠️ 期权快照"] and by_name["⚠️ 期权快照"].startswith("成功 11 · 失败 1 · 1,100 行")
     assert by_name["❌ 指数快照"].startswith("成功 0 · 失败 1")
     assert "最近一次缺 2 根 bar" in by_name["⚠️ 股票 5 分钟 bar"]
+
+
+def test_failure_card_once_per_streak_then_recovered(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    sent = []
+    monkeypatch.setattr(notify, "send", lambda title, *a, **k: sent.append(title))
+    ti = SimpleNamespace(dag_id="option_snapshots", task_id="chains", try_number=1)
+    for run_id in ("r1", "r2", "r3"):
+        notify.task_failed({"ti": ti, "run_id": run_id, "exception": TimeoutError()})
+    notify.task_succeeded({"ti": ti, "run_id": "r4"})
+    notify.task_succeeded({"ti": ti, "run_id": "r5"})
+    assert sent == ["❌ 任务失败：期权快照", "✅ 已恢复：期权快照"]

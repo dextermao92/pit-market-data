@@ -136,11 +136,14 @@ the host or Docker is down:
 | 10:00–15:00 hourly | Progress | The session so far: option/index/equity runs ok/failed, rows, last run, RTH slot coverage vs slots due, run times, missing bars, alerts (red only while a dataset is still failing) |
 | ~17:40 | Close summary | Per dataset: runs ok/failed, rows, RTH slot coverage, run times, missing bars, quarantine; MB written; dbt; alerts sent; disk |
 
-Alerts, once per New York day per problem: a task failed after its retries (and a RECOVERED card when it works
+Alerts, once per New York day per problem: a task failed after its retries (one card per failing streak, and a RECOVERED card when it works
 again), an intraday dataset with no new data for 15 min (the `watchdog_check` DAG, every 5 min and independent of
 the collectors, so a stuck run that blocks its own DAG is still caught; collectors also have execution timeouts), an Alpaca bar gap of at least one full slot, IBKR
 codes for missing subscriptions / competing sessions / broken data farms. A collector that finds no underlying
-price also asks IBC to `RECONNECTDATA` before failing, so its retry usually succeeds.
+price also asks IBC to `RECONNECTDATA` before failing, so the next slot usually succeeds. Option and index snapshots
+have no retries (a missed snapshot can't be taken later, and a retry only delays the next slots); runs ask IBKR only
+for quotes: underlyings, expirations and contract lists come from the day's cache (`contract_cache`, 08:15), so a
+stalled contract-definition server (2026-10-23, ~5 min) can't hang a run.
 
 ### Key decisions
 
@@ -219,7 +222,7 @@ dbt tests (curated):
 | Query / curated | DuckDB, dbt-core 1.11 + dbt-duckdb (in its own venv in the image; `uv` group `dbt` locally) |
 | Trading calendar | exchange_calendars (Timetable + rule 9) |
 | Config | `universe.toml` via stdlib `tomllib`; API keys in env vars |
-| Retries | Airflow task retries |
+| Retries | Airflow task retries (none for snapshots: the next slot is the retry) |
 | Test / lint | pytest, ruff — run locally with uv, no container rebuild |
 | CI | GitHub Actions: pytest + `dbt build` on the synthetic sample (P3) |
 

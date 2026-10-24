@@ -83,12 +83,15 @@ def _failing_marker(ti) -> Path:
 
 
 def task_failed(context) -> None:
-    """Airflow on_failure_callback: fires once a task has failed for good (after its retries)."""
+    """Airflow on_failure_callback: fires once a task has failed for good (after its retries). One card per streak:
+    while the marker exists the task is known to be failing (a 5-min task down for an hour would send 12)."""
     ti = context["ti"]
     marker = _failing_marker(ti)
+    if marker.exists():
+        return
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(str(context.get("run_id")))
-    send(f"❌ 任务失败：{TASK_ZH.get(ti.task_id, ti.task_id)}", f"`{ti.dag_id}.{ti.task_id}` 重试用完后仍然失败",
+    send(f"❌ 任务失败：{TASK_ZH.get(ti.task_id, ti.task_id)}", f"`{ti.dag_id}.{ti.task_id}` 失败（重试也用完）；连续失败只提醒这一次，恢复时会再通知",
          [("🕒 运行", str(context.get("run_id")), True), ("🔁 尝试次数", str(ti.try_number), True),
           ("💥 错误", f"```{context.get('exception')!r}"[:1000] + "```", False)], level="error")
 

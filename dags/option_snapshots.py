@@ -18,16 +18,17 @@ CONFIG = "/opt/airflow/config/ibkr.toml"
     start_date=pendulum.datetime(2026, 10, 1, tz="America/New_York"),
     catchup=False,  # a missed snapshot can't be fetched later
     max_active_runs=1,
-    default_args=CALLBACKS,  # failure (after retries) and recovery notifications
+    default_args=CALLBACKS,  # failure (once per streak) and recovery notifications
 )
 def option_snapshots():
     # A hung run blocks every later one (max_active_runs=1): cap it (warm runs take ~2-4 min; the cache is
-    # filled pre-open by contract_cache) and retry quickly.
-    @task(retries=1, retry_delay=timedelta(minutes=1), execution_timeout=timedelta(minutes=8))
+    # filled pre-open by contract_cache). No retries: a missed snapshot can't be taken later, and a retry only
+    # pushes the next slots back (2026-10-23: one failed run at 10:35 kept them ~20 min late). The next slot is 5 min away.
+    @task(retries=0, execution_timeout=timedelta(minutes=8))
     def chains(**context) -> str:
         return collect_option_snapshots(CONFIG, run_id=context["run_id"])["staged_path"]
 
-    @task(retries=1, retry_delay=timedelta(minutes=1), execution_timeout=timedelta(minutes=2))
+    @task(retries=0, execution_timeout=timedelta(minutes=2))
     def indices(**context) -> str:
         return collect_index_snapshots(CONFIG, run_id=context["run_id"])["staged_path"]
 

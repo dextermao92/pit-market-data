@@ -90,3 +90,30 @@ def test_heal_window():
     assert heal_window(datetime(2026, 10, 19, 13, 2, tzinfo=timezone.utc))        # Mon 09:02 ET
     assert not heal_window(datetime(2026, 10, 18, 11, 0, tzinfo=timezone.utc))    # Sunday
     assert not heal_window(datetime(2026, 10, 20, 1, 0, tzinfo=timezone.utc))     # Mon 21:00 ET
+
+
+def test_hung_request_is_a_failed_check_so_healing_runs(monkeypatch):
+    import pit.health
+    class HungIB:
+        RequestTimeout = 0
+        def qualifyContracts(self, *c):
+            raise TimeoutError()
+        def disconnect(self):
+            self.closed = True
+    ib = HungIB()
+    monkeypatch.setattr(pit.health, "connect", lambda cfg, client_offset=0: (ib, []))
+    level, fields = pit.health.check_gateway({})
+    assert level == "error" and "请求没有响应" in fields[0][1] and ib.closed and ib.RequestTimeout == 30
+
+
+def test_watchdog_heals_gateway_once_per_stale_episode(tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+    import pit.health, pit.notify
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(pit.notify, "send", lambda *a, **k: None)
+    heals = []
+    heal = lambda: heals.append(1) or ("warn", [("🔧 自动修复", "→ ✅ 已恢复", False)])
+    at = lambda h, m: datetime(2026, 10, 26, h, m, tzinfo=timezone.utc)   # EDT: 13:45 UTC = 09:45 ET, no runs at all
+    assert set(pit.health.watchdog(at(13, 46), heal=heal)) == {"option_snapshots", "index_snapshots"}
+    assert pit.health.watchdog(at(13, 51), heal=heal) == []               # same episode: no new alert, no new restart
+    assert heals == [1]

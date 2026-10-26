@@ -32,7 +32,7 @@ def contract_cache():
 @dag(schedule="*/5 9-16 * * 1-5", start_date=START, catchup=False, max_active_runs=1, default_args=CALLBACKS)
 def watchdog_check():
     """Independent of the collectors, so a stuck run (which blocks its DAG) is still noticed."""
-    @task(execution_timeout=timedelta(minutes=2))
+    @task(execution_timeout=timedelta(minutes=6))  # may self-heal: RECONNECTDATA 20 s, RESTART 120 s, re-checks
     def check() -> list[str]:
         return watchdog()
 

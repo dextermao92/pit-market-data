@@ -55,6 +55,7 @@ def check_gateway(ibkr_cfg: dict) -> Check:
         ib, errors = connect(ibkr_cfg, client_offset=3)
     except Exception as e:
         return "error", [("❌ Gateway", f"无法连接：{e!r}", False)]
+    ib.RequestTimeout = 30  # a check, not a cold contract fetch: a hung request means a broken Gateway
     try:
         contracts = ib.qualifyContracts(Stock("SPY", "SMART", "USD"), Index("SPX", "CBOE", "USD"), Index("VIX", "CBOE", "USD"))
         tickers = [ib.reqMktData(c) for c in contracts]
@@ -66,6 +67,8 @@ def check_gateway(ibkr_cfg: dict) -> Check:
         us_farm = (_price(tickers[0].bid) is not None or _price(tickers[0].last) is not None
                    or any(e["code"] == 2104 and "usfarm" in e["msg"] for e in errors))
         down = sorted({e["code"] for e in errors} & FARM_DOWN)
+    except Exception as e:  # connected but requests hang (2026-10-26 09:02: 300 s, and the exception skipped healing)
+        return "error", [("❌ Gateway", f"已连接，但请求没有响应：{e!r}", False)]
     finally:
         ib.disconnect()
     if us_farm and not down:
@@ -265,8 +268,10 @@ def stale_datasets(data_dir: Path, now: datetime) -> list[tuple[str, int, dateti
     return out
 
 
-def watchdog(now: datetime | None = None) -> list[str]:
-    from pit.notify import alert_once
+def watchdog(now: datetime | None = None, heal=None) -> list[str]:
+    """Alert once per stale episode; for IBKR datasets also self-heal the Gateway once per episode. 2026-10-26:
+    its API stopped accepting connections from 09:10 for the whole session; only the 09:02 check could heal."""
+    from pit.notify import alert_once, send
     now = now or datetime.now(timezone.utc)
     sent = []
     for ds, minutes, since in stale_datasets(Path(os.environ.get("DATA_DIR", "data")), now):
@@ -274,6 +279,11 @@ def watchdog(now: datetime | None = None) -> list[str]:
                       f"🕘 上次成功完成：美东 {since.astimezone(ZoneInfo(NY)):%H:%M}\n"
                       "可能原因：Gateway 或数据源断开、采集任务卡住。恢复后会自动继续，这条只提醒一次。", level="error"):
             sent.append(ds)
+    if {"option_snapshots", "index_snapshots"} & set(sent):
+        heal = heal or (lambda: gateway_with_healing(
+            tomllib.loads(Path(os.environ.get("IBKR_CONFIG", "config/ibkr.toml")).read_text())["ibkr"]))
+        level, fields = heal()
+        send(f"{LEVEL_MARK[level]} 数据停滞后的 Gateway 检查", HEADLINE["gateway"][level], fields, level)
     return sent
 
 

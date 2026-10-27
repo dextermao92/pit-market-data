@@ -109,15 +109,54 @@ def test_carry_forward_copies_latest_earlier_day_only_when_missing(tmp_path, mon
     root = tmp_path / "cache/ibkr_contracts"
     for day, body in (("2026-10-14", "old"), ("2026-10-16", "friday")):
         (root / day).mkdir(parents=True)
-        (root / day / "SPX_SPX_20261119.json").write_text(body)
+        for name in ("SPX_SPX_20261119.json", "SPX_SPX_20261217.json", "SPX_SPX_params.json", "indices.json"):
+            (root / day / name).write_text(body)
+    (root / "2026-10-14" / "SPX_SPX_20270115.json").write_text("old")
+    (root / "2026-10-16" / "SPX_SPXW_20261016.json").write_text("friday")  # expired by Monday
     (root / "2026-10-19").mkdir(parents=True)
     (root / "2026-10-19" / "SPX_SPX_20261217.json").write_text("fresh")
-    chain = {"symbol": "SPX", "trading_class": "SPX"}
-    n = carry_forward([(chain, "20261119"), (chain, "20261217"), (chain, "20270115")], date(2026, 10, 19))
-    assert n == 1
-    assert (root / "2026-10-19/SPX_SPX_20261119.json").read_text() == "friday"   # latest earlier day
-    assert (root / "2026-10-19/SPX_SPX_20261217.json").read_text() == "fresh"    # today's kept
-    assert not (root / "2026-10-19/SPX_SPX_20270115.json").exists()            # nothing to carry
+    assert carry_forward(date(2026, 10, 19)) == 3
+    today = root / "2026-10-19"
+    assert {p.name: p.read_text() for p in today.iterdir()} == {
+        "SPX_SPX_20261119.json": "friday",   # latest earlier day only
+        "SPX_SPX_params.json": "friday",     # underlying + expirations
+        "indices.json": "friday",            # index contracts
+        "SPX_SPX_20261217.json": "fresh",    # today's kept
+    }                                        # 20270115: not in the latest day; 20261016: expired
+    assert carry_forward(date(2026, 10, 19)) == 0
+
+
+def test_warm_cache_carries_forward_before_asking_ibkr(tmp_path, monkeypatch):
+    # 2026-10-27: the secdef server answered nothing. The day must still get a cache, and the task must fail.
+    import pit.ibkr_options as io
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    cfg = tmp_path / "ibkr.toml"
+    cfg.write_text('[ibkr]\nhost="x"\nport=1\nclient_id=1\nmarket_data_type=1\n'
+                   '[[chains]]\nname="spx"\nsymbol="SPX"\nsec_type="IND"\nexchange="CBOE"\ncurrency="USD"\n'
+                   'trading_class="SPX"\ndte=[3,400]\n')
+    yesterday = tmp_path / "cache/ibkr_contracts/2026-10-26"
+    yesterday.mkdir(parents=True)
+    for name in ("SPX_SPX_params.json", "SPX_SPX_20261119.json", "indices.json"):
+        (yesterday / name).write_text("[]")
+
+    class Stalled:
+        def qualifyContracts(self, *c):
+            raise TimeoutError()
+
+        def disconnect(self):
+            pass
+
+    class Today(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 27, 8, 15, tzinfo=tz)
+
+    monkeypatch.setattr(io, "datetime", Today)
+    monkeypatch.setattr(io, "connect", lambda cfg, client_offset=0: (Stalled(), []))
+    with pytest.raises(RuntimeError, match="TimeoutError.*3 files carried forward"):
+        io.warm_cache(str(cfg))
+    assert sorted(p.name for p in (tmp_path / "cache/ibkr_contracts/2026-10-27").iterdir()) == [
+        "SPX_SPX_20261119.json", "SPX_SPX_params.json", "indices.json"]
 
 
 @pytest.mark.parametrize("expiry, monthly", [

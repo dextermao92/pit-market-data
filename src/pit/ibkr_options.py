@@ -223,37 +223,46 @@ def connect(ib_cfg: dict, client_offset: int = 0) -> tuple[IB, list]:
 
 def warm_cache(config_path: str) -> dict:
     """Pre-open: fill today's contract cache for every chain (no market data). Cold answers take 1-3 min per
-    expiry, so doing this at 08:15 keeps the 09:10+ snapshots fast."""
+    expiry, so doing this at 08:15 keeps the 09:10+ snapshots fast.
+
+    The previous day's cache is carried forward first, before even connecting: on 2026-10-27 the secdef server
+    answered nothing from 08:15 until a Gateway restart, and a refresh-first warm-up left the day without a cache.
+    The refresh then stops at its first failure (each unanswered request waits RequestTimeout) and fails the task,
+    so it is retried and alerted, while runs use the carried copy."""
     cfg = tomllib.loads(Path(config_path).read_text())
     t0, today = time.monotonic(), datetime.now(ZoneInfo("America/New_York")).date()
+    carried = carry_forward(today)
     ib, errors = connect(cfg["ibkr"], client_offset=8)
-    todo, carried = [], 0
+    todo = []
     try:
         for chain in cfg["chains"]:  # underlyings + expirations first (fast), so runs can start from the cache
             _, expirations = underlying(ib, chain, today, refresh=True)
             todo += [(chain, exp) for exp in pick_expiries(expirations, today, chain)]
-        carried = carry_forward(todo, today)  # usable at once, even if IBKR answers slowly today
         for chain, exp in todo:  # then refresh each from IBKR (newly listed strikes)
             listed_contracts(ib, chain, exp, today, refresh=True)
+    except Exception as e:
+        raise RuntimeError(f"cache refresh stopped: {e!r}; runs use the {carried} files carried forward") from e
     finally:
         ib.disconnect()
     return {"expiries": len(todo), "carried_forward": carried, "seconds": round(time.monotonic() - t0)}
 
 
-def carry_forward(todo: list, today: date) -> int:
-    """Copy each expiry's contract list from the latest earlier day's cache into today's, if today lacks it."""
+def carry_forward(today: date) -> int:
+    """Copy every file of the latest earlier day's cache that today's lacks: underlyings + expirations, index
+    contracts (indices.json) and the contract lists of expiries not yet past."""
     root = _cache_root()
     earlier = sorted(d for d in root.glob("*") if d.is_dir() and d.name < str(today))
     if not earlier:
         return 0
     copied = 0
-    for chain, exp in todo:
-        name = f"{chain['symbol']}_{chain['trading_class']}_{exp}.json"
-        src, dst = earlier[-1] / name, root / str(today) / name
-        if src.exists() and not dst.exists():
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            dst.write_bytes(src.read_bytes())
-            copied += 1
+    for src in sorted(earlier[-1].glob("*.json")):
+        expiry = src.stem.rsplit("_", 1)[-1]  # <symbol>_<class>_<YYYYMMDD>.json; also _params.json, indices.json
+        dst = root / str(today) / src.name
+        if (expiry.isdigit() and expiry < f"{today:%Y%m%d}") or dst.exists():
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(src.read_bytes())
+        copied += 1
     return copied
 
 

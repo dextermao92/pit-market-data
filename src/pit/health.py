@@ -1,7 +1,8 @@
 """Status reports (Chinese cards), each sent every session day whatever the result (a missing one means the host
 is down):
 
-  gateway  09:02 ET  login, US data farm, quotes; Alpaca reachable. Self-heals: RECONNECTDATA, then RESTART
+  gateway  09:02 ET  login, contract definitions, US data farm, quotes; Alpaca reachable. Self-heals:
+                     RECONNECTDATA, then RESTART (RESTART only when contract definitions are stalled)
   warmup   09:28 ET  pre-open runs since 09:05: are the option/index snapshots warm and inside the 5-min budget?
   progress hourly    10:00-15:00 ET: the session so far (runs, coverage, timings, alerts)
   summary  after eod  the session's runs, data collected, gaps, quality, dbt, disk, alerts sent
@@ -50,14 +51,27 @@ def _num(x) -> str:
     return "—" if x is None else f"{x:,.2f}".rstrip("0").rstrip(".")
 
 
+SECDEF_TIMEOUT = 20  # s; a healthy contract-definition server answers in ~1 s
+SECDEF_DOWN = "❌ 合约查询"
+
+
 def check_gateway(ibkr_cfg: dict) -> Check:
     try:
         ib, errors = connect(ibkr_cfg, client_offset=3)
     except Exception as e:
         return "error", [("❌ Gateway", f"无法连接：{e!r}", False)]
-    ib.RequestTimeout = 30  # a check, not a cold contract fetch: a hung request means a broken Gateway
+    # A check, not a cold contract fetch: a hung request means a broken Gateway. Contract definitions get their own
+    # line: on 2026-10-27 the secdef server answered nothing while login and farms looked fine; runs then live on the
+    # cached contracts, and anything not cached hangs.
+    ib.RequestTimeout = SECDEF_TIMEOUT
     try:
-        contracts = ib.qualifyContracts(Stock("SPY", "SMART", "USD"), Index("SPX", "CBOE", "USD"), Index("VIX", "CBOE", "USD"))
+        t0 = time.monotonic()
+        try:
+            contracts = ib.qualifyContracts(Stock("SPY", "SMART", "USD"), Index("SPX", "CBOE", "USD"), Index("VIX", "CBOE", "USD"))
+        except TimeoutError:
+            return "error", [("✅ Gateway", "已登录", False),
+                             (SECDEF_DOWN, f"{SECDEF_TIMEOUT}s 内没有回应：合约定义服务器卡住，采集只能靠当天的合约缓存", False)]
+        secdef = ("✅ 合约查询", f"{time.monotonic() - t0:.1f}s 返回", False)
         tickers = [ib.reqMktData(c) for c in contracts]
         # SPY quotes pre-market only if the US farm is up; indices may only have yesterday's close before the open.
         wait_for_ticks(ib, ibkr_cfg, tickers, lambda t: _price(t.bid) or _price(t.last) or _price(t.close))
@@ -72,8 +86,9 @@ def check_gateway(ibkr_cfg: dict) -> Check:
     finally:
         ib.disconnect()
     if us_farm and not down:
-        return "ok", [("✅ Gateway", "已登录，美股行情正常", False), *quotes]
-    return "error", [("❌ Gateway", f"美股报价：{'有' if us_farm else '无'}；服务器断开错误码：{down or '无'}", False), *quotes]
+        return "ok", [("✅ Gateway", "已登录，美股行情正常", False), secdef, *quotes]
+    return "error", [("❌ Gateway", f"美股报价：{'有' if us_farm else '无'}；服务器断开错误码：{down or '无'}", False),
+                     secdef, *quotes]
 
 
 def heal_window(now: datetime) -> bool:
@@ -86,6 +101,12 @@ def heal_window(now: datetime) -> bool:
 HEAL_STEPS = (("RECONNECTDATA", "重连数据服务器", 20), ("RESTART", "重启 Gateway（不需要 2FA）", 120))
 
 
+def heal_steps(fields: list[Field]) -> tuple:
+    """RECONNECTDATA only reconnects market-data farms; a stalled secdef server goes straight to RESTART
+    (on 2026-10-27 a RECONNECTDATA sent into that state hung IBC's command server, blocking RESTART too)."""
+    return HEAL_STEPS[1:] if any(f[0] == SECDEF_DOWN for f in fields) else HEAL_STEPS
+
+
 def gateway_with_healing(ibkr_cfg: dict, check=None, send_command=None, sleep=time.sleep) -> Check:
     """Check; if broken, try IBC's RECONNECTDATA, then RESTART, re-checking after each. Healed -> warn (yellow)."""
     check, send_command = check or check_gateway, send_command or ibc.command
@@ -93,10 +114,16 @@ def gateway_with_healing(ibkr_cfg: dict, check=None, send_command=None, sleep=ti
     if level == "ok" or not heal_window(datetime.now(timezone.utc)):
         return level, fields  # off-hours (weekends, holidays, night): report only, never restart
     log = ["发现 Gateway 异常"]
-    for cmd, label, wait in HEAL_STEPS:
+    for cmd, label, wait in heal_steps(fields):
         try:
             reply = send_command(cmd)
             log.append(f"→ {label}（IBC 回复：{reply or '无'}）")
+        except ibc.Hung:  # later commands would only queue behind the stuck one
+            log.append(f"→ {label}：IBC 收到命令但一直没有回应（命令服务器卡住，之后的命令也不会执行）")
+            break
+        except ibc.Denied:
+            log.append(f"→ {label}失败：IBC 拒绝了命令（检查 ControlFrom）")
+            continue
         except OSError as e:
             log.append(f"→ {label}失败：无法连接 IBC 命令服务器（{e!r}）")
             continue
@@ -105,7 +132,7 @@ def gateway_with_healing(ibkr_cfg: dict, check=None, send_command=None, sleep=ti
         if level == "ok":
             log.append("→ ✅ 已恢复")
             return "warn", [("🔧 自动修复", "\n".join(log), False), *fields]
-    log.append("→ ❌ 自动修复失败，需要人工处理（可能要在手机上确认 2FA）")
+    log.append("→ ❌ 自动修复失败，需要人工处理：docker compose restart ib-gateway，再在手机上确认 2FA")
     return "error", [("🔧 自动修复", "\n".join(log), False), *fields]
 
 

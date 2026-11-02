@@ -6,6 +6,7 @@ Usage: python -m pit.ibkr_options config/ibkr.toml
 import json
 import math
 import os
+import shutil
 import sys
 import time
 import tomllib
@@ -228,34 +229,55 @@ def connect(ib_cfg: dict, client_offset: int = 0) -> tuple[IB, list]:
 
 
 def warm_cache(config_path: str) -> dict:
-    """Pre-open: fill today's contract cache for every chain (no market data). Cold answers take 1-3 min per
-    expiry, so doing this at 08:15 keeps the 09:10+ snapshots fast.
+    """Pre-open: bring today's contract cache up to date for every chain (no market data), so the 09:10+ snapshots
+    ask the contract-definition (secdef) server nothing.
 
     The previous day's cache is carried forward first, before even connecting: on 2026-10-27 the secdef server
     answered nothing from 08:15 until a Gateway restart, and a refresh-first warm-up left the day without a cache.
-    The refresh then stops at its first failure (each unanswered request waits RequestTimeout) and fails the task,
-    so it is retried and alerted, while runs use the carried copy."""
+    The refresh is then kept small and paced: re-listing every expiry (~25 MB, ~22k messages) stalled the secdef
+    server about five minutes in, every day from 2026-10-28 to 11-02, and only a Gateway restart (2FA) brought it
+    back. So: underlyings + expirations (a few small answers), contract lists only for expiries not yet cached, and
+    a few of the oldest cached lists (newly listed strikes), `warm_pause_seconds` apart. The refresh stops at its
+    first failure (each unanswered request waits RequestTimeout) and fails the task, while runs use the cache."""
     cfg = tomllib.loads(Path(config_path).read_text())
+    ib_cfg = cfg["ibkr"]
     t0, today = time.monotonic(), datetime.now(ZoneInfo("America/New_York")).date()
     carried = carry_forward(today)
-    ib, errors = connect(cfg["ibkr"], client_offset=8)
-    todo = []
+    pause = ib_cfg.get("warm_pause_seconds", 2)
+    ib, errors = connect(ib_cfg, client_offset=8)
+    todo, fetched = [], 0
     try:
         for chain in cfg["chains"]:  # underlyings + expirations first (fast), so runs can start from the cache
             _, expirations = underlying(ib, chain, today, refresh=True)
             todo += [(chain, exp) for exp in pick_expiries(expirations, today, chain)]
-        for chain, exp in todo:  # then refresh each from IBKR (newly listed strikes)
+            ib.sleep(pause)
+        for chain, exp in to_refresh(todo, today, ib_cfg.get("warm_relist_per_day", 4)):
             listed_contracts(ib, chain, exp, today, refresh=True)
+            fetched += 1
+            ib.sleep(pause)
     except Exception as e:
-        raise RuntimeError(f"cache refresh stopped: {e!r}; runs use the {carried} files carried forward") from e
+        raise RuntimeError(f"cache refresh stopped after {fetched} contract lists: {e!r}; "
+                           f"runs use the {carried} files carried forward") from e
     finally:
         ib.disconnect()
-    return {"expiries": len(todo), "carried_forward": carried, "seconds": round(time.monotonic() - t0)}
+    return {"expiries": len(todo), "listed": fetched, "carried_forward": carried,
+            "seconds": round(time.monotonic() - t0)}
+
+
+def to_refresh(todo: list, today: date, relist: int) -> list:
+    """The (chain, expiry) pairs to list from IBKR today: every one without a cached list, then the `relist` whose
+    cached lists are oldest (carry_forward keeps the fetch time), to pick up newly listed strikes."""
+    def path(chain, exp):
+        return _cache_root() / str(today) / f"{chain['symbol']}_{chain['trading_class']}_{exp}.json"
+    missing = [(c, e) for c, e in todo if not path(c, e).exists()]
+    cached = sorted((path(c, e).stat().st_mtime, i) for i, (c, e) in enumerate(todo) if path(c, e).exists())
+    return missing + [todo[i] for _, i in cached[:relist]]
 
 
 def carry_forward(today: date) -> int:
     """Copy every file of the latest earlier day's cache that today's lacks: underlyings + expirations, index
-    contracts (indices.json) and the contract lists of expiries not yet past."""
+    contracts (indices.json) and the contract lists of expiries not yet past. Copies keep their modification time,
+    which is when IBKR was last asked: warm_cache re-lists the oldest first."""
     root = _cache_root()
     earlier = sorted(d for d in root.glob("*") if d.is_dir() and d.name < str(today))
     if not earlier:
@@ -267,7 +289,7 @@ def carry_forward(today: date) -> int:
         if (expiry.isdigit() and expiry < f"{today:%Y%m%d}") or dst.exists():
             continue
         dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(src.read_bytes())
+        shutil.copy2(src, dst)
         copied += 1
     return copied
 

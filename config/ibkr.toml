@@ -10,6 +10,8 @@ batch_size = 90          # contracts streamed at once; default account limit is 
 wait_seconds = 3         # min time to collect ticks per batch
 max_wait_seconds = 15    # keep waiting until every contract has ticked, up to this
 run_budget_seconds = 360 # a run stops starting work after this (task timeout is 8 min); chains go in config order
+warm_pause_seconds = 2   # contract_cache: pause between secdef requests (a full re-list stalled the secdef server)
+warm_relist_per_day = 4  # contract_cache: cached contract lists re-listed per day, oldest first (new strikes)
 
 # Each chain: an underlying + trading class, which expiries, which strikes, how often.
 #   expiries: dte = [min, max]      every expiry with min <= DTE <= max

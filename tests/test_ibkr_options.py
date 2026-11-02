@@ -288,3 +288,55 @@ def test_index_spot_needs_no_quote():
     spot, _, quote = spot_of(ib, IB_CFG, ib.t.contract)
     assert spot == 7722.6 and quote == {"spot_bid": None, "spot_ask": None, "spot_last": None}
     assert ib.sleeps == 1  # ready at once: no waiting for a quote an index never has
+
+
+def test_warm_cache_lists_only_new_expiries_and_the_oldest_cached(tmp_path, monkeypatch):
+    # 2026-10-28..11-02: re-listing every expiry (~25 MB) stalled the secdef server ~5 min in, every day.
+    import os
+    from types import SimpleNamespace
+    import pit.ibkr_options as io
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    cfg = tmp_path / "ibkr.toml"
+    cfg.write_text('[ibkr]\nhost="x"\nport=1\nclient_id=1\nmarket_data_type=1\nwarm_pause_seconds=0\n'
+                   'warm_relist_per_day=1\n'
+                   '[[chains]]\nname="spx"\nsymbol="SPX"\nsec_type="IND"\nexchange="CBOE"\ncurrency="USD"\n'
+                   'trading_class="SPX"\ndte=[3,400]\n')
+    yesterday = tmp_path / "cache/ibkr_contracts/2026-11-01"
+    yesterday.mkdir(parents=True)
+    for k, exp in enumerate(("20261119", "20261217", "20270114")):  # listed 3, 2 and 1 days ago
+        f = yesterday / f"SPX_SPX_{exp}.json"
+        f.write_text("[]")
+        os.utime(f, (1_800_000_000 + k * 86400,) * 2)
+    asked = []
+
+    class FakeIB:
+        def qualifyContracts(self, c):
+            c.conId = 416904
+            return [c]
+
+        def reqSecDefOptParams(self, *a):
+            return [SimpleNamespace(tradingClass="SPX", exchange="SMART",
+                                    expirations={"20261119", "20261217", "20270114", "20270218"})]
+
+        def reqContractDetails(self, template):
+            asked.append(template.lastTradeDateOrContractMonth)
+            return []
+
+        def sleep(self, s):
+            pass
+
+        def disconnect(self):
+            pass
+
+    class Today(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 11, 2, 8, 15, tzinfo=tz)
+
+    monkeypatch.setattr(io, "datetime", Today)
+    monkeypatch.setattr(io, "connect", lambda cfg, client_offset=0: (FakeIB(), []))
+    out = io.warm_cache(str(cfg))
+    assert asked == ["20270218", "20261119"]  # the new expiry, then the longest-unasked cached one
+    assert out["expiries"] == 4 and out["listed"] == 2 and out["carried_forward"] == 3
+    today = tmp_path / "cache/ibkr_contracts/2026-11-02"
+    assert (today / "SPX_SPX_20261217.json").stat().st_mtime == 1_800_000_000 + 86400  # copy kept the fetch time

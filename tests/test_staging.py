@@ -118,3 +118,11 @@ def test_farm_drop_alerts_only_when_not_recovered():
     assert unrecovered([broken, other_back]) == {2103}     # a different farm coming back doesn't count
     assert unrecovered([back, broken]) == {2103}           # recovery must come after the drop
     assert unrecovered([{"code": 1100, "msg": "Connectivity lost"}, {"code": 1102, "msg": "restored"}]) == set()
+
+
+def test_spot_quote_staged_when_recorded():
+    old = to_frame(PAYLOAD)  # raw from before 2026-11-02 has no spot quote
+    assert old["spot_bid"].null_count() == len(old) and old["spot_last"].null_count() == len(old)
+    u = PAYLOAD["underlyings"][0] | {"spot_bid": 7799.5, "spot_ask": 7800.5, "spot_last": 7800.0}
+    new = to_frame(PAYLOAD | {"underlyings": [u]})
+    assert new.select("spot_bid", "spot_ask", "spot_last").unique().rows() == [(7799.5, 7800.5, 7800.0)]

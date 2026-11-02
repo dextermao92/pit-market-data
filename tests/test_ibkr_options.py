@@ -248,3 +248,43 @@ def test_warm_cache_makes_runs_free_of_secdef_requests(tmp_path, monkeypatch):
     assert calls == ["qualify", "secdef"] and exps == ["20261113", "20261120"]
     und2, exps2 = underlying(Stalled(), chain, TODAY)                           # a run later that day
     assert (und2.conId, und2.secType, und2.exchange, exps2) == (416904, "IND", "CBOE", exps)
+
+
+class QuoteIB:
+    """reqMktData's ticker gets the last trade first and the quote one sleep later (as on 2026-10-30 13:38 AAPL)."""
+    def __init__(self, und, quote_after_sleeps=2, **first):
+        self.t, self.sleeps, self.quote_after = Ticker(contract=und, time=datetime(2026, 10, 30, 17, 38, tzinfo=timezone.utc)), 0, quote_after_sleeps
+        for k, v in first.items():
+            setattr(self.t, k, v)
+
+    def reqMktData(self, c, *args):
+        return self.t
+
+    def cancelMktData(self, c):
+        pass
+
+    def sleep(self, s):
+        self.sleeps += 1
+        if self.sleeps == self.quote_after and self.t.contract.secType != "IND":
+            self.t.bid, self.t.ask, self.t.bidSize, self.t.askSize = 346.10, 346.12, 200.0, 300.0
+
+
+IB_CFG = {"wait_seconds": 0, "max_wait_seconds": 1}
+
+
+def test_spot_waits_for_the_quote_so_a_stale_last_becomes_the_midpoint():
+    from ib_async import Stock
+    from pit.ibkr_options import spot_of
+    ib = QuoteIB(Stock("AAPL", "SMART", "USD"), last=347.05)
+    spot, spot_time, quote = spot_of(ib, IB_CFG, ib.t.contract)
+    assert spot == pytest.approx(346.11) and spot_time.startswith("2026-10-30T17:38")
+    assert quote == {"spot_bid": 346.10, "spot_ask": 346.12, "spot_last": 347.05}
+
+
+def test_index_spot_needs_no_quote():
+    from ib_async import Index
+    from pit.ibkr_options import spot_of
+    ib = QuoteIB(Index("SPX", "CBOE", "USD"), close=7722.6)
+    spot, _, quote = spot_of(ib, IB_CFG, ib.t.contract)
+    assert spot == 7722.6 and quote == {"spot_bid": None, "spot_ask": None, "spot_last": None}
+    assert ib.sleeps == 1  # ready at once: no waiting for a quote an index never has

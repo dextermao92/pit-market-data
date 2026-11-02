@@ -1,0 +1,2 @@
+underlying,spot_time,spot,reason
+AAPL,2026-10-30 17:38:54.619054+00:00,347.05,"spot was the last trade before the quote arrived (bar 346.10-346.66, AAPL had traded 346.1-346.7 since 13:30 ET); spot_of waits for both quote sides from 2026-11-02"

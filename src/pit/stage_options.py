@@ -22,7 +22,7 @@ GREEKS = {
 }
 SCHEMA = {
     "ingested_at": TS, "chain": pl.String, "underlying": pl.String, "trading_class": pl.String,
-    "spot": pl.Float64, "spot_time": TS,
+    "spot": pl.Float64, "spot_time": TS, "spot_bid": pl.Float64, "spot_ask": pl.Float64, "spot_last": pl.Float64,
     "con_id": pl.Int64, "local_symbol": pl.String, "expiry": pl.Date, "strike": pl.Float64, "right": pl.String,
     "multiplier": pl.Int32,
     **{c: pl.Float64 for c in QUOTE.values()},
@@ -54,6 +54,7 @@ def to_frame(payload: dict) -> pl.DataFrame:
                 "trading_class": c["tradingClass"],
                 "spot": u["spot"],
                 "spot_time": _ts(u["spot_time"]),
+                **{f: u.get(f) for f in ("spot_bid", "spot_ask", "spot_last")},  # recorded from 2026-11-02
                 "con_id": c["conId"],
                 "local_symbol": c["localSymbol"],
                 "expiry": datetime.strptime(c["expiry"], "%Y%m%d").date(),

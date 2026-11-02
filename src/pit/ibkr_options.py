@@ -103,9 +103,14 @@ def wait_for_ticks(ib: IB, ib_cfg: dict, tickers, ready) -> None:
         ib.sleep(0.25)
 
 
-def spot_of(ib: IB, ib_cfg: dict, und: Contract) -> tuple[float, str | None]:
+def spot_of(ib: IB, ib_cfg: dict, und: Contract) -> tuple[float, str | None, dict]:
+    """Spot, its tick time, and the quote it came from. Stocks/ETFs wait for both quote sides: until they arrive
+    marketPrice() is the last trade, however old (2026-10-30 13:38 AAPL: 347.05 while it traded 346.1-346.7);
+    with them it is the last only inside the spread, else the midpoint. Indices have no quote: last or close."""
     t = ib.reqMktData(und)  # streamed, not snapshot: a snapshot of an index outside RTH returns nothing
-    wait_for_ticks(ib, ib_cfg, [t], lambda t: clean(t.marketPrice()) or clean(t.close))
+    has_quote = und.secType != "IND"
+    wait_for_ticks(ib, ib_cfg, [t], (lambda t: t.hasBidAsk()) if has_quote  # what marketPrice() checks
+                   else lambda t: clean(t.marketPrice()) or clean(t.close))
     ib.cancelMktData(und)
     spot = clean(t.marketPrice()) or clean(t.close)  # indices only calculate in RTH; fall back to close
     if spot is None:
@@ -117,7 +122,8 @@ def spot_of(ib: IB, ib_cfg: dict, und: Contract) -> tuple[float, str | None]:
             reply = f"IBC unreachable: {e!r}"
         raise RuntimeError(f"{und.symbol}: no spot price; sent RECONNECTDATA ({reply}); "
                            "if it persists, check the market-data subscription for the underlying")
-    return spot, t.time.isoformat() if t.time else None
+    quote = {"spot_bid": clean(t.bid), "spot_ask": clean(t.ask), "spot_last": clean(t.last)}
+    return spot, t.time.isoformat() if t.time else None, quote
 
 
 UNDERLYING_FIELDS = ("conId", "symbol", "secType", "exchange", "currency")
@@ -175,7 +181,7 @@ def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, 
     und, expirations = underlying(ib, chain, today)
     if und.conId not in spots:  # one spot per underlying per run, shared by its chains
         spots[und.conId] = spot_of(ib, ib_cfg, und)
-    spot, spot_time = spots[und.conId]
+    spot, spot_time, spot_quote = spots[und.conId]
 
     contracts = []
     for exp in pick_expiries(expirations, today, chain):
@@ -197,7 +203,7 @@ def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, 
             ib.cancelMktData(c)
 
     return {"chain": chain["name"], "symbol": chain["symbol"], "trading_class": chain["trading_class"],
-            "spot": spot, "spot_time": spot_time, "contracts": rows}
+            "spot": spot, "spot_time": spot_time, **spot_quote, "contracts": rows}
 
 
 def connect(ib_cfg: dict, client_offset: int = 0) -> tuple[IB, list]:

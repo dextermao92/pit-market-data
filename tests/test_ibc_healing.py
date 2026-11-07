@@ -135,6 +135,35 @@ def test_check_gateway_reports_stalled_contract_definitions(monkeypatch):
     assert seen == {"timeout": health.SECDEF_TIMEOUT, "disconnected": True}
 
 
+def test_check_gateway_fails_on_missing_subscription_even_with_farms_up(monkeypatch):
+    from types import SimpleNamespace
+    import pit.health as health
+
+    class NotSubscribed:
+        RequestTimeout = 300
+
+        def qualifyContracts(self, *contracts):
+            return list(contracts)
+
+        def reqMktData(self, contract):
+            return SimpleNamespace(contract=contract, bid=-1, last=-1, close=100.0)
+
+        def disconnect(self):
+            pass
+
+    errors = [{"code": 2104, "msg": "Market data farm connection is OK:usfarm.nj"}, {"code": 10089, "msg": "needs subscription"}]
+    monkeypatch.setattr(health, "connect", lambda cfg, client_offset=0: (NotSubscribed(), errors))
+    monkeypatch.setattr(health, "wait_for_ticks", lambda *a: None)
+    level, fields = health.check_gateway({})
+    assert level == "error" and fields[2][0] == health.NO_DATA_FIELD and "10089" in fields[2][1]
+
+
+def test_subscription_problem_is_not_healed():
+    from pit.health import NO_DATA_FIELD
+    missing = ("error", [("✅ Gateway", "已登录", False), (NO_DATA_FIELD, "错误码 [354]", False)])
+    assert healing([missing]) == ("error", missing[1], [])
+
+
 def test_no_healing_outside_the_window():
     level, fields, sent = healing([BAD], in_window=False)
     assert level == "error" and sent == []

@@ -32,6 +32,7 @@ services:
       TIME_ZONE: America/New_York
       AUTO_RESTART_TIME: "11:45 PM"  # daily, no 2FA; pre-open data-farm drops are healed by the 09:02 check
       TWOFA_TIMEOUT_ACTION: restart
+      TWOFA_DEVICE: ${TWOFA_DEVICE:-}  # exact name in the 2FA device list; empty = pick it by hand over VNC
       EXISTING_SESSION_DETECTED_ACTION: primary  # Gateway keeps its session if the same user logs in elsewhere
     ports:
       - "127.0.0.1:4002:4004"  # paper API, for running the collector from the host

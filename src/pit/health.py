@@ -1,7 +1,7 @@
 """Status reports (Chinese cards), each sent every session day whatever the result (a missing one means the host
 is down):
 
-  gateway  09:02 ET  login, contract definitions, US data farm, quotes; Alpaca reachable. Self-heals:
+  gateway  08:00, 08:20, 08:40, 09:02 ET  login, contract definitions, subscriptions, US data farm, quotes; Alpaca reachable. Self-heals:
                      RECONNECTDATA, then RESTART (RESTART only when contract definitions are stalled)
   warmup   09:28 ET  pre-open runs since 09:05: are the option/index snapshots warm and inside the 5-min budget?
   progress hourly    10:00-15:00 ET: the session so far (runs, coverage, timings, alerts)
@@ -33,6 +33,7 @@ from pit.notify import DATASET_ZH, LEVEL_MARK, Field, as_text
 
 NY = "America/New_York"
 FARM_DOWN = {1100, 2103, 2105, 2110, 2157}  # connectivity lost / data farm broken
+NO_DATA = {354, 10089, 10090, 10167, 10168, 10197}  # not subscribed / delayed only / competing live session
 RANK = {"ok": 0, "warn": 1, "error": 2}
 Check = tuple[str, list[Field]]
 
@@ -53,6 +54,7 @@ def _num(x) -> str:
 
 SECDEF_TIMEOUT = 20  # s; a healthy contract-definition server answers in ~1 s
 SECDEF_DOWN = "❌ 合约查询"
+NO_DATA_FIELD = "❌ 行情权限"
 
 
 def check_gateway(ibkr_cfg: dict) -> Check:
@@ -81,10 +83,15 @@ def check_gateway(ibkr_cfg: dict) -> Check:
         us_farm = (_price(tickers[0].bid) is not None or _price(tickers[0].last) is not None
                    or any(e["code"] == 2104 and "usfarm" in e["msg"] for e in errors))
         down = sorted({e["code"] for e in errors} & FARM_DOWN)
+        no_data = sorted({e["code"] for e in errors} & NO_DATA)
     except Exception as e:  # connected but requests hang (2026-10-26 09:02: 300 s, and the exception skipped healing)
         return "error", [("❌ Gateway", f"已连接，但请求没有响应：{e!r}", False)]
     finally:
         ib.disconnect()
+    if no_data:  # farms can look fine while this user gets no data, so the login alone proves nothing
+        return "error", [("✅ Gateway", "已登录", False), secdef,
+                         (NO_DATA_FIELD, f"错误码 {no_data}：这个 user 的订阅未生效，或行情被另一个登录占用。重启修不好，需要人工处理", False),
+                         *quotes]
     if us_farm and not down:
         return "ok", [("✅ Gateway", "已登录，美股行情正常", False), secdef, *quotes]
     return "error", [("❌ Gateway", f"美股报价：{'有' if us_farm else '无'}；服务器断开错误码：{down or '无'}", False),
@@ -111,8 +118,8 @@ def gateway_with_healing(ibkr_cfg: dict, check=None, send_command=None, sleep=ti
     """Check; if broken, try IBC's RECONNECTDATA, then RESTART, re-checking after each. Healed -> warn (yellow)."""
     check, send_command = check or check_gateway, send_command or ibc.command
     level, fields = check(ibkr_cfg)
-    if level == "ok" or not heal_window(datetime.now(timezone.utc)):
-        return level, fields  # off-hours (weekends, holidays, night): report only, never restart
+    if level == "ok" or not heal_window(datetime.now(timezone.utc)) or any(f[0] == NO_DATA_FIELD for f in fields):
+        return level, fields  # off-hours (weekends, holidays, night) or a subscription problem: report only, never restart
     log = ["发现 Gateway 异常"]
     for cmd, label, wait in heal_steps(fields):
         try:

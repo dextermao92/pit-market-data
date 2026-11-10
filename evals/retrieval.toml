@@ -1,0 +1,42 @@
+# Retrieval golden set: a question as the agent would search for it (English), and the chunks that answer it, as
+# [doc, section substring]. A hit is any top-k chunk matching one of them. M3a: 10 questions; M3b grows it to 30.
+
+[[q]]
+question = "The 09:02 Gateway card shows the contract lookup field in red. What does it mean and what do I do?"
+expect = [["runbooks/gateway", "B. Contract-definition"]]
+
+[[q]]
+question = "Option and index snapshot runs fail with TimeoutError after about 4 seconds"
+expect = [["runbooks/gateway", "A. API unreachable"], ["runbooks/stale-snapshots", "By cause"]]
+
+[[q]]
+question = "IBKR error 10197, will a Gateway restart fix it?"
+expect = [["runbooks/gateway", "C. No data"]]
+
+[[q]]
+question = "How do I restart the Gateway container by hand and approve the 2FA push?"
+expect = [["runbooks/gateway", "E. Manual restart"]]
+
+[[q]]
+question = "dbt build failed: Could not set lock on file curated.duckdb, conflicting lock is held"
+expect = [["runbooks/duckdb-lock", "Symptoms"], ["runbooks/duckdb-lock", "Fix"], ["runbooks/duckdb-lock", "How it happens"]]
+
+[[q]]
+question = "The disk is almost full. Which folders are safe to delete?"
+expect = [["runbooks/disk-full", "What can be deleted"]]
+
+[[q]]
+question = "Why was a whole session of option snapshots lost on 2026-10-26?"
+expect = [["incidents/2026-10-26", "Root cause"], ["incidents/2026-10-26", "Impact"]]
+
+[[q]]
+question = "Was the October 26 outage caused by a second machine logging in with the same IBKR username?"
+expect = [["incidents/2026-10-26", "Root cause"]]
+
+[[q]]
+question = "What is the objective for option snapshot coverage, and how big is the error budget?"
+expect = [["slo", "Indicators and objectives"]]
+
+[[q]]
+question = "Equity bars are stale but option snapshots are fine. What should I check?"
+expect = [["runbooks/stale-snapshots", "By cause"]]

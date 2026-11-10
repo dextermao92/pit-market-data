@@ -36,7 +36,7 @@ def write_runs(tmp_path, error=None):
 
 def test_tools_are_read_only():
     tools = {t.name: t for t in call("list_tools")}
-    assert set(tools) == {"get_runs", "slo_status", "read_runbook", "recall_similar"}  # memory: read-only too
+    assert set(tools) == {"get_runs", "slo_status", "read_runbook", "search_docs"}
     assert all(t.annotations.read_only_hint and not t.annotations.destructive_hint for t in tools.values())
 
 
@@ -74,3 +74,11 @@ def test_slo_status_reports_objectives(tmp_path, monkeypatch):
     out = json.loads(call("slo_status", {"end": "2026-10-26", "sessions_back": 1}))
     assert out["window"]["sli1_coverage_pct"] == 0.0 and out["met"]["sli1_coverage_pct"] is False
     assert out["objectives"]["sli1_coverage_pct"] == 99.0 and len(out["per_session"]) == 1
+
+
+def test_search_docs_returns_sections(monkeypatch):
+    from pit.copilot import docs
+    from test_copilot_docs import INDEX  # pytest puts tests/ on sys.path
+    monkeypatch.setattr(docs, "index", lambda: INDEX)
+    out = json.loads(call("search_docs", {"query": "error 10197", "k": 1}))["results"]
+    assert out[0]["doc"] == "runbooks/gateway" and out[0]["section"].endswith("C. No data")

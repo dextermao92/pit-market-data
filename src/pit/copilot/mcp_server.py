@@ -12,7 +12,7 @@ from pathlib import Path
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
-from pit.copilot.memory import format_recall, recall
+from pit.copilot import docs
 from pit.copilot.redact import redact
 from pit.health import _runs
 from pit.slo import compute, sessions
@@ -28,7 +28,8 @@ READ_ONLY = ToolAnnotations(read_only_hint=True, destructive_hint=False, idempot
 
 server = MCPServer("pit-ops", instructions=(
     "Read-only view of the pit-market-data collector: run history (get_runs), SLOs (slo_status) and the ops docs "
-    "(read_runbook: runbooks, incident write-ups, SLO definitions). Times are US/Eastern. Option snapshots can't be "
+    "(search_docs to find the right section, read_runbook for a whole doc: runbooks, incident write-ups, SLO "
+    "definitions, README). Times are US/Eastern. Option snapshots can't be "
     "backfilled, so a failed option slot is permanent data loss."))
 
 
@@ -108,6 +109,16 @@ def recall_similar(query: str, limit: int = 3) -> str:
     """Past diagnoses the operator confirmed, most similar to `query` first (matched on error names, IBKR codes
     and keywords; no dates). Pass the error text or the symptoms. Hints from other days: check them against runs."""
     return format_recall(recall(query, max(1, min(limit, 5))))
+
+
+@server.tool(annotations=READ_ONLY)
+def search_docs(query: str, k: int = 5) -> dict:
+    """Search the ops docs (runbooks, incident write-ups, SLO definitions) and the README; returns the k best
+    sections, each with its doc and heading path. Write the query in English and include exact error codes or
+    messages (e.g. 10197, "Could not set lock"). Hybrid of keyword (BM25) and semantic search."""
+    return {"query": query, "results": [  # one JSON block (a list return becomes one content block per item)
+        {"doc": r["doc"], "section": r["section"], "text": redact(r["text"])[0], "score": round(r["score"], 4)}
+        for r in docs.index().search(query, k=max(1, min(k, 10)))]}
 
 
 if __name__ == "__main__":

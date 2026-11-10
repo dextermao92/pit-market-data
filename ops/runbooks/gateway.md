@@ -11,12 +11,12 @@ Commands run from the repo root on the host that runs the stack. Times are ET.
 
   | Field | Meaning | Section |
   |---|---|---|
-  | `❌ Gateway 无法连接` | The API port refuses or times out on connect | [A](#a-api-unreachable-or-hanging) |
-  | `❌ Gateway 已连接，但请求没有响应` | Connects, then requests hang | [A](#a-api-unreachable-or-hanging) |
-  | `❌ 合约查询` | Logged in, but contract definitions don't answer within 20 s | [B](#b-contract-definition-secdef-stall) |
-  | `❌ 行情权限` (codes 354, 10089, 10090, 10167, 10168, 10197) | This user gets no live data | [C](#c-no-data-subscriptions-or-competing-session) |
-  | `❌ Gateway 美股报价：无` plus farm codes 1100 / 2103 / 2105 / 2157 | Data farms disconnected | [D](#d-data-farms-disconnected) |
-  | `🔧 自动修复` ending in `❌ 自动修复失败` | Self-healing tried and failed | [E](#e-manual-restart-full-login) |
+  | `❌ Gateway 无法连接` (cannot connect) | The API port refuses or times out on connect | [A](#a-api-unreachable-or-hanging) |
+  | `❌ Gateway 已连接，但请求没有响应` (connected, requests hang) | Connects, then requests hang | [A](#a-api-unreachable-or-hanging) |
+  | `❌ 合约查询` (contract lookup) | Logged in, but contract definitions (secdef) don't answer within 20 s | [B](#b-contract-definition-secdef-stall) |
+  | `❌ 行情权限` (market data permissions; codes 354, 10089, 10090, 10167, 10168, 10197) | This user gets no live data | [C](#c-no-data-subscriptions-or-competing-session) |
+  | `❌ Gateway 美股报价：无` (no US quotes) plus farm codes 1100 / 2103 / 2105 / 2157 | Data farms disconnected | [D](#d-data-farms-disconnected) |
+  | `🔧 自动修复` (self-healing) ending in `❌ 自动修复失败` (failed) | Self-healing tried and failed | [E](#e-manual-restart-full-login) |
 
 - A **`⏸️ 数据停滞`** card for option or index snapshots: see [stale-snapshots.md](stale-snapshots.md). The watchdog has already
   tried self-healing once.
@@ -47,7 +47,7 @@ Self-healing can't fix this state: IBC's `RESTART` was accepted but the Gateway'
 1. If the Gateway log shows a login dialog or `Second Factor Authentication`, it's waiting for 2FA: go to E, step 3.
 2. Otherwise go to E. A wedged Gateway only comes back from a container restart.
 
-## B. Contract-definition (secdef) stall
+## B. Contract-definition (secdef) stall: the contract lookup (`合约查询`) is red
 
 **Seen 2026-10-23 (5 min) and every morning 2026-10-28 → 11-02**, caused by the 08:15 `contract_cache` refresh
 downloading every expiry (~24 MB, ~23k messages).

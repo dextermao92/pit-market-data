@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "pit-ops": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "pit.copilot.mcp_server"],
+      "env": {"DATA_DIR": "data"}
+    }
+  }
+}

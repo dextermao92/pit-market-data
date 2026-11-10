@@ -11,6 +11,7 @@ dependencies = [
 
 [dependency-groups]
 copilot = [
+    "mcp==2.3.0",
     "openai==3.48.0",
 ]
 dbt = [

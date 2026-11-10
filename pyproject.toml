@@ -10,6 +10,9 @@ dependencies = [
 ]
 
 [dependency-groups]
+copilot = [
+    "openai==3.48.0",
+]
 dbt = [
     "dbt-core==1.11.15",
     "dbt-duckdb==1.11.0",
@@ -27,4 +30,4 @@ build-backend = "hatchling.build"
 packages = ["src/pit"]
 
 [tool.uv]
-default-groups = ["dev", "dbt"]
+default-groups = ["dev", "dbt", "copilot"]

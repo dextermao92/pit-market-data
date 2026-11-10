@@ -1,0 +1,26 @@
+# LLM for the PIT Ops Copilot. DeepSeek's OpenAI-compatible API; the key comes from the env var named below.
+# Models, prices and peak hours checked 2026-11-10 against https://api-docs.deepseek.com/quick_start/pricing
+
+[llm]
+base_url = "https://api.deepseek.com"
+api_key_env = "DEEPSEEK_API_KEY"
+model = "deepseek-flash"      # DeepSeek-V4.1-Flash; "deepseek-v4-pro" is the bigger one
+thinking = false              # thinking mode is the API default; with tools, reasoning_content must be sent back
+timeout_seconds = 60
+daily_budget_usd = 1.00       # calls are refused once today's logged cost reaches this
+
+# USD per 1M tokens, [off-peak, peak]. Reasoning tokens are billed as output.
+[prices.deepseek-flash]
+cache_hit = [0.003, 0.006]
+cache_miss = [0.15, 0.30]
+output = [0.60, 1.20]
+
+[prices.deepseek-v4-pro]
+cache_hit = [0.022, 0.044]
+cache_miss = [0.66, 1.32]
+output = [1.98, 3.96]
+
+# Peak hours, UTC, Monday to Friday. Chinese public holidays are off-peak but aren't modelled, so cost is
+# overestimated on those days.
+[peak]
+hours = [[1, 4], [6, 10]]

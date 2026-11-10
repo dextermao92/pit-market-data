@@ -4,8 +4,8 @@ What "working" means for the collector, measured from data it already writes. On
 indicators ([`slo.sql`](slo.sql)):
 
 ```bash
-python -m pit.slo                          # last 20 sessions up to now, on ./data
-python -m pit.slo --end 2026-10-26 --sessions 9 --data-dir /path/to/data
+uv run python -m pit.slo                          # last 20 sessions up to now, on ./data
+uv run python -m pit.slo --end 2026-10-26 --sessions 9 --data-dir /path/to/data
 ```
 
 Window: the last **20 sessions** (about four weeks), rolling. Sessions, opens and closes come from the exchange
@@ -49,7 +49,7 @@ Counting rules:
 | **Window** | **88.9 %** ❌ | **82.5 %** ❌ | **100 %** ✅ | |
 
 10-26 alone used 78 slots, about five times SLI 1's budget. Collection moved to the Windows host on ~2026-10-27, so
-later sessions have to be computed there (`python -m pit.slo` against its `data/`).
+later sessions have to be computed there (`uv run python -m pit.slo` against its `data/`).
 
 ## When the budget is gone
 

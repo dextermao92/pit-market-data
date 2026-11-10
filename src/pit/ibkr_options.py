@@ -95,12 +95,21 @@ def ticker_row(t) -> dict:
     }
 
 
-def wait_for_ticks(ib: IB, ib_cfg: dict, tickers, ready) -> None:
+def wait_for_ticks(ib: IB, ib_cfg: dict, tickers, ready, min_seconds: float | None = None) -> None:
     """First-time subscriptions or a data farm still connecting (e.g. right after login) can take >3s:
-    wait the minimum, then until ready(t) holds for every ticker, capped at max_wait_seconds."""
-    ib.sleep(ib_cfg["wait_seconds"])
-    deadline = time.monotonic() + ib_cfg["max_wait_seconds"] - ib_cfg["wait_seconds"]
+    wait the minimum (wait_seconds unless given), then until ready(t) holds for every ticker, capped at max_wait_seconds."""
+    min_seconds = ib_cfg["wait_seconds"] if min_seconds is None else min_seconds
+    ib.sleep(min_seconds)
+    deadline = time.monotonic() + ib_cfg["max_wait_seconds"] - min_seconds
     while time.monotonic() < deadline and not all(ready(t) for t in tickers):
+        ib.sleep(0.25)
+
+
+def wait_for_greeks(ib: IB, ib_cfg: dict, tickers) -> None:
+    """Model greeks come ~1 s after a contract's quote, later down a batch (2026-11-09 RTH: all 78 by 4.3 s, 12-45 by
+    3 s). Read at the quote, 42% of quoted rows had none. A few contracts never get them, hence the cap."""
+    deadline = time.monotonic() + ib_cfg.get("greeks_wait_seconds", 0)
+    while time.monotonic() < deadline and not all(t.modelGreeks is not None for t in tickers if t.time):
         ib.sleep(0.25)
 
 
@@ -198,8 +207,9 @@ def snapshot_chain(ib: IB, ib_cfg: dict, chain: dict, today: date, spots: dict, 
         check_budget()
         chunk = contracts[i : i + n]
         tickers = [ib.reqMktData(c, OPEN_INTEREST) for c in chunk]
-        wait_for_ticks(ib, ib_cfg, tickers, lambda t: t.time)
-        rows += [ticker_row(t) for t in tickers]
+        wait_for_ticks(ib, ib_cfg, tickers, lambda t: t.time, ib_cfg.get("batch_wait_seconds"))
+        wait_for_greeks(ib, ib_cfg, tickers)
+        rows +=[ticker_row(t) for t in tickers]
         for c in chunk:
             ib.cancelMktData(c)
 

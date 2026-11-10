@@ -290,6 +290,40 @@ def test_index_spot_needs_no_quote():
     assert ib.sleeps == 1  # ready at once: no waiting for a quote an index never has
 
 
+class GreeksIB:
+    """Ticked tickers whose model greeks arrive after a number of sleeps each (None: never)."""
+    def __init__(self, after_sleeps, ticked=True):
+        self.sleeps, self.after = 0, after_sleeps
+        self.tickers = [Ticker(time=datetime(2026, 11, 9, 15, 8, tzinfo=timezone.utc) if ticked else None)
+                        for _ in after_sleeps]
+
+    def sleep(self, s):
+        self.sleeps += 1
+        for t, n in zip(self.tickers, self.after):
+            if n is not None and self.sleeps >= n:
+                t.modelGreeks = "greeks"
+
+
+def test_batch_waits_for_greeks_that_trail_the_quote():
+    # 2026-11-09 RTH: greeks came ~1 s after the quotes; read at the quotes, 42% of quoted rows had none.
+    from pit.ibkr_options import wait_for_greeks
+    ib = GreeksIB([1, 2, 4])
+    wait_for_greeks(ib, {"greeks_wait_seconds": 30}, ib.tickers)
+    assert ib.sleeps == 4 and all(t.modelGreeks for t in ib.tickers)  # done when the last arrives, not at the cap
+
+
+def test_greeks_wait_is_capped_and_ignores_contracts_that_never_ticked():
+    import time
+    from pit.ibkr_options import wait_for_greeks
+    ib = GreeksIB([1, None])                    # one contract never gets greeks (QQQ, 2026-11-09)
+    t0 = time.monotonic()
+    wait_for_greeks(ib, {"greeks_wait_seconds": 0.2}, ib.tickers)
+    assert 0.2 <= time.monotonic() - t0 < 1
+    quiet = GreeksIB([None], ticked=False)     # no quote at all: nothing to wait for
+    wait_for_greeks(quiet, {"greeks_wait_seconds": 30}, quiet.tickers)
+    assert quiet.sleeps == 0
+
+
 def test_warm_cache_lists_only_new_expiries_and_the_oldest_cached(tmp_path, monkeypatch):
     # 2026-10-28..11-02: re-listing every expiry (~25 MB) stalled the secdef server ~5 min in, every day.
     import os

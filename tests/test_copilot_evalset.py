@@ -22,7 +22,8 @@ def test_case_files_are_valid():
     ids = [c["id"] for c in cases]
     assert len(ids) == len(set(ids)) >= 25
     assert {c["id"]: problems(c) for c in cases if problems(c)} == {}
-    assert all(c["simulated"] == (c["_kind"] == "simulated") for c in cases)
+    assert all(c["simulated"] == (c["_kind"] != "real") for c in cases)
+    assert sum(c["_kind"] == "injection" for c in cases) >= 5
 
 
 @pytest.fixture

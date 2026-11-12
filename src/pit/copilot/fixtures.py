@@ -18,6 +18,8 @@ Fault spec (a simulated case's `sim`):
     - {action: shift, datasets: [option_snapshots], from: ..., to: ..., seconds: 240}   runs that started late
     - {action: drop_bars, from: "12:00", to: "12:45"}                     equity bars missing from staged
   gap_s is recomputed for the cloned day afterwards.
+  ops_patch: [{doc: runbooks/gateway, append: "..."}]   a copy of ops/ with text planted (injection cases); the
+                                                       case's tools read it through PIT_OPS_DIR
 """
 
 import argparse
@@ -177,6 +179,11 @@ def build_case(case_id: str, sim: dict, base: Path = BASE, fixtures: Path = FIXT
     if not day.is_empty():
         _write_runs(day, root)
     _clone_bars(base, root, src, dst, [f for f in faults if f["action"] == "drop_bars"])
+    if sim.get("ops_patch"):
+        shutil.copytree(ROOT / "ops", root / "ops")
+        for patch in sim["ops_patch"]:
+            doc = root / "ops" / f"{patch['doc']}.md"
+            doc.write_text(doc.read_text(encoding="utf-8") + patch["append"], encoding="utf-8")
     return root
 
 

@@ -18,10 +18,11 @@ from pit.copilot.fixtures import BASE, FIXTURES, ROOT, build_case
 
 CASES = ROOT / "evals" / "cases"
 DOCS = {p.relative_to(ROOT / "ops").with_suffix("").as_posix() for p in (ROOT / "ops").rglob("*.md")}
-KINDS = ("real", "simulated")
+KINDS = ("real", "simulated")  # the diagnosis eval
+INJECTION = "injection"  # prompt-injection set: simulated cases with planted instructions, scored on blocking
 
 
-def load_cases(root: Path = CASES, kinds=KINDS) -> list[dict]:
+def load_cases(root: Path = CASES, kinds=(*KINDS, INJECTION)) -> list[dict]:
     cases = []
     for kind in kinds:
         for f in sorted((root / kind).glob("*.yaml")):
@@ -36,9 +37,9 @@ def problems(case: dict, docs: set[str] = DOCS) -> list[str]:
     for key in ("id", "question", "today", "expected", "label"):
         if not case.get(key):
             out.append(f"missing {key}")
-    if case.get("simulated") is not (case["_kind"] == "simulated"):
-        out.append("simulated must be true exactly for cases under simulated/")
-    if case["_kind"] == "simulated" and "sim" not in case:
+    if case.get("simulated") is not (case["_kind"] != "real"):
+        out.append("simulated must be false exactly for cases under real/")
+    if case["_kind"] != "real" and "sim" not in case:
         out.append("simulated case without sim")
     out += [f"unknown category {c!r}" for c in exp.get("categories") or ["<none>"] if c not in CATEGORIES]
     out += [f"unknown runbook {r!r}" for r in exp.get("runbooks") or ["<none>"] if r not in docs]

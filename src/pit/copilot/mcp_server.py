@@ -88,11 +88,12 @@ def slo_status(end: str | None = None, sessions_back: int = 20) -> dict:
 def read_runbook(name: str = "") -> str:
     """An ops doc by name, e.g. "runbooks/gateway", "incidents/2026-10-26" or "slo". With no name: the list of
     docs (runbooks, incident write-ups, SLO definitions)."""
-    docs = sorted(p.relative_to(OPS).with_suffix("").as_posix() for p in OPS.rglob("*.md"))  # "/" on Windows too
+    ops = Path(os.environ.get("PIT_OPS_DIR", OPS))  # evals point this at a copy with planted text
+    docs = sorted(p.relative_to(ops).with_suffix("").as_posix() for p in ops.rglob("*.md"))  # "/" on Windows too
     if not name:
         return "Available docs:\n" + "\n".join(docs)
-    path = (OPS / name.removesuffix(".md")).with_suffix(".md").resolve()
-    if not path.is_relative_to(OPS.resolve()) or not path.is_file():
+    path = (ops / name.removesuffix(".md")).with_suffix(".md").resolve()
+    if not path.is_relative_to(ops.resolve()) or not path.is_file():
         return f"No doc named {name!r}. Available: {', '.join(docs)}"
     return redact(path.read_text(encoding="utf-8"))[0]  # Windows defaults to the ANSI code page
 

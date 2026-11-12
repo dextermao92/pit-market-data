@@ -4,8 +4,10 @@ A personal, local, batch pipeline for US equity/ETF 5-minute bars and 5-minute
 option chain snapshots that can answer **"what did I know as of time T?"** —
 reproducibly.
 
-Status: P0–P3 built; collecting every session day since 2026-10-14. P4 (`as_of` queries) not started.
-P5 (PIT Ops Copilot) in progress: incident write-ups in [`ops/incidents/`](ops/incidents/).
+Status (2026-11-12): P0–P3 built; collecting every session day since 2026-10-14. P4 (`as_of` queries) in
+progress: the interface and its tests are in [`pit.query`](src/pit/query.py), the implementation isn't. P5 (PIT
+Ops Copilot) built: [agent loop, approval-gated tool, evals replayed in CI](#ops-copilot-p5), with ops docs in
+[`ops/`](ops/).
 
 ## Why point-in-time
 
@@ -294,7 +296,7 @@ covered by tests).
 | P2 | Row rules + quarantine, partition checks, corporate actions, adjustment | Each rule has +/- tests; hand-computed adjustment golden test passes |
 | P3 | Market-hours Timetable (replaces cron), `eod` DAG; dbt curated layer, SCD2, rules 14–16; backfill; CI | 1-year equity backfill succeeds; a full week unattended except Gateway re-auth; `dbt build` green |
 | P4 | `as_of` queries + simulated bad-data drill | Same query differs across `as_of` values; drill written up, labelled simulated |
-| P5 | PIT Ops Copilot: ops docs (incident write-ups, runbooks, SLO), MCP server with read-only tools (no retrieval index: the ops docs are a handful of files, so the agent lists and reads them by name with `read_runbook`), a hand-written agent loop with human approval for risky tools, evals replaying real incidents | One command scores the evals; adversarial set blocked; CI green on recorded responses |
+| P5 | PIT Ops Copilot: ops docs (incident write-ups, runbooks, SLO), MCP server with read-only tools (no retrieval index: the ops docs are a handful of files, so the agent lists and reads them by name with `read_runbook`), a hand-written agent loop with human approval for risky tools, evals replaying real incidents | One command scores the evals; adversarial set blocked; CI green on recorded responses. **Built 2026-11-12:** `python -m pit.copilot.eval` (25 cases, 76 % on deepseek-flash); injection set blocked 5 / 5; CI replays the recordings (≥ 70 %) |
 
 Option snapshots start in P1 and keep running, so history accumulates while the
 rest is built. Stop after P5.

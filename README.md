@@ -146,6 +146,14 @@ have no retries (a missed snapshot can't be taken later, and a retry only delays
 for quotes: underlyings, expirations and contract lists come from the day's cache (`contract_cache`, 08:15), so a
 stalled contract-definition server (2026-10-23, ~5 min) can't hang a run.
 
+All of the above runs inside Docker, so it goes quiet when Docker itself is down. `pit.host_watch` covers that from
+the Windows host: a scheduled task (`ops/register_host_watch.ps1`, every 5 min) alerts when the Docker engine doesn't
+answer (and says why: no one signed in since a restart, Docker Desktop not running, or the engine hung), a compose
+service isn't running or postgres is unhealthy, the Airflow scheduler is dead, or Windows is waiting to restart for
+an update. A problem alerts after two checks in a row, repeats hourly during 08:00 ET–close + 30 min, and sends a
+recovered card when it clears. Registered from an Administrator PowerShell it also runs at the sign-in screen;
+without admin, only while signed in. `python -m pit.host_watch --dry-run` shows what it sees.
+
 ### Key decisions
 
 | Decision | Why |

@@ -1,0 +1,253 @@
+{
+ "case": "r08-2026-10-22-slo-zero",
+ "model": "deepseek-v4-pro",
+ "thinking": false,
+ "recorded_at": "2026-11-12T10:12:38+00:00",
+ "llm": [
+  {
+   "id": "51495f73-9d9c-4af5-ab17-45faac994c86",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "I'll investigate this discrepancy. Let me look at the runs for those days and check the SLO definitions.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_mxRagSwcN2H0OhuLKJOd2135",
+        "function": {
+         "arguments": "{\"day\": \"2026-10-22\", \"dataset\": \"option_snapshots\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_T4Mg634YuxemN1Pda6in1887",
+        "function": {
+         "arguments": "{\"day\": \"2026-10-23\", \"dataset\": \"option_snapshots\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 1
+       },
+       {
+        "id": "call_02_OID9S1rfCybrygr3IasK6421",
+        "function": {
+         "arguments": "{\"name\": \"slo\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 2
+       },
+       {
+        "id": "call_03_fbwhdTfxdnyMPvEAbohb0771",
+        "function": {
+         "arguments": "{\"end\": \"2026-11-11\", \"sessions_back\": 25}",
+         "name": "slo_status"
+        },
+        "type": "function",
+        "index": 3
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478342,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 230,
+    "prompt_tokens": 2095,
+    "total_tokens": 2325,
+    "prompt_tokens_details": {
+     "cached_tokens": 2048
+    },
+    "prompt_cache_hit_tokens": 2048,
+    "prompt_cache_miss_tokens": 47
+   }
+  },
+  {
+   "id": "8014be18-846e-41ed-bbbf-565dd90e736f",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "The key finding: `get_runs` returns \"no runs recorded\" for both 2026-10-22 and 2026-10-23 on the option_snapshots dataset. Yet the SLO doc (which documents the Mac host data) shows 100% coverage on those days.\n\nThe slo.md note explains the history: \"Collection moved to the Windows host on ~2026-10-27\". This means the data for 10-22 and 10-23 was collected on the Mac host, and the pipeline_runs records live on that machine, not on this host.\n\nLet me confirm by checking the incident write-up for 10-23 and see whether the runbook list mentions anything about host migration.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_cXmu4QfVOrv3BsAjPb2c6688",
+        "function": {
+         "arguments": "{}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_qdAvyBAibfjIDArKJlfa4392",
+        "function": {
+         "arguments": "{\"day\": \"2026-10-23\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 1
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478347,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 214,
+    "prompt_tokens": 6339,
+    "total_tokens": 6553,
+    "prompt_tokens_details": {
+     "cached_tokens": 2304
+    },
+    "prompt_cache_hit_tokens": 2304,
+    "prompt_cache_miss_tokens": 4035
+   }
+  },
+  {
+   "id": "657bc5cf-89de-4a2a-80ed-19428195ffe0",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_FtsDn1OjyfpY1dJxfIFW9621",
+        "function": {
+         "arguments": "{\"name\": \"incidents/2026-10-23\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 0
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478350,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 52,
+    "prompt_tokens": 6655,
+    "total_tokens": 6707,
+    "prompt_tokens_details": {
+     "cached_tokens": 6272
+    },
+    "prompt_cache_hit_tokens": 6272,
+    "prompt_cache_miss_tokens": 383
+   }
+  },
+  {
+   "id": "e8c50b98-012c-4617-8661-32591609ea9a",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "Now I have a clear picture. Let me summarize the findings.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_IHi4xoxD9MMCtvZN5Zou7035",
+        "function": {
+         "arguments": "{\"root_cause\": \"The 2026-10-22 and 2026-10-23 option snapshots were NOT lost. Those sessions ran on the Mac host (collection moved to the Windows host ~2026-10-27), so their run records don't exist in this host's pipeline_runs — get_runs returns \\\"no runs recorded\\\" for both days. This host's slo_status therefore reads option_ok=0 (0% coverage) for those two days, a monitoring artifact, not a data loss.\", \"category\": \"missing_run_records\", \"runbook\": \"slo\", \"evidence\": [{\"day\": \"2026-10-22\", \"dataset\": \"option_snapshots\", \"detail\": \"get_runs returns 'no runs recorded' on this host\"}, {\"day\": \"2026-10-23\", \"dataset\": \"option_snapshots\", \"detail\": \"get_runs returns 'no runs recorded' on this host\"}, {\"day\": \"2026-10-23\", \"dataset\": \"option_snapshots\", \"detail\": \"slo_status on this host: option_ok=0, sli1_coverage=0.0% for both 10-22 and 10-23\"}, {\"day\": null, \"dataset\": null, \"detail\": \"slo.md documents Mac data: 10-20→10-22 at 100% and 10-23 at 100% (94.9% timeliness), and states 'Collection moved to the Windows host on ~2026-10-27'\"}, {\"day\": \"2026-10-23\", \"dataset\": \"option_snapshots\", \"detail\": \"incidents/2026-10-23 confirms no option slot was lost — only late (secdef stall); the Mac-host metric reported the slot as missing due to the started_at binning bug, not actual loss\"}], \"confidence\": \"high\"}",
+         "name": "submit_diagnosis"
+        },
+        "type": "function",
+        "index": 0
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478352,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 503,
+    "prompt_tokens": 7774,
+    "total_tokens": 8277,
+    "prompt_tokens_details": {
+     "cached_tokens": 6656
+    },
+    "prompt_cache_hit_tokens": 6656,
+    "prompt_cache_miss_tokens": 1118
+   }
+  }
+ ],
+ "tools": [
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-10-22",
+    "dataset": "option_snapshots"
+   },
+   "text": "{\n  \"day\": \"2026-10-22\",\n  \"runs\": [],\n  \"note\": \"no runs recorded\"\n}"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-10-23",
+    "dataset": "option_snapshots"
+   },
+   "text": "{\n  \"day\": \"2026-10-23\",\n  \"runs\": [],\n  \"note\": \"no runs recorded\"\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "slo"
+   },
+   "text": "# SLOs\n\nWhat \"working\" means for the collector, measured from data it already writes. One SQL file computes all three\nindicators ([`slo.sql`](slo.sql)):\n\n```bash\nuv run python -m pit.slo                          # last 20 sessions up to now, on ./data\nuv run python -m pit.slo --end 2026-10-26 --sessions 9 --data-dir /path/to/data\n```\n\nWindow: the last **20 sessions** (about four weeks), rolling. Sessions, opens and closes come from the exchange\ncalendar, so half days have fewer slots, and a session with no runs at all still counts against the SLO.\n\n## Indicators and objectives\n\n| | SLI | Objective | Error budget per 20 sessions |\n|---|---|---|---|\n| **SLI 1: option coverage** | Regular-hours 5-min slots with a successful option snapshot ÷ slots due | **≥ 99 %** | ~16 slots (≈ 1 h 20 min of snapshots) |\n| **SLI 2: option timeliness** | Slots whose snapshot *finished* within 5 min of the slot time ÷ slots due | **≥ 95 %** | ~78 slots |\n| **SLI 3: equity bar completeness** | Usable 5-min bars (staged, any version) in regular hours ÷ (symbols × slots due) | **≥ 99.5 %** | ~390 bars |\n\nWhy these three:\n\n- **SLI 1 is the one that matters.** Option quotes can't be re-fetched, so a missed slot is a permanent hole in the\n  history the project exists to build.\n- **SLI 2** catches the slow failure: runs that succeed but late, which happens when a stall or retry pushes later\n  slots back (`max_active_runs=1`). A late snapshot is still valid point-in-time data, so the target is looser.\n- **SLI 3** covers the second source. Equity bars can be refetched (the 17:30 `eod` run refetches 10 sessions), so it\n  is measured on what is in `staged/` at query time, after any refetch.\n\nCounting rules:\n\n- A slot is identified by its Airflow `run_id` (`scheduled__<slot>`), not by when the run started, so a retry that\n  succeeds late still counts for its own slot. Counting by start time was the 2026-10-23 miscount.\n- Manual runs (`cli__…`) and backfills don't count.\n- Quarantined bars count as missing (SLI 3): the SLI measures usable data, not rows received.\n\n## Current values (Mac data, 9 sessions 2026-10-14 → 10-26)\n\n| Session | SLI 1 coverage | SLI 2 on time | SLI 3 bars | Note |\n|---|---|---|---|---|\n| 10-14 | 100 % | 100 % | 100 % | |\n| 10-15 | 100 % | 89.7 % | 100 % | First days: cold contract lookups inside the runs |\n| 10-16 | 100 % | 60.3 % | 100 % | `1100` connectivity loss at 10:10 hung one run 26 min; the slots behind it ran late |\n| 10-19 | 100 % | 97.4 % | 100 % | |\n| 10-20 → 10-22 | 100 % | 100 % | 100 % | |\n| 10-23 | 100 % | 94.9 % | 100 % | [Incident](incidents/2026-10-23.md): secdef stall, 4 slots late |\n| 10-26 | **0 %** | 0 % | 100 % | [Incident](incidents/2026-10-26.md): Gateway frozen all session |\n| **Window** | **88.9 %** ❌ | **82.5 %** ❌ | **100 %** ✅ | |\n\n10-26 alone used 78 slots, about five times SLI 1's budget. Collection moved to the Windows host on ~2026-10-27, so\nlater sessions have to be computed there (`uv run python -m pit.slo` against its `data/`).\n\n## When the budget is gone\n\n- **SLI 1 below objective:** stop adding chains, underlyings or cadence. Reliability work comes first (the 10-26\n  fixes: day cache, self-healing from the watchdog, paced `contract_cache`). Write up every lost session in\n  [`incidents/`](incidents/).\n- **SLI 2 below objective, SLI 1 fine:** runs are too slow or get stuck behind each other. Look at run times in the\n  progress cards and trim chains or cadence in `config/ibkr.toml` before the 6-min run budget starts skipping chains.\n- **SLI 3 below objective:** check whether Alpaca recovered the bars (the `eod` refetch); if not, backfill\n  ([stale-snapshots.md](runbooks/stale-snapshots.md)).\n\n## Not covered (yet)\n\n- Index snapshots, and the EOD datasets (corporate actions, assets, daily bars, `dbt build`): the close summary card\n  reports them daily, but they have no objective.\n- Quote quality: an option snapshot counts as successful even if many contracts have no two-sided quote.\n  `quote_status` counts are in `pipeline_runs` if this ever needs an SLI.\n- Alerting on budget burn: the SLIs are computed on demand, not by a DAG.\n"
+  },
+  {
+   "name": "slo_status",
+   "args": {
+    "end": "2026-11-11",
+    "sessions_back": 25
+   },
+   "text": "{\n  \"objectives\": {\n    \"sli1_coverage_pct\": 99.0,\n    \"sli2_on_time_pct\": 95.0,\n    \"sli3_bars_pct\": 99.5\n  },\n  \"window\": {\n    \"session\": \"window\",\n    \"option_slots\": 1950,\n    \"option_ok\": 1404,\n    \"sli1_coverage_pct\": 72.0,\n    \"sli2_on_time_pct\": 69.64,\n    \"bars_present\": 97500,\n    \"bars_expected\": 97500,\n    \"sli3_bars_pct\": 100.0\n  },\n  \"met\": {\n    \"sli1_coverage_pct\": false,\n    \"sli2_on_time_pct\": false,\n    \"sli3_bars_pct\": true\n  },\n  \"per_session\": [\n    {\n      \"session\": \"2026-10-08\",\n      \"option_slots\": 78,\n      \"option_ok\": 0,\n      \"sli1_coverage_pct\": 0.0,\n      \"sli2_on_time_pct\": 0.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-09\",\n      \"option_slots\": 78,\n      \"option_ok\": 0,\n      \"sli1_coverage_pct\": 0.0,\n      \"sli2_on_time_pct\": 0.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-12\",\n      \"option_slots\": 78,\n      \"option_ok\": 0,\n      \"sli1_coverage_pct\": 0.0,\n      \"sli2_on_time_pct\": 0.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-13\",\n      \"option_slots\": 78,\n      \"option_ok\": 0,\n      \"sli1_coverage_pct\": 0.0,\n      \"sli2_on_time_pct\": 0.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-14\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-15\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 89.74,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-16\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 60.26,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-19\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 97.44,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-20\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-21\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-22\",\n      \"option_slots\": 78,\n      \"option_ok\": 0,\n      \"sli1_coverage_pct\": 0.0,\n      \"sli2_on_time_pct\": 0.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-23\",\n      \"option_slots\": 78,\n      \"option_ok\": 0,\n      \"sli1_coverage_pct\": 0.0,\n      \"sli2_on_time_pct\": 0.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-26\",\n      \"option_slots\": 78,\n      \"option_ok\": 0,\n      \"sli1_coverage_pct\": 0.0,\n      \"sli2_on_time_pct\": 0.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-27\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 97.44,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-28\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-29\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-30\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-11-02\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-11-03\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-11-04\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-11-05\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 98.72,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-11-06\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-11-09\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-11-10\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 98.72,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-11-11\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 98.72,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    }\n  ]\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-10-23"
+   },
+   "text": "{\n  \"day\": \"2026-10-23\",\n  \"runs\": [],\n  \"note\": \"no runs recorded\"\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "incidents/2026-10-23"
+   },
+   "text": "# 2026-10-23: contract-definition server stall delays option snapshots ~20 min\n\n| | |\n|---|---|\n| Date | Friday 2026-10-23, 10:35–11:00 ET (regular trading hours) |\n| Severity | Minor: data late, one index snapshot lost |\n| Detected by | The first hourly progress card (sent at 16:16 ET, when `progress_check` was first enabled), not at the time |\n| Status | Resolved; fixes merged (see Actions) |\n\n## Impact\n\n- **Option snapshots: no slot lost, but late.** The 10:35 slot failed, its retry succeeded at 10:42:17\n  (7 min late), and the next four slots started 3.5–5.5 min late until 11:00, when the schedule caught up.\n- **Index snapshots: the 10:35 slot was lost.** Both attempts (10:35:01 and 10:38:02) hit the 2-min task\n  timeout; the 10:40 slot ran at 10:45:29.\n- Equity bars (Alpaca) were not affected.\n- Late snapshots are still valid point-in-time data: each row is stamped with its real `ingested_at`.\n\n## Timeline (ET, from `pipeline_runs` and Airflow task logs)\n\n| Time | Event |\n|---|---|\n| 10:30:01 | Normal run: 3,364 option contracts in 213 s; indices in 5 s |\n| 10:35:01 | Option run starts. The first chain (`spx_monthly`) waits on its first request; after `RequestTimeout` (300 s) it raises `TimeoutError()` |\n| 10:35:01 | Index run starts, gets no answer, killed by the 2-min execution timeout at 10:37:01 |\n| 10:38:02 | Index retry: same, killed at 10:40:02 |\n| 10:41:16 | Option run ends: the 6-min run budget was used up, so `spx_weekly` failed and the other chains were skipped. Every chain failed, so the task failed |\n| 10:42:17 | Option retry (same 10:35 slot) succeeds: 3,060 contracts by 10:45:26 |\n| 10:45:29–10:56:47 | Slots 10:40, 10:45, 10:50, 10:55 each start when the previous run ends (`max_active_runs=1`), 3.5–5.5 min late |\n| 11:00:01 | Back on schedule |\n\nDuring the stall, the Gateway logged no data-farm errors and quotes kept flowing before and after it.\n\n## Root cause\n\n**IBKR's contract-definition (secdef) server stopped answering for about 5 minutes.** At the time, every run asked\nit for the underlying contract (`qualifyContracts`) and the listed expirations (`reqSecDefOptParams`) before any quote\nrequest, once per chain. The option and index tasks used separate API connections but stalled at the same time.\nWhat they had in common was these contract-definition requests, not market data. So one slow upstream service held up\na run whose actual job, streaming quotes, didn't need it.\n\n## Contributing factors\n\n- `RequestTimeout = 300 s` (sized for cold contract-detail downloads) let one hung request use the whole 6-min run budget.\n- Retrying a failed run pushes the following slots back while `max_active_runs=1`.\n- The RTH coverage metric bins runs by `started_at`. It counted the late 10:35 retry (started 10:42) as the\n  10:40 slot and reported the 10:35 slot as missing (77/78), although that snapshot exists.\n\n## Actions\n\n| Action | Commit | Status |\n|---|---|---|\n| Cache underlyings, expirations and index contracts per New York day in the 08:15 `contract_cache` run; runs make no contract-definition requests | `56a1de2` | Done |\n| No retries for option and index snapshots (the next slot is the retry); one failure card per failing streak | `7fb6a8c` | Done. Trade-off: a failed run is now lost instead of late. On this day the retry kept the 10:35 option snapshot |\n| Coverage metric: count a run toward the slot in its `run_id`, not its start time | — | Open |\n\n## Lessons\n\n- Look at what a run actually depends on. The pipeline only needed quotes, but it depended on a second IBKR service\n  that it could just as well have asked once a day.\n- A timeout sized for the slowest legitimate request (a cold download) is too long for a request that is normally instant.\n"
+  }
+ ]
+}

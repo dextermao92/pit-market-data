@@ -1,0 +1,338 @@
+{
+ "case": "s04-competing-session",
+ "model": "deepseek-flash",
+ "thinking": false,
+ "recorded_at": "2026-11-12T10:06:41+00:00",
+ "llm": [
+  {
+   "id": "e30f2598-d604-49d7-bd0c-3a23f0092f24",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "I'll start by looking at today's runs and the relevant docs.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_Vjy0kCKW24I6ZMxlzqoe1945",
+        "function": {
+         "arguments": "{\"day\": \"2026-11-12\", \"dataset\": \"option_snapshots\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_81OSkZsVFoaC7YLJMOVk2959",
+        "function": {
+         "arguments": "{}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 1
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794477988,
+   "model": "deepseek-flash",
+   "object": "chat.completion",
+   "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+   "usage": {
+    "completion_tokens": 88,
+    "prompt_tokens": 2075,
+    "total_tokens": 2163,
+    "prompt_tokens_details": {
+     "cached_tokens": 1792
+    },
+    "prompt_cache_hit_tokens": 1792,
+    "prompt_cache_miss_tokens": 283
+   }
+  },
+  {
+   "id": "64b95656-6a53-4498-82da-e7993706409e",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "Every run carries IBKR error code 10197 with all-no-quote snapshots. Let me narrow the runs to the morning transition and read the matching docs.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_WekkFcsvyDPkEVmgxuk42987",
+        "function": {
+         "arguments": "{\"day\": \"2026-11-12\", \"dataset\": \"option_snapshots\", \"status\": \"failed\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_UxyCLtTwI5DPn5NGRqt81414",
+        "function": {
+         "arguments": "{\"name\": \"runbooks/stale-snapshots\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 1
+       },
+       {
+        "id": "call_02_sQjo9xZpCxhE9qvOJ4W17019",
+        "function": {
+         "arguments": "{\"name\": \"incidents/2026-10-26\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 2
+       },
+       {
+        "id": "call_03_CLzv3CNiQeMcsHwE6Nbz8734",
+        "function": {
+         "arguments": "{\"day\": \"2026-11-12\", \"dataset\": \"index_snapshots\", \"limit\": 5}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 3
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794477989,
+   "model": "deepseek-flash",
+   "object": "chat.completion",
+   "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+   "usage": {
+    "completion_tokens": 251,
+    "prompt_tokens": 6705,
+    "total_tokens": 6956,
+    "prompt_tokens_details": {
+     "cached_tokens": 2048
+    },
+    "prompt_cache_hit_tokens": 2048,
+    "prompt_cache_miss_tokens": 4657
+   }
+  },
+  {
+   "id": "ed3664e8-7216-463f-a4f2-98e27f4fe2fa",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "Both option and index snapshots show 10197, so this is not a farm problem. Let me pin down when it started and check the gateway runbook and SLOs.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_NxDB10gIB0NIlO3iXkti0795",
+        "function": {
+         "arguments": "{\"day\": \"2026-11-11\", \"dataset\": \"option_snapshots\", \"limit\": 6}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_wab3R6Wdhc6DeLZFLcV60046",
+        "function": {
+         "arguments": "{\"name\": \"runbooks/gateway\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 1
+       },
+       {
+        "id": "call_02_dm6l4OzqgSGa4WXgwbn12944",
+        "function": {
+         "arguments": "{\"end\": \"2026-11-12\", \"sessions_back\": 3}",
+         "name": "slo_status"
+        },
+        "type": "function",
+        "index": 2
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794477991,
+   "model": "deepseek-flash",
+   "object": "chat.completion",
+   "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+   "usage": {
+    "completion_tokens": 199,
+    "prompt_tokens": 10567,
+    "total_tokens": 10766,
+    "prompt_tokens_details": {
+     "cached_tokens": 6912
+    },
+    "prompt_cache_hit_tokens": 6912,
+    "prompt_cache_miss_tokens": 3655
+   }
+  },
+  {
+   "id": "40abe7bb-c25a-410f-80bb-7a7c9ff1b4f6",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "I have enough to diagnose. Before submitting, let me confirm exactly when the 10197/no-quote pattern begins today rather than assuming it covers the whole session.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_r682K18LBc8N8017Lt4I6331",
+        "function": {
+         "arguments": "{\"day\": \"2026-11-12\", \"dataset\": \"option_snapshots\", \"limit\": 10, \"status\": \"success\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 0
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794477994,
+   "model": "deepseek-flash",
+   "object": "chat.completion",
+   "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+   "usage": {
+    "completion_tokens": 126,
+    "prompt_tokens": 14021,
+    "total_tokens": 14147,
+    "prompt_tokens_details": {
+     "cached_tokens": 10752
+    },
+    "prompt_cache_hit_tokens": 10752,
+    "prompt_cache_miss_tokens": 3269
+   }
+  },
+  {
+   "id": "44a9e5af-e0db-4fb5-bbf8-1e3417daeeb4",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_n6p9hewtw919m8p2advM3919",
+        "function": {
+         "arguments": "{\"root_cause\": \"The collector's IBKR user has no live market data because another session of the same user holds it: every option- and index-snapshot run on 2026-11-12 returns IBKR error 10197 (\\\"live data held by another session\\\"), so contracts are listed but come back with no quote. Not a connectivity, secdef, budget or farm problem — runs succeed (0 failed, normal 244–288 s durations, index runs 4–5 s) and only the quote fields are empty.\", \"category\": \"subscription_missing\", \"runbook\": \"runbooks/gateway\", \"evidence\": [{\"day\": \"2026-11-12\", \"dataset\": \"option_snapshots\", \"time_et\": \"15:55:00\", \"detail\": \"Run success, 3333 rows, ibkr_error_codes [10197]; quote breakdown: two_sided 0, ask_only 0, bid_only 0, no_quote 3400 — every later run 15:10 through 15:55 shows the same 10197 + no_quote 3400, two_sided 0.\"}, {\"day\": \"2026-11-12\", \"dataset\": \"option_snapshots\", \"time_et\": \"14:00:00\", \"detail\": \"Same pattern earlier in the session (rows 3801, no_quote 3400, ibkr_error_codes [10197]); all 82 option runs on the day succeeded and none failed, so this is not a gateway-down or timeout symptom.\"}, {\"day\": \"2026-11-11\", \"dataset\": \"option_snapshots\", \"time_et\": \"15:55:00\", \"detail\": \"Last session for contrast: 3286 two-sided quotes, no_quote 40, ibkr_error_codes [] — so the all-no-quote state is new to 2026-11-12, not a data-quality drift.\"}, {\"day\": \"2026-11-12\", \"dataset\": \"index_snapshots\", \"time_et\": \"15:55:00\", \"detail\": \"Index runs also carry ibkr_error_codes [10197] with flagged 1 of 6 rows — the same user-wide live-data lockout affects indices too, ruling out an option-chain-specific cause.\"}, {\"day\": \"2026-11-12\", \"time_et\": \"15:45:00\", \"detail\": \"gap_s ≈ 299.8 on every option run and ≈ 299.9 on index runs: runs still execute on schedule each 5-min slot, which is why SLOs look green.\"}, {\"day\": \"2026-11-12\", \"detail\": \"slo_status: all 78 option slots 'ok', sli1 coverage 100.0%, sli2 98.72%, sli3 100.0%, all objectives met — the SLOs count runs, not quote presence, so they do not catch this; do not rely on them here.\"}, {\"detail\": \"runbooks/gateway section C: code 10197 = 'Live data held by another session of the same user'; fix is to log the other session out (TWS, mobile, web) or move collection to its own user. Self-healing never runs for this code — a RECONNECTDATA/RESTART cannot fix it.\"}], \"confidence\": \"high\"}",
+         "name": "submit_diagnosis"
+        },
+        "type": "function",
+        "index": 0
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794477996,
+   "model": "deepseek-flash",
+   "object": "chat.completion",
+   "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+   "usage": {
+    "completion_tokens": 809,
+    "prompt_tokens": 15824,
+    "total_tokens": 16633,
+    "prompt_tokens_details": {
+     "cached_tokens": 14080
+    },
+    "prompt_cache_hit_tokens": 14080,
+    "prompt_cache_miss_tokens": 1744
+   }
+  }
+ ],
+ "tools": [
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-11-12",
+    "dataset": "option_snapshots"
+   },
+   "text": "{\n  \"day\": \"2026-11-12\",\n  \"total\": 82,\n  \"failed\": 0,\n  \"runs\": [\n    {\n      \"started_et\": \"15:55:00\",\n      \"duration_s\": 251,\n      \"run_id\": \"scheduled__2026-11-12T20:55:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3333,\n      \"quarantined\": 0,\n      \"flagged\": 170,\n      \"gap_s\": 299.907259,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:50:00\",\n      \"duration_s\": 267,\n      \"run_id\": \"scheduled__2026-11-12T20:50:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3434,\n      \"quarantined\": 0,\n      \"flagged\": 139,\n      \"gap_s\": 299.856225,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:45:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-12T20:45:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 78,\n      \"gap_s\": 299.747884,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:40:01\",\n      \"duration_s\": 244,\n      \"run_id\": \"scheduled__2026-11-12T20:40:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 41,\n      \"gap_s\": 300.831446,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:35:00\",\n      \"duration_s\": 265,\n      \"run_id\": \"scheduled__2026-11-12T20:35:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3435,\n      \"quarantined\": 0,\n      \"flagged\": 18,\n      \"gap_s\": 299.837888,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:30:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-12T20:30:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 49,\n      \"gap_s\": 299.886791,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:25:00\",\n      \"duration_s\": 252,\n      \"run_id\": \"scheduled__2026-11-12T20:25:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 96,\n      \"gap_s\": 299.447162,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:20:01\",\n      \"duration_s\": 269,\n      \"run_id\": \"scheduled__2026-11-12T20:20:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3430,\n      \"quarantined\": 0,\n      \"flagged\": 60,\n      \"gap_s\": 300.534922,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:15:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-12T20:15:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 83,\n      \"gap_s\": 299.508534,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:10:01\",\n      \"duration_s\": 253,\n      \"run_id\": \"scheduled__2026-11-12T20:10:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 57,\n      \"gap_s\": 300.528363,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:05:00\",\n      \"duration_s\": 268,\n      \"run_id\": \"scheduled__2026-11-12T20:05:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3434,\n      \"quarantined\": 0,\n      \"flagged\": 43,\n      \"gap_s\": 300.195347,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:00:00\",\n      \"duration_s\": 283,\n      \"run_id\": \"scheduled__2026-11-12T20:00:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3821,\n      \"quarantined\": 0,\n      \"flagged\": 40,\n      \"gap_s\": 299.845874,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:55:00\",\n      \"duration_s\": 248,\n      \"run_id\": \"scheduled__2026-11-12T19:55:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 40,\n      \"gap_s\": 299.798838,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:50:00\",\n      \"duration_s\": 262,\n      \"run_id\": \"scheduled__2026-11-12T19:50:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3432,\n      \"quarantined\": 0,\n      \"flagged\": 4,\n      \"gap_s\": 299.803624,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:45:01\",\n      \"duration_s\": 284,\n      \"run_id\": \"scheduled__2026-11-12T19:45:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3823,\n      \"quarantined\": 0,\n      \"flagged\": 86,\n      \"gap_s\": 299.799331,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:40:01\",\n      \"duration_s\": 244,\n      \"run_id\": \"scheduled__2026-11-12T19:40:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 39,\n      \"gap_s\": 300.818023,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:35:00\",\n      \"duration_s\": 264,\n      \"run_id\": \"scheduled__2026-11-12T19:35:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3432,\n      \"quarantined\": 0,\n      \"flagged\": 48,\n      \"gap_s\": 299.824659,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:30:00\",\n      \"duration_s\": 276,\n      \"run_id\": \"scheduled__2026-11-12T19:30:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 46,\n      \"gap_s\": 299.806251,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:25:00\",\n      \"duration_s\": 250,\n      \"run_id\": \"scheduled__2026-11-12T19:25:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 42,\n      \"gap_s\": 299.765378,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:20:01\",\n      \"duration_s\": 266,\n      \"run_id\": \"scheduled__2026-11-12T19:20:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3431,\n      \"quarantined\": 0,\n      \"flagged\": 11,\n      \"gap_s\": 300.525117,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:15:00\",\n      \"duration_s\": 280,\n      \"run_id\": \"scheduled__2026-11-12T19:15:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3821,\n      \"quarantined\": 0,\n      \"flagged\": 41,\n      \"gap_s\": 299.50833,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:10:00\",\n      \"duration_s\": 250,\n      \"run_id\": \"scheduled__2026-11-12T19:10:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 31,\n      \"gap_s\": 300.53499,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:05:00\",\n      \"duration_s\": 267,\n      \"run_id\": \"scheduled__2026-11-12T19:05:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3449,\n      \"quarantined\": 0,\n      \"flagged\": 65,\n      \"gap_s\": 299.984572,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"14:00:00\",\n      \"duration_s\": 284,\n      \"run_id\": \"scheduled__2026-11-12T19:00:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3801,\n      \"quarantined\": 0,\n      \"flagged\": 53,\n      \"gap_s\": 299.828351,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:55:00\",\n      \"duration_s\": 249,\n      \"run_id\": \"scheduled__2026-11-12T18:55:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3341,\n      \"quarantined\": 0,\n      \"flagged\": 45,\n      \"gap_s\": 299.777839,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:50:00\",\n      \"duration_s\": 271,\n      \"run_id\": \"scheduled__2026-11-12T18:50:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3422,\n      \"quarantined\": 0,\n      \"flagged\": 20,\n      \"gap_s\": 299.731524,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:45:01\",\n      \"duration_s\": 288,\n      \"run_id\": \"scheduled__2026-11-12T18:45:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3807,\n      \"quarantined\": 0,\n      \"flagged\": 100,\n      \"gap_s\": 299.802729,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:40:01\",\n      \"duration_s\": 251,\n      \"run_id\": \"scheduled__2026-11-12T18:40:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3341,\n      \"quarantined\": 0,\n      \"flagged\": 4,\n      \"gap_s\": 300.845504,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:35:00\",\n      \"duration_s\": 270,\n      \"run_id\": \"scheduled__2026-11-12T18:35:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3422,\n      \"quarantined\": 0,\n      \"flagged\": 27,\n      \"gap_s\": 299.763369,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:30:00\",\n      \"duration_s\": 278,\n      \"run_id\": \"scheduled__2026-11-12T18:30:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3801,\n      \"quarantined\": 0,\n      \"flagged\": 31,\n      \"gap_s\": 299.816706,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:25:00\",\n      \"duration_s\": 254,\n      \"run_id\": \"scheduled__2026-11-12T18:25:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3341,\n      \"quarantined\": 0,\n      \"flagged\": 75,\n      \"gap_s\": 299.791121,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:20:01\",\n      \"duration_s\": 264,\n      \"run_id\": \"scheduled__2026-11-12T18:20:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3441,\n      \"quarantined\": 0,\n      \"flagged\": 35,\n      \"gap_s\": 299.856987,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:15:01\",\n      \"duration_s\": 285,\n      \"run_id\": \"scheduled__2026-11-12T18:15:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3817,\n      \"quarantined\": 0,\n      \"flagged\": 50,\n      \"gap_s\": 300.758321,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:10:00\",\n      \"duration_s\": 245,\n      \"run_id\": \"scheduled__2026-11-12T18:10:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 11,\n      \"gap_s\": 299.848554,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:05:00\",\n      \"duration_s\": 275,\n      \"run_id\": \"scheduled__2026-11-12T18:05:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3432,\n      \"quarantined\": 0,\n      \"flagged\": 31,\n      \"gap_s\": 300.05579,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"13:00:00\",\n      \"duration_s\": 284,\n      \"run_id\": \"scheduled__2026-11-12T18:00:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3817,\n      \"quarantined\": 0,\n      \"flagged\": 164,\n      \"gap_s\": 299.837352,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:55:00\",\n      \"duration_s\": 248,\n      \"run_id\": \"scheduled__2026-11-12T17:55:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 29,\n      \"gap_s\": 299.664977,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:50:01\",\n      \"duration_s\": 262,\n      \"run_id\": \"scheduled__2026-11-12T17:50:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3428,\n      \"quarantined\": 0,\n      \"flagged\": 19,\n      \"gap_s\": 300.49126,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:45:00\",\n      \"duration_s\": 283,\n      \"run_id\": \"scheduled__2026-11-12T17:45:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3817,\n      \"quarantined\": 0,\n      \"flagged\": 61,\n      \"gap_s\": 299.514807,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:40:01\",\n      \"duration_s\": 250,\n      \"run_id\": \"scheduled__2026-11-12T17:40:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 17,\n      \"gap_s\": 300.640362,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:35:00\",\n      \"duration_s\": 266,\n      \"run_id\": \"scheduled__2026-11-12T17:35:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3420,\n      \"quarantined\": 0,\n      \"flagged\": 6,\n      \"gap_s\": 299.535821,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:30:00\",\n      \"duration_s\": 279,\n      \"run_id\": \"scheduled__2026-11-12T17:30:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3823,\n      \"quarantined\": 0,\n      \"flagged\": 37,\n      \"gap_s\": 300.453894,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:25:00\",\n      \"duration_s\": 254,\n      \"run_id\": \"scheduled__2026-11-12T17:25:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 81,\n      \"gap_s\": 299.530383,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:20:00\",\n      \"duration_s\": 268,\n      \"run_id\": \"scheduled__2026-11-12T17:20:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3424,\n      \"quarantined\": 0,\n      \"flagged\": 16,\n      \"gap_s\": 299.560835,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:15:01\",\n      \"duration_s\": 287,\n      \"run_id\": \"scheduled__2026-11-12T17:15:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 41,\n      \"gap_s\": 300.501323,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:10:00\",\n      \"duration_s\": 256,\n      \"run_id\": \"scheduled__2026-11-12T17:10:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 70,\n      \"gap_s\": 299.123704,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:05:01\",\n      \"duration_s\": 265,\n      \"run_id\": \"scheduled__2026-11-12T17:05:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3432,\n      \"quarantined\": 0,\n      \"flagged\": 22,\n      \"gap_s\": 301.049218,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"12:00:00\",\n      \"duration_s\": 287,\n      \"run_id\": \"scheduled__2026-11-12T17:00:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 137,\n      \"gap_s\": 299.82912,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"11:55:00\",\n      \"duration_s\": 248,\n      \"run_id\": \"scheduled__2026-11-12T16:55:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 15,\n      \"gap_s\": 299.79675,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"11:50:01\",\n      \"duration_s\": 264,\n      \"run_id\": \"scheduled__2026-11-12T16:50:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3428,\n      \"quarantined\": 0,\n      \"flagged\": 46,\n      \"gap_s\": 299.796421,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    }\n  ]\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-11-12",
+    "dataset": "option_snapshots",
+    "status": "failed"
+   },
+   "text": "{\n  \"day\": \"2026-11-12\",\n  \"total\": 0,\n  \"failed\": 0,\n  \"runs\": []\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "runbooks/stale-snapshots"
+   },
+   "text": "# Runbook: a dataset stops getting new data (stale snapshots or bars)\n\nBased on real incidents: [2026-10-23](../incidents/2026-10-23.md) (late runs), [2026-10-26](../incidents/2026-10-26.md)\n(a whole session lost).\n\n## Symptoms\n\n- `⏸️ 数据停滞：<dataset>已 15 分钟没有新数据`: the `watchdog_check` DAG (every 5 min, 09:00–16:55 on session days)\n  found no successful run of an intraday dataset that *finished* in the last 15 minutes, inside its window:\n\n  | Dataset | Expected | Source |\n  |---|---|---|\n  | `option_snapshots` | open → close | IBKR |\n  | `index_snapshots` | open → close | IBKR |\n  | `equity_bars` | open + 20 min → close + 30 min | Alpaca |\n\n- An hourly progress card with a red dataset, or RTH coverage below what's due (`正规时段覆盖 x/y`).\n- **No cards at all** on a session day (none at 08:00, 09:02, 09:28): the host, Docker or Airflow is down.\n\nThe stale alert fires once per episode. For option or index snapshots, the watchdog also runs Gateway self-healing\nonce and sends `数据停滞后的 Gateway 检查` with the outcome.\n\n**Time matters for options:** a missed option snapshot can never be fetched later. Equity bars can: the 17:30 `eod`\nrun refetches the last 10 sessions.\n\n## Triage\n\n1. Which dataset, and since when? The card says when the last run finished.\n2. Is a run stuck, or are runs failing?\n\n   ```bash\n   docker compose exec airflow airflow dags list-runs option_snapshots -o plain | head -5\n   docker compose exec airflow airflow dags list-runs equity_bars -o plain | head -5\n   ```\n\n   A run `running` for longer than its execution timeout (8 min option chains, 2 min indices, 3 min equity bars) is stuck.\n   A run of `failed` runs means each slot fails.\n\n3. Read the latest errors from `pipeline_runs`:\n\n   ```bash\n   docker compose exec airflow python -c \"\n   import polars as pl, glob, datetime as d\n   day = d.datetime.now(d.timezone.utc).date()\n   fs = glob.glob(f'/opt/airflow/data/pipeline_runs/dataset=*/ingest_date={day}/*.parquet')\n   df = pl.concat([pl.read_parquet(f, columns=['dataset','started_at','status','error']) for f in fs], how='diagonal')\n   print(df.sort('started_at').tail(12))\"\n   ```\n\n## By cause\n\n| What you see | Cause | Do |\n|---|---|---|\n| Options **and** indices failing, `TimeoutError()` after ~4 s | Gateway API not accepting connections | [gateway.md](gateway.md), section A |\n| Options failing, `every chain failed ... TimeoutError()` after ~6 min | One request hung for the whole run budget | [gateway.md](gateway.md), sections A–B |\n| `no spot price; sent RECONNECTDATA` | Underlying quote missing (farm down or not subscribed) | [gateway.md](gateway.md), sections C–D |\n| Some chains in `chain_errors` with `skipped: run budget used up` | Run too slow for the 6-min budget | Look at run times in the progress card; trim chains or cadence in `config/ibkr.toml` |\n| Only `equity_bars` stale | Alpaca: API down, keys, or the free plan's 15-min lag | `docker compose exec airflow python -c \"from pit.health import check_alpaca; print(check_alpaca())\"` |\n| Everything stale, no cards | Host / Docker / Airflow down | `docker compose ps`; `docker compose up -d`; check the machine woke from sleep |\n\n## Recover\n\n- IBKR datasets: fix the Gateway. Collection resumes at the next 5-min slot by itself (snapshot tasks have no retries:\n  the next slot is the retry).\n- Equity bars: nothing to backfill by hand for the last 10 sessions; `eod` refetches them. For older gaps:\n  `docker compose exec airflow python -m pit.pipeline backfill /opt/airflow/config/alpaca_bars.toml <start> <end>`.\n- A stuck run: it hits its execution timeout and fails on its own. To end it sooner, mark it failed in the Airflow UI\n  (`127.0.0.1:8080`).\n\n## Verify\n\n- The next run succeeds, and the failing task sends `✅ 已恢复`.\n- The next hourly progress card shows the dataset green.\n\n## Record\n\nWhole sessions or long gaps of option snapshots are permanent. Write them up in `ops/incidents/<date>.md`\n(impact, timeline, cause, actions), as for 2026-10-26.\n"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "incidents/2026-10-26"
+   },
+   "text": "# 2026-10-26: Gateway API frozen all session, option and index snapshots lost\n\n| | |\n|---|---|\n| Date | Monday 2026-10-26; Gateway broken from ~08:22 ET, fixed 19:40 ET |\n| Severity | Major: a whole session of option and index snapshots lost, permanently (no backfill for option quotes) |\n| Detected by | Discord cards from 08:33 ET on; seen by the user at ~19:15 ET (overnight in their time zone, AEDT = ET + 15 h) |\n| Status | Resolved; fixes merged (see Actions). The same pattern recurred every morning 10-28 → 11-02 until `b927d63` |\n\n## Impact\n\n| Dataset | Result |\n|---|---|\n| Option snapshots | **0 of 78** regular-hours slots. One partial pre-open run (09:10: `spx_monthly`, 1,494 contracts); the other 81 runs failed |\n| Index snapshots | **0** successful runs (82 failed) |\n| Equity bars (Alpaca) | 90 of 90 runs succeeded |\n| EOD (corporate actions, assets, daily bars, dbt) | Succeeded |\n\n## Timeline (ET, from Airflow task logs, Gateway logs and `pipeline_runs`)\n\n| Time | Event |\n|---|---|\n| 08:15:04 | `contract_cache` connects and starts refreshing every cached contract list (about 55 expiries) |\n| 08:15:42 | Gateway: `1100` connectivity to IBKR lost; 08:16:06 `1102` restored, \"data maintained\" (same session) |\n| 08:22:44 | `2103` market-data farm `hfarm` broken |\n| 08:26:06 | `contract_cache` attempt 1 fails after 662 s, having received **23.7 MB in 23,376 messages** |\n| 08:28:07–08:33:08 | Attempt 2 hangs on its first request for 300 s and fails. **Card: task failed (warm)** |\n| 09:02:01–09:07:01 | Gateway check connects, then `qualifyContracts` hangs 300 s. The `TimeoutError` escaped `check_gateway`, so **self-healing (RECONNECTDATA → RESTART) never ran. Card: task failed (status check)** instead of a red Gateway card |\n| 09:10:01 | Option run connects, quotes flow; `spx_monthly` done, then `spx_weekly` / `xsp_weekly` fail and `spx_leaps` is skipped on the run budget (ends 09:16:10). Index run killed by its 2-min timeout at 09:12. **Cards: chain failed × 3, task failed (indices)** |\n| 09:16 onward | **The Gateway's API port stops accepting connections.** Every run fails its connect in 4 s (`TimeoutError`) until the close. **Card: task failed (option snapshots)** at 09:16:18 |\n| 09:28 | **Card: red warm-up check** |\n| 09:45 | **Cards: data stale 15 min (options, indices)** |\n| 10:00–15:00 | **Red hourly progress cards** |\n| 17:30 | **Red close summary**; equity bars, EOD and dbt fine |\n| ~19:15 | Investigation: a raw TCP connect to the API port inside the container hangs; IBC's command server still answers |\n| 19:38:08 | IBC `RESTART` accepted, but the Gateway never opens its config dialog: its UI is wedged too |\n| 19:39:53 | `docker compose restart ib-gateway`: full login. 19:40:10 login completed after the phone 2FA push |\n| 19:40+ | Gateway check green; test index snapshot (6 indices in 4 s) |\n\n## Root cause\n\n**The morning `contract_cache` refresh overloaded IBKR's contract-definition (secdef) service, and the Gateway then\nfroze.** Re-listing every expiry pulled ~24 MB in ~23k messages. About 7 minutes in, the data farms broke and\ncontract-definition requests stopped being answered. By 09:16 the Gateway no longer accepted API connections at all,\nand IBC could not restart it.\n\nEvidence:\n\n- The size of the refresh (23.7 MB / 23,376 messages in attempt 1) and the timing: the breakage started during it.\n- The same refresh stalled the secdef service about five minutes in **every morning from 10-28 to 11-02**, with or\n  without IBKR's ~08:15 server reconnect, and stopped once the refresh was made small and paced (`b927d63`).\n- The 08:15:42 `1100` / `1102` was a reconnect of the same session (\"data maintained\"), so it was not a second login.\n\n**Ruled out: a second machine logging in with the same IBKR username.** The user was setting up a Windows desktop\nthat weekend, and the 1100 happened at 23:15 their time, the planned switch-over deadline. But a competing login ends\nthe old session. Here the session survived (`1102`), there was no re-login or \"existing session\" dialog in the Mac\nGateway log, and the failure recurred on later days with one machine.\n\n## Contributing factors (why nothing recovered on its own)\n\n1. **The self-healing path had a hole:** `check_gateway` only caught connect errors. A request that hung after\n   connecting raised past `gateway_with_healing`, so the 09:02 check never sent RECONNECTDATA or RESTART.\n2. **Only the 09:02 check could heal.** Once the collectors failed, nothing during the session tried to heal.\n3. **IBC's RESTART can't fix a wedged Gateway.** Only a container restart could, and that needs a full login with phone 2FA.\n4. **The person who could approve 2FA was asleep.** Every card went out between 23:33 and 08:30 AEDT.\n\n## Actions\n\n| Action | Commit | Status |\n|---|---|---|\n| Runs make no contract-definition requests (day cache) | `56a1de2` | Done (from the 10-23 incident) |\n| `check_gateway`: 30 s request timeout; a hung request is a failed check, so healing runs | `4ff89ba` | Done |\n| Watchdog self-heals the Gateway once per stale episode during the session | `4ff89ba` | Done |\n| Carry the cache forward before refreshing; stop at the first refresh failure; IBC \"hung\" vs \"denied\"; a hung IBC asks for a manual restart instead of escalating | `2cb6f46` | Done |\n| `contract_cache` lists only new expiries plus a few of the oldest cached ones, with pauses between requests | `b927d63` | Done: the root-cause fix |\n| Gateway checks at 08:00, 08:20 and 08:40 ET, so a login or 2FA problem shows 70–90 min before the open; missing-subscription codes turn the card red; `TWOFA_DEVICE` picks the 2FA device for one-push logins | `93d0e89` | Done |\n| A full Gateway login still needs a human with a phone; overnight in AEDT | — | Accepted risk |\n\n## Lessons\n\n- A cache refresh can also be a load test against someone else's service. Make it incremental and paced.\n- Test the self-healing code against the failures that actually happen. \"Connects but never answers\" is not the\n  same as \"can't connect\".\n- Before trusting a recovery step, check it can run in the state that needs it. IBC's RESTART needs a working\n  Gateway UI, which is exactly what was broken here.\n- Write down the tempting explanation and the evidence that rules it out (the second machine). It is the first\n  thing anyone will suggest next time.\n"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-11-12",
+    "dataset": "index_snapshots",
+    "limit": 5
+   },
+   "text": "{\n  \"day\": \"2026-11-12\",\n  \"total\": 82,\n  \"failed\": 0,\n  \"runs\": [\n    {\n      \"started_et\": \"15:55:00\",\n      \"duration_s\": 5,\n      \"run_id\": \"scheduled__2026-11-12T20:55:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.90474,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:50:00\",\n      \"duration_s\": 5,\n      \"run_id\": \"scheduled__2026-11-12T20:50:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.85852,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:45:00\",\n      \"duration_s\": 5,\n      \"run_id\": \"scheduled__2026-11-12T20:45:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.757094,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:40:01\",\n      \"duration_s\": 4,\n      \"run_id\": \"scheduled__2026-11-12T20:40:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 300.826716,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:35:00\",\n      \"duration_s\": 4,\n      \"run_id\": \"scheduled__2026-11-12T20:35:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.833792,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    }\n  ]\n}"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-11-11",
+    "dataset": "option_snapshots",
+    "limit": 6
+   },
+   "text": "{\n  \"day\": \"2026-11-11\",\n  \"total\": 82,\n  \"failed\": 0,\n  \"runs\": [\n    {\n      \"started_et\": \"15:55:00\",\n      \"duration_s\": 251,\n      \"run_id\": \"scheduled__2026-11-11T20:55:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3333,\n      \"quarantined\": 0,\n      \"flagged\": 170,\n      \"gap_s\": 32.303923,\n      \"two_sided\": 3286,\n      \"ask_only\": 7,\n      \"bid_only\": 0,\n      \"no_quote\": 40,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:50:00\",\n      \"duration_s\": 267,\n      \"run_id\": \"scheduled__2026-11-11T20:50:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3434,\n      \"quarantined\": 0,\n      \"flagged\": 139,\n      \"gap_s\": 17.372371,\n      \"two_sided\": 3427,\n      \"ask_only\": 7,\n      \"bid_only\": 0,\n      \"no_quote\": 0,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:45:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-11T20:45:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 78,\n      \"gap_s\": 55.675452,\n      \"two_sided\": 3676,\n      \"ask_only\": 136,\n      \"bid_only\": 0,\n      \"no_quote\": 15,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:40:01\",\n      \"duration_s\": 244,\n      \"run_id\": \"scheduled__2026-11-11T20:40:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 41,\n      \"gap_s\": 34.940382,\n      \"two_sided\": 3322,\n      \"ask_only\": 4,\n      \"bid_only\": 0,\n      \"no_quote\": 21,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:35:00\",\n      \"duration_s\": 265,\n      \"run_id\": \"scheduled__2026-11-11T20:35:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3435,\n      \"quarantined\": 0,\n      \"flagged\": 18,\n      \"gap_s\": 16.936035,\n      \"two_sided\": 3431,\n      \"ask_only\": 4,\n      \"bid_only\": 0,\n      \"no_quote\": 0,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:30:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-11T20:30:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 49,\n      \"gap_s\": 47.065041,\n      \"two_sided\": 3707,\n      \"ask_only\": 120,\n      \"bid_only\": 0,\n      \"no_quote\": 0,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    }\n  ]\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "runbooks/gateway"
+   },
+   "text": "# Runbook: IB Gateway down, login / 2FA, stalled contract definitions\n\nBased on real incidents: [2026-10-23](../incidents/2026-10-23.md), [2026-10-26](../incidents/2026-10-26.md), and the\ndaily morning stalls of 2026-10-28 → 11-02 (commit `b927d63`).\n\nCommands run from the repo root on the host that runs the stack. Times are ET.\n\n## Symptoms\n\n- A **Gateway check card** (08:00, 08:20, 08:40, 09:02 on session days) is red. Each red field points at a cause:\n\n  | Field | Meaning | Section |\n  |---|---|---|\n  | `❌ Gateway 无法连接` | The API port refuses or times out on connect | [A](#a-api-unreachable-or-hanging) |\n  | `❌ Gateway 已连接，但请求没有响应` | Connects, then requests hang | [A](#a-api-unreachable-or-hanging) |\n  | `❌ 合约查询` | Logged in, but contract definitions don't answer within 20 s | [B](#b-contract-definition-secdef-stall) |\n  | `❌ 行情权限` (codes 354, 10089, 10090, 10167, 10168, 10197) | This user gets no live data | [C](#c-no-data-subscriptions-or-competing-session) |\n  | `❌ Gateway 美股报价：无` plus farm codes 1100 / 2103 / 2105 / 2157 | Data farms disconnected | [D](#d-data-farms-disconnected) |\n  | `🔧 自动修复` ending in `❌ 自动修复失败` | Self-healing tried and failed | [E](#e-manual-restart-full-login) |\n\n- A **`⏸️ 数据停滞`** card for option or index snapshots: see [stale-snapshots.md](stale-snapshots.md). The watchdog has already\n  tried self-healing once.\n- `❌ 任务失败：期权快照 / 指数快照` with `TimeoutError()` after about 4 s means the connect timed out (section A).\n\n## What already happened automatically\n\nOn session days between 04:00 and 20:00, a red check (except section C) self-heals:\n`RECONNECTDATA` (20 s), then `RESTART` (120 s, no 2FA), re-checking after each. A contract-definition stall skips\nstraight to `RESTART`. If IBC takes a command and never replies (`Hung`), healing stops, because later commands queue\nbehind the stuck one. Outside that window, and for subscription problems, the check only reports.\n\n## Triage\n\n```bash\ndocker compose ps\ndocker compose exec airflow python -m pit.health gateway\ndocker compose logs --since 30m ib-gateway | grep -v \"remove Client\" | tail -40\n```\n\nThe second command runs the same check as the cards, without sending a card or healing. Add `--send` to post the result.\n\n## A. API unreachable or hanging\n\n**Seen 2026-10-26:** from 09:16 the API port accepted no connections at all, while IBC's command server still answered.\nSelf-healing can't fix this state: IBC's `RESTART` was accepted but the Gateway's UI never opened its config dialog.\n\n1. If the Gateway log shows a login dialog or `Second Factor Authentication`, it's waiting for 2FA: go to E, step 3.\n2. Otherwise go to E. A wedged Gateway only comes back from a container restart.\n\n## B. Contract-definition (secdef) stall\n\n**Seen 2026-10-23 (5 min) and every morning 2026-10-28 → 11-02**, caused by the 08:15 `contract_cache` refresh\ndownloading every expiry (~24 MB, ~23k messages).\n\n- Snapshot runs don't need secdef: they use the day's contract cache. Quotes keep flowing as long as the cache exists.\n- Check that today's cache exists: `ls data/cache/ibkr_contracts/` should list today's New York date. Never delete the\n  latest day's cache: without it the next morning re-lists every expiry, the refresh that causes this stall.\n- If it persists into the session, self-healing goes straight to `RESTART`. If that fails, go to E.\n- Do **not** run `warm_cache` or any bulk contract-details request by hand to \"help\": that's what caused the stalls.\n\n## C. No data: subscriptions or competing session\n\nSelf-healing never runs here: a restart can't fix a subscription.\n\n| Code | Meaning | Fix |\n|---|---|---|\n| 354 / 10089 / 10090 | Not subscribed for this instrument | Check the collector user's subscriptions in Client Portal (they are per username). Required: US Securities Snapshot and Futures Value Bundle, US Equity and Options Add-On Streaming Bundle. New subscriptions can take up to 24 h |\n| 10167 / 10168 | Delayed data shown instead of live (10167), or not subscribed with delayed data disabled (10168) | Same as above |\n| 10197 | Live data held by another session of the same user | Log the other session out (TWS, mobile, web) or move collection to its own user (done 2026-11-06: a second username used only for collection) |\n\n## D. Data farms disconnected\n\nFarm drops that recover within the same run (e.g. `2103` then `2104` for the same farm) are routine and not alerted.\nIf they persist, self-healing sends `RECONNECTDATA`. A `1100` followed by `1102 ... data maintained` is IBKR\nreconnecting the same session: no action needed.\n\n## E. Manual restart (full login)\n\nNeeds someone with the phone that receives IBKR's 2FA push. Prefer after 16:00 or before 08:00 on session days.\n\n1. Make sure no other machine runs a Gateway with the same username. Two Gateways with one user log each other out\n   (`EXISTING_SESSION_DETECTED_ACTION=primary` on both).\n2. `docker compose restart ib-gateway`\n3. Approve the push on the phone. With `TWOFA_DEVICE` set in `.env` (e.g. `IB Key`), the login picks that device. If\n   it is empty and the account has several devices, pick one over VNC (`127.0.0.1:5900`). IBC retries the login\n   if the push isn't approved within 180 s.\n4. Watch the login: `docker compose logs -f --since 2m ib-gateway | grep -E \"Second Factor|Login has completed\"`\n5. Changing `.env` (user, password, `TWOFA_DEVICE`) takes effect only when the container is recreated:\n   `docker compose up -d --no-deps ib-gateway`, not `restart`.\n\n## Verify\n\n```bash\ndocker compose exec airflow python -m pit.health gateway --send\n```\n\nThe card should be green, including `✅ 合约查询` and SPY / SPX / VIX quotes. During the session, the next option\nsnapshot should succeed within 5 minutes, and the next run of a failed task sends `✅ 已恢复`.\n\n## Don't\n\n- Don't start a second Gateway, or a test container, with the production username.\n- Don't restart the Gateway between 09:00 and 16:00 unless collection is already down: a full login needs 2FA.\n- Don't run heavy or cold contract-details tests against the production Gateway near or during market hours.\n- IBKR stays read-only (`READ_ONLY_API=yes`, `readonly=True`): never change that to fix anything.\n"
+  },
+  {
+   "name": "slo_status",
+   "args": {
+    "end": "2026-11-12",
+    "sessions_back": 3
+   },
+   "text": "{\n  \"objectives\": {\n    \"sli1_coverage_pct\": 99.0,\n    \"sli2_on_time_pct\": 95.0,\n    \"sli3_bars_pct\": 99.5\n  },\n  \"window\": {\n    \"session\": \"window\",\n    \"option_slots\": 234,\n    \"option_ok\": 234,\n    \"sli1_coverage_pct\": 100.0,\n    \"sli2_on_time_pct\": 98.72,\n    \"bars_present\": 11700,\n    \"bars_expected\": 11700,\n    \"sli3_bars_pct\": 100.0\n  },\n  \"met\": {\n    \"sli1_coverage_pct\": true,\n    \"sli2_on_time_pct\": true,\n    \"sli3_bars_pct\": true\n  },\n  \"per_session\": [\n    {\n      \"session\": \"2026-11-10\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 98.72,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-11-11\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 98.72,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-11-12\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 98.72,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    }\n  ]\n}"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-11-12",
+    "dataset": "option_snapshots",
+    "limit": 10,
+    "status": "success"
+   },
+   "text": "{\n  \"day\": \"2026-11-12\",\n  \"total\": 82,\n  \"failed\": 0,\n  \"runs\": [\n    {\n      \"started_et\": \"15:55:00\",\n      \"duration_s\": 251,\n      \"run_id\": \"scheduled__2026-11-12T20:55:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3333,\n      \"quarantined\": 0,\n      \"flagged\": 170,\n      \"gap_s\": 299.907259,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:50:00\",\n      \"duration_s\": 267,\n      \"run_id\": \"scheduled__2026-11-12T20:50:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3434,\n      \"quarantined\": 0,\n      \"flagged\": 139,\n      \"gap_s\": 299.856225,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:45:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-12T20:45:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 78,\n      \"gap_s\": 299.747884,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:40:01\",\n      \"duration_s\": 244,\n      \"run_id\": \"scheduled__2026-11-12T20:40:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 41,\n      \"gap_s\": 300.831446,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:35:00\",\n      \"duration_s\": 265,\n      \"run_id\": \"scheduled__2026-11-12T20:35:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3435,\n      \"quarantined\": 0,\n      \"flagged\": 18,\n      \"gap_s\": 299.837888,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:30:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-12T20:30:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 49,\n      \"gap_s\": 299.886791,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:25:00\",\n      \"duration_s\": 252,\n      \"run_id\": \"scheduled__2026-11-12T20:25:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 96,\n      \"gap_s\": 299.447162,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:20:01\",\n      \"duration_s\": 269,\n      \"run_id\": \"scheduled__2026-11-12T20:20:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3430,\n      \"quarantined\": 0,\n      \"flagged\": 60,\n      \"gap_s\": 300.534922,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:15:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-12T20:15:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 83,\n      \"gap_s\": 299.508534,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    },\n    {\n      \"started_et\": \"15:10:01\",\n      \"duration_s\": 253,\n      \"run_id\": \"scheduled__2026-11-12T20:10:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 57,\n      \"gap_s\": 300.528363,\n      \"two_sided\": 0,\n      \"ask_only\": 0,\n      \"bid_only\": 0,\n      \"no_quote\": 3400,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": [\n        10197\n      ]\n    }\n  ]\n}"
+  }
+ ]
+}

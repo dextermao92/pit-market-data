@@ -1,0 +1,159 @@
+{
+ "case": "s02-duckdb-lock",
+ "model": "deepseek-v4-pro",
+ "thinking": false,
+ "recorded_at": "2026-11-12T10:15:50+00:00",
+ "llm": [
+  {
+   "id": "32306747-ab25-41ad-a850-0ee1fa3e7cbb",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "I'll investigate this duckdb lock issue and check whether collection is affected.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_cgPBSSQfCdC9nxftJkGs7343",
+        "function": {
+         "arguments": "{\"name\": \"\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_hi1bnjI3B0gsd2Q5rKMb3170",
+        "function": {
+         "arguments": "{\"day\": \"2026-11-12\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 1
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478540,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 92,
+    "prompt_tokens": 2134,
+    "total_tokens": 2226,
+    "prompt_tokens_details": {
+     "cached_tokens": 2048
+    },
+    "prompt_cache_hit_tokens": 2048,
+    "prompt_cache_miss_tokens": 86
+   }
+  },
+  {
+   "id": "cee44f60-1ea2-41d6-b3a9-a974b49abf59",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "The data shows all collection runs on 2026-11-12 succeeded with 0 failures. Let me read the duckdb-lock runbook to understand what to do about the dbt build failure.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_AjbxAVmf7cCBfJyyUxyJ9879",
+        "function": {
+         "arguments": "{\"name\": \"runbooks/duckdb-lock\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 0
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478542,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 92,
+    "prompt_tokens": 6901,
+    "total_tokens": 6993,
+    "prompt_tokens_details": {
+     "cached_tokens": 2176
+    },
+    "prompt_cache_hit_tokens": 2176,
+    "prompt_cache_miss_tokens": 4725
+   }
+  },
+  {
+   "id": "42ff4087-dbd6-4db1-ba9c-7413a327f15d",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "The runbook confirms everything I need. Let me verify the SLO status isn't relevant here (it's a dbt build issue, not collection), but the runbook already confirms collection is unaffected. I have enough to diagnose.\n\nThe evidence is clear:\n- All 257 collection runs on 2026-11-12 succeeded (0 failed), including option_snapshots, index_snapshots, equity_bars, daily_bars, corporate_actions, and assets.\n- The dbt_build failure is a `duckdb_lock`: a conflicting lock on `/opt/airflow/data/curated.duckdb` held by PID 4127 (`/usr/local/bin/python3.12`).",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_eYTzljvY1fPM72P164rW3754",
+        "function": {
+         "arguments": "{\"root_cause\": \"The eod.dbt_build task failed because another process (a Python 3.12 process, PID 4127) holds an open handle on data/curated.duckdb, so DuckDB refused the write lock. Collection is not affected: every collection run on 2026-11-12 succeeded, since collectors write raw/staged Parquet, not through DuckDB.\", \"category\": \"duckdb_lock\", \"runbook\": \"runbooks/duckdb-lock\", \"evidence\": [{\"day\": \"2026-11-12\", \"detail\": \"eod.dbt_build log: 'IO Error: Could not set lock on file \\\"/opt/airflow/data/curated.duckdb\\\": Conflicting lock is held in /usr/local/bin/python3.12 (PID 4127).'\", \"dataset\": \"curated.duckdb (dbt build)\"}, {\"day\": \"2026-11-12\", \"detail\": \"get_runs total=257, failed=0; all option_snapshots, index_snapshots, equity_bars, daily_bars, corporate_actions and assets runs succeeded\", \"dataset\": \"all\"}, {\"day\": \"2026-11-12\", \"detail\": \"Option snapshots continued successfully through the day (e.g. 15:30 ET rows=3827, 15:55 ET rows=3333) with no ibkr_error_codes\", \"dataset\": \"option_snapshots\"}], \"confidence\": \"high\"}",
+         "name": "submit_diagnosis"
+        },
+        "type": "function",
+        "index": 0
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478544,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 556,
+    "prompt_tokens": 7689,
+    "total_tokens": 8245,
+    "prompt_tokens_details": {
+     "cached_tokens": 6912
+    },
+    "prompt_cache_hit_tokens": 6912,
+    "prompt_cache_miss_tokens": 777
+   }
+  }
+ ],
+ "tools": [
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": ""
+   },
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-11-12"
+   },
+   "text": "{\n  \"day\": \"2026-11-12\",\n  \"total\": 257,\n  \"failed\": 0,\n  \"runs\": [\n    {\n      \"started_et\": \"17:31:14\",\n      \"duration_s\": 7,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00__2026-11-12\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 8.017643,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"17:31:06\",\n      \"duration_s\": 8,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00__2026-11-10\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 8.410872,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"17:30:57\",\n      \"duration_s\": 8,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00__2026-11-09\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 7.778451,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"17:30:50\",\n      \"duration_s\": 7,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00__2026-11-06\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 7.765764,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"17:30:42\",\n      \"duration_s\": 7,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00__2026-11-05\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 8.050657,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"17:30:34\",\n      \"duration_s\": 8,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00__2026-11-04\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 8.224563,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"17:30:26\",\n      \"duration_s\": 8,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00__2026-11-03\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 8.392638,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"17:30:17\",\n      \"duration_s\": 8,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00__2026-11-02\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 8.294333,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"17:30:09\",\n      \"duration_s\": 8,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00__2026-10-30\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 8.071894,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"17:30:01\",\n      \"duration_s\": 8,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00__2026-10-29\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 3900.272568,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"17:30:01\",\n      \"duration_s\": 1,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00\",\n      \"dataset\": \"daily_bars\",\n      \"status\": \"success\",\n      \"rows\": 500,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 86400.0\n    },\n    {\n      \"started_et\": \"17:30:01\",\n      \"duration_s\": 1,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00\",\n      \"dataset\": \"corporate_actions\",\n      \"status\": \"success\",\n      \"rows\": 1791,\n      \"quarantined\": 0,\n      \"flagged\": 4,\n      \"gap_s\": 86400.0\n    },\n    {\n      \"started_et\": \"17:30:01\",\n      \"duration_s\": 12,\n      \"run_id\": \"scheduled__2026-11-12T22:30:00+00:00\",\n      \"dataset\": \"assets\",\n      \"status\": \"success\",\n      \"rows\": 50,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 86400.0\n    },\n    {\n      \"started_et\": \"16:25:01\",\n      \"duration_s\": 11,\n      \"run_id\": \"scheduled__2026-11-12T21:25:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 300.65849,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"16:20:00\",\n      \"duration_s\": 12,\n      \"run_id\": \"scheduled__2026-11-12T21:20:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.625844,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"16:15:00\",\n      \"duration_s\": 9,\n      \"run_id\": \"scheduled__2026-11-12T21:15:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3900,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.615223,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"16:10:01\",\n      \"duration_s\": 9,\n      \"run_id\": \"scheduled__2026-11-12T21:10:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3850,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 300.792532,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"16:05:00\",\n      \"duration_s\": 12,\n      \"run_id\": \"scheduled__2026-11-12T21:05:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3800,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.851666,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"16:00:00\",\n      \"duration_s\": 16,\n      \"run_id\": \"scheduled__2026-11-12T21:00:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3750,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.760443,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:55:00\",\n      \"duration_s\": 5,\n      \"run_id\": \"scheduled__2026-11-12T20:55:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.90474,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:55:00\",\n      \"duration_s\": 13,\n      \"run_id\": \"scheduled__2026-11-12T20:55:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3700,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.911487,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:55:00\",\n      \"duration_s\": 251,\n      \"run_id\": \"scheduled__2026-11-12T20:55:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3333,\n      \"quarantined\": 0,\n      \"flagged\": 170,\n      \"gap_s\": 299.907259,\n      \"two_sided\": 3286,\n      \"ask_only\": 7,\n      \"bid_only\": 0,\n      \"no_quote\": 40,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:50:00\",\n      \"duration_s\": 5,\n      \"run_id\": \"scheduled__2026-11-12T20:50:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.85852,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:50:00\",\n      \"duration_s\": 267,\n      \"run_id\": \"scheduled__2026-11-12T20:50:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3434,\n      \"quarantined\": 0,\n      \"flagged\": 139,\n      \"gap_s\": 299.856225,\n      \"two_sided\": 3427,\n      \"ask_only\": 7,\n      \"bid_only\": 0,\n      \"no_quote\": 0,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:50:00\",\n      \"duration_s\": 13,\n      \"run_id\": \"scheduled__2026-11-12T20:50:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3650,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.845981,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:45:00\",\n      \"duration_s\": 16,\n      \"run_id\": \"scheduled__2026-11-12T20:45:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3600,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.764257,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:45:00\",\n      \"duration_s\": 5,\n      \"run_id\": \"scheduled__2026-11-12T20:45:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.757094,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:45:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-12T20:45:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 78,\n      \"gap_s\": 299.747884,\n      \"two_sided\": 3676,\n      \"ask_only\": 136,\n      \"bid_only\": 0,\n      \"no_quote\": 15,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:40:01\",\n      \"duration_s\": 244,\n      \"run_id\": \"scheduled__2026-11-12T20:40:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 41,\n      \"gap_s\": 300.831446,\n      \"two_sided\": 3322,\n      \"ask_only\": 4,\n      \"bid_only\": 0,\n      \"no_quote\": 21,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:40:01\",\n      \"duration_s\": 4,\n      \"run_id\": \"scheduled__2026-11-12T20:40:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 300.826716,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:40:01\",\n      \"duration_s\": 14,\n      \"run_id\": \"scheduled__2026-11-12T20:40:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3550,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 300.825142,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:35:00\",\n      \"duration_s\": 265,\n      \"run_id\": \"scheduled__2026-11-12T20:35:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3435,\n      \"quarantined\": 0,\n      \"flagged\": 18,\n      \"gap_s\": 299.837888,\n      \"two_sided\": 3431,\n      \"ask_only\": 4,\n      \"bid_only\": 0,\n      \"no_quote\": 0,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:35:00\",\n      \"duration_s\": 14,\n      \"run_id\": \"scheduled__2026-11-12T20:35:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3500,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.837872,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:35:00\",\n      \"duration_s\": 4,\n      \"run_id\": \"scheduled__2026-11-12T20:35:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.833792,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:30:00\",\n      \"duration_s\": 4,\n      \"run_id\": \"scheduled__2026-11-12T20:30:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.888969,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:30:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-12T20:30:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 49,\n      \"gap_s\": 299.886791,\n      \"two_sided\": 3707,\n      \"ask_only\": 120,\n      \"bid_only\": 0,\n      \"no_quote\": 0,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:30:00\",\n      \"duration_s\": 21,\n      \"run_id\": \"scheduled__2026-11-12T20:30:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3450,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.884883,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:25:00\",\n      \"duration_s\": 252,\n      \"run_id\": \"scheduled__2026-11-12T20:25:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 96,\n      \"gap_s\": 299.447162,\n      \"two_sided\": 3304,\n      \"ask_only\": 3,\n      \"bid_only\": 0,\n      \"no_quote\": 40,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:25:00\",\n      \"duration_s\": 12,\n      \"run_id\": \"scheduled__2026-11-12T20:25:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3400,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.426837,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:25:00\",\n      \"duration_s\": 4,\n      \"run_id\": \"scheduled__2026-11-12T20:25:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.445699,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:20:01\",\n      \"duration_s\": 13,\n      \"run_id\": \"scheduled__2026-11-12T20:20:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3350,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 300.555278,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:20:01\",\n      \"duration_s\": 5,\n      \"run_id\": \"scheduled__2026-11-12T20:20:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 300.538417,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:20:01\",\n      \"duration_s\": 269,\n      \"run_id\": \"scheduled__2026-11-12T20:20:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3430,\n      \"quarantined\": 0,\n      \"flagged\": 60,\n      \"gap_s\": 300.534922,\n      \"two_sided\": 3360,\n      \"ask_only\": 4,\n      \"bid_only\": 0,\n      \"no_quote\": 66,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:15:00\",\n      \"duration_s\": 282,\n      \"run_id\": \"scheduled__2026-11-12T20:15:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3827,\n      \"quarantined\": 0,\n      \"flagged\": 83,\n      \"gap_s\": 299.508534,\n      \"two_sided\": 3718,\n      \"ask_only\": 109,\n      \"bid_only\": 0,\n      \"no_quote\": 0,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:15:00\",\n      \"duration_s\": 18,\n      \"run_id\": \"scheduled__2026-11-12T20:15:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3300,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 299.518193,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:15:00\",\n      \"duration_s\": 4,\n      \"run_id\": \"scheduled__2026-11-12T20:15:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 299.513011,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:10:01\",\n      \"duration_s\": 253,\n      \"run_id\": \"scheduled__2026-11-12T20:10:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3347,\n      \"quarantined\": 0,\n      \"flagged\": 57,\n      \"gap_s\": 300.528363,\n      \"two_sided\": 3344,\n      \"ask_only\": 3,\n      \"bid_only\": 0,\n      \"no_quote\": 0,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:10:01\",\n      \"duration_s\": 5,\n      \"run_id\": \"scheduled__2026-11-12T20:10:00+00:00\",\n      \"dataset\": \"index_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 6,\n      \"quarantined\": 0,\n      \"flagged\": 1,\n      \"gap_s\": 300.528644,\n      \"ibkr_error_codes\": []\n    },\n    {\n      \"started_et\": \"15:10:01\",\n      \"duration_s\": 17,\n      \"run_id\": \"scheduled__2026-11-12T20:10:00+00:00\",\n      \"dataset\": \"equity_bars\",\n      \"status\": \"success\",\n      \"rows\": 3250,\n      \"quarantined\": 0,\n      \"flagged\": 0,\n      \"gap_s\": 300.528642,\n      \"missing_bars\": 0\n    },\n    {\n      \"started_et\": \"15:05:00\",\n      \"duration_s\": 268,\n      \"run_id\": \"scheduled__2026-11-12T20:05:00+00:00\",\n      \"dataset\": \"option_snapshots\",\n      \"status\": \"success\",\n      \"rows\": 3434,\n      \"quarantined\": 0,\n      \"flagged\": 43,\n      \"gap_s\": 300.195347,\n      \"two_sided\": 3392,\n      \"ask_only\": 3,\n      \"bid_only\": 0,\n      \"no_quote\": 39,\n      \"crossed\": 0,\n      \"ibkr_error_codes\": []\n    }\n  ]\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "runbooks/duckdb-lock"
+   },
+   "text": "# Runbook: dbt build fails on the DuckDB lock\n\n**Simulated:** this has not happened in production. The lock behaviour below was reproduced on a scratch file with\nduckdb 1.5.6 (2026-11-10).\n\n## How it happens\n\nThe curated layer is one DuckDB file, `data/curated.duckdb`, written by `dbt build` in the `eod` DAG at about 17:30 ET.\nDuckDB allows one writing process per file. Across processes:\n\n| Already open | Another process opens read-write (dbt) | Another process opens read-only |\n|---|---|---|\n| A writer | Fails | **Fails** |\n| A read-only connection | **Fails** | Works |\n\nSo any open handle blocks the nightly build, **even a read-only one**: a DuckDB CLI session, a notebook, DBeaver, or a\nPython REPL left open.\n\n## Symptoms\n\n- The **close summary** card shows `❌ dbt build` with failed nodes. If dbt never wrote results, it shows\n  `本交易日没有运行结果（最近一次是 MM-DD）`.\n- The `eod.dbt_build` task log contains:\n  `IO Error: Could not set lock on file \".../curated.duckdb\": Conflicting lock is held in <program> (PID <pid>)`\n- `dbt_build` has no retries. Collection is **not** affected: raw and staged Parquet are written by the collectors,\n  not through DuckDB.\n\n## Fix\n\n1. Find the holder. The error message names the program and PID.\n   - Inside the stack: `docker compose exec airflow ps -ef | grep -iE \"dbt|duckdb|python\"`\n   - On the host: close notebooks, DuckDB CLI or UI sessions, and SQL clients pointed at `data/curated.duckdb`.\n2. Close it. If it's a stale `dbt` from an earlier run, let it finish, or stop it.\n3. Re-run the build:\n\n   ```bash\n   docker compose exec airflow bash -c \"cd /opt/airflow && /home/airflow/dbt/bin/dbt build --project-dir dbt --profiles-dir dbt\"\n   ```\n\n   Or clear the `dbt_build` task of today's `eod` run in the Airflow UI, so `close_summary` runs again too.\n\n## Verify\n\n`dbt build` ends with `Completed successfully`. The next close summary shows `✅ dbt build` with today's date.\n\n## Avoid\n\n- For ad-hoc queries, don't open the live file. Query the staged Parquet directly (`duckdb -c \"select ... from\n  'data/staged/option_snapshots/*/*.parquet'\"`) or work on a copy:\n  `cp data/curated.duckdb /tmp/curated.duckdb`.\n- Never keep a session open on `curated.duckdb` across 17:30 ET.\n- Losing `curated.duckdb` is not data loss: it rebuilds from staged with `dbt build`.\n"
+  }
+ ]
+}

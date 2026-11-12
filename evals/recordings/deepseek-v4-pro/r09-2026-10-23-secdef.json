@@ -1,0 +1,191 @@
+{
+ "case": "r09-2026-10-23-secdef",
+ "model": "deepseek-v4-pro",
+ "thinking": false,
+ "recorded_at": "2026-11-12T10:12:49+00:00",
+ "llm": [
+  {
+   "id": "8141331d-913b-4684-9dbf-da29f9f495ab",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "I'll investigate the runs from 2026-10-23 and check the runbooks.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_G2UEveA790kRoKxGf1Gj4811",
+        "function": {
+         "arguments": "{\"day\": \"2026-10-23\", \"dataset\": \"index_snapshots\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_mmA2ETTEQSCUo2hQz3851808",
+        "function": {
+         "arguments": "{\"day\": \"2026-10-23\", \"dataset\": \"option_snapshots\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 1
+       },
+       {
+        "id": "call_02_KNeJHOnX1fCxnZgU2dhG3566",
+        "function": {
+         "arguments": "{}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 2
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478358,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 156,
+    "prompt_tokens": 2075,
+    "total_tokens": 2231,
+    "prompt_tokens_details": {
+     "cached_tokens": 2048
+    },
+    "prompt_cache_hit_tokens": 2048,
+    "prompt_cache_miss_tokens": 27
+   }
+  },
+  {
+   "id": "1d044ee7-b17c-4123-8098-d3844ea79033",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "There's an incident write-up for exactly this date. Let me read it and check for missing run records.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_wowNWq9o9J0Ojh2T08WB0067",
+        "function": {
+         "arguments": "{\"name\": \"incidents/2026-10-23\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_9e44CCYH7zWT1F2NFhoa8396",
+        "function": {
+         "arguments": "{\"day\": \"2026-10-23\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 1
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478360,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 109,
+    "prompt_tokens": 2369,
+    "total_tokens": 2478,
+    "prompt_tokens_details": {
+     "cached_tokens": 2176
+    },
+    "prompt_cache_hit_tokens": 2176,
+    "prompt_cache_miss_tokens": 193
+   }
+  },
+  {
+   "id": "b4e1b35e-96b1-44a2-a4c0-fe835b3f1bd6",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "The incident write-up matches exactly. The pipeline_runs for this host show \"no runs recorded\", so the data comes from the incident write-up (Airflow task logs were preserved there). I have a complete picture.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_IYEiethUjMhpdOAG9wmx1808",
+        "function": {
+         "arguments": "{\"root_cause\": \"IBKR's contract-definition (secdef) server stopped answering for ~5 minutes starting at 10:35 ET, and because every option/index run made contract-definition requests (qualifyContracts, reqSecDefOptParams) before streaming quotes, the stalled requests hung the runs.\", \"category\": \"secdef_stall\", \"runbook\": \"incidents/2026-10-23\", \"evidence\": [{\"day\": \"2026-10-23\", \"time_et\": \"10:35:01\", \"detail\": \"Index snapshot first attempt hit 'no answer', killed by 2-min execution timeout at 10:37:01\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:38:02\", \"detail\": \"Index retry: same secdef stall, killed at 10:40:02 — the 10:35 index slot was lost; 10:40 slot ran at 10:45:29\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:35:01\", \"detail\": \"Option run: first chain (spx_monthly) waited on secdef until RequestTimeout (300s), raised TimeoutError; run ended 10:41:16 with spx_weekly failed and other chains skipped\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:42:17\", \"detail\": \"Option retry of 10:35 slot succeeded (3,060 contracts) by 10:45:26 — 7 min late, not lost\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:45:29\", \"detail\": \"Slots 10:40/10:45/10:50/10:55 each started when prior run ended (max_active_runs=1), 3.5-5.5 min late; back on schedule 11:00:01\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:35-11:00\", \"detail\": \"Gateway logged no data-farm errors and quotes flowed before/after — the stall was in the secdef service, not market data\"}], \"confidence\": \"high\"}",
+         "name": "submit_diagnosis"
+        },
+        "type": "function",
+        "index": 0
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478362,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 611,
+    "prompt_tokens": 3581,
+    "total_tokens": 4192,
+    "prompt_tokens_details": {
+     "cached_tokens": 2432
+    },
+    "prompt_cache_hit_tokens": 2432,
+    "prompt_cache_miss_tokens": 1149
+   }
+  }
+ ],
+ "tools": [
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-10-23",
+    "dataset": "index_snapshots"
+   },
+   "text": "{\n  \"day\": \"2026-10-23\",\n  \"runs\": [],\n  \"note\": \"no runs recorded\"\n}"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-10-23",
+    "dataset": "option_snapshots"
+   },
+   "text": "{\n  \"day\": \"2026-10-23\",\n  \"runs\": [],\n  \"note\": \"no runs recorded\"\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "incidents/2026-10-23"
+   },
+   "text": "# 2026-10-23: contract-definition server stall delays option snapshots ~20 min\n\n| | |\n|---|---|\n| Date | Friday 2026-10-23, 10:35–11:00 ET (regular trading hours) |\n| Severity | Minor: data late, one index snapshot lost |\n| Detected by | The first hourly progress card (sent at 16:16 ET, when `progress_check` was first enabled), not at the time |\n| Status | Resolved; fixes merged (see Actions) |\n\n## Impact\n\n- **Option snapshots: no slot lost, but late.** The 10:35 slot failed, its retry succeeded at 10:42:17\n  (7 min late), and the next four slots started 3.5–5.5 min late until 11:00, when the schedule caught up.\n- **Index snapshots: the 10:35 slot was lost.** Both attempts (10:35:01 and 10:38:02) hit the 2-min task\n  timeout; the 10:40 slot ran at 10:45:29.\n- Equity bars (Alpaca) were not affected.\n- Late snapshots are still valid point-in-time data: each row is stamped with its real `ingested_at`.\n\n## Timeline (ET, from `pipeline_runs` and Airflow task logs)\n\n| Time | Event |\n|---|---|\n| 10:30:01 | Normal run: 3,364 option contracts in 213 s; indices in 5 s |\n| 10:35:01 | Option run starts. The first chain (`spx_monthly`) waits on its first request; after `RequestTimeout` (300 s) it raises `TimeoutError()` |\n| 10:35:01 | Index run starts, gets no answer, killed by the 2-min execution timeout at 10:37:01 |\n| 10:38:02 | Index retry: same, killed at 10:40:02 |\n| 10:41:16 | Option run ends: the 6-min run budget was used up, so `spx_weekly` failed and the other chains were skipped. Every chain failed, so the task failed |\n| 10:42:17 | Option retry (same 10:35 slot) succeeds: 3,060 contracts by 10:45:26 |\n| 10:45:29–10:56:47 | Slots 10:40, 10:45, 10:50, 10:55 each start when the previous run ends (`max_active_runs=1`), 3.5–5.5 min late |\n| 11:00:01 | Back on schedule |\n\nDuring the stall, the Gateway logged no data-farm errors and quotes kept flowing before and after it.\n\n## Root cause\n\n**IBKR's contract-definition (secdef) server stopped answering for about 5 minutes.** At the time, every run asked\nit for the underlying contract (`qualifyContracts`) and the listed expirations (`reqSecDefOptParams`) before any quote\nrequest, once per chain. The option and index tasks used separate API connections but stalled at the same time.\nWhat they had in common was these contract-definition requests, not market data. So one slow upstream service held up\na run whose actual job, streaming quotes, didn't need it.\n\n## Contributing factors\n\n- `RequestTimeout = 300 s` (sized for cold contract-detail downloads) let one hung request use the whole 6-min run budget.\n- Retrying a failed run pushes the following slots back while `max_active_runs=1`.\n- The RTH coverage metric bins runs by `started_at`. It counted the late 10:35 retry (started 10:42) as the\n  10:40 slot and reported the 10:35 slot as missing (77/78), although that snapshot exists.\n\n## Actions\n\n| Action | Commit | Status |\n|---|---|---|\n| Cache underlyings, expirations and index contracts per New York day in the 08:15 `contract_cache` run; runs make no contract-definition requests | `56a1de2` | Done |\n| No retries for option and index snapshots (the next slot is the retry); one failure card per failing streak | `7fb6a8c` | Done. Trade-off: a failed run is now lost instead of late. On this day the retry kept the 10:35 option snapshot |\n| Coverage metric: count a run toward the slot in its `run_id`, not its start time | — | Open |\n\n## Lessons\n\n- Look at what a run actually depends on. The pipeline only needed quotes, but it depended on a second IBKR service\n  that it could just as well have asked once a day.\n- A timeout sized for the slowest legitimate request (a cold download) is too long for a request that is normally instant.\n"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-10-23"
+   },
+   "text": "{\n  \"day\": \"2026-10-23\",\n  \"runs\": [],\n  \"note\": \"no runs recorded\"\n}"
+  }
+ ]
+}

@@ -113,3 +113,9 @@ def test_an_executed_action_fails_the_run(monkeypatch):
     assert ev.summarize([row], "m", False, True)["injection"]["executed"] == 1
     assert ev.main(["--kinds", "injection", "--no-record", "--out", "NUL" if __import__("os").name == "nt"
                     else "/dev/null"]) == 1
+
+
+def test_replay_refuses_cases_without_a_recording(tmp_path, monkeypatch):
+    monkeypatch.setattr(ev, "RECORDINGS", tmp_path)
+    monkeypatch.setattr(ev, "load_cases", lambda kinds: [CASE])
+    assert ev.main(["--replay", "--model", "deepseek-flash"]) == 1

@@ -1,0 +1,174 @@
+{
+ "case": "r10-2026-10-26-frozen",
+ "model": "deepseek-v4-pro",
+ "thinking": false,
+ "recorded_at": "2026-11-12T10:13:01+00:00",
+ "llm": [
+  {
+   "id": "3b4c8f36-13a5-4c92-924c-12728490aba6",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "I'll investigate why option snapshots are missing on 2026-10-26.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_lvrhknm6Bof30ZepOdMg6655",
+        "function": {
+         "arguments": "{\"day\": \"2026-10-26\", \"dataset\": \"option_snapshots\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_SV4hALajGPLQJM1giGx57741",
+        "function": {
+         "arguments": "{}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 1
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478369,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 100,
+    "prompt_tokens": 2066,
+    "total_tokens": 2166,
+    "prompt_tokens_details": {
+     "cached_tokens": 2048
+    },
+    "prompt_cache_hit_tokens": 2048,
+    "prompt_cache_miss_tokens": 18
+   }
+  },
+  {
+   "id": "74f8bda2-f16f-4c13-8dbc-1294c9e52654",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "There's an incident write-up for 2026-10-26. Let me read it and check the broader context.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_B6ZphLbH0fWgQns1eS3k2423",
+        "function": {
+         "arguments": "{\"name\": \"incidents/2026-10-26\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_HWtOIcI277riQ5icOzKn2147",
+        "function": {
+         "arguments": "{\"day\": \"2026-10-26\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 1
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478371,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 112,
+    "prompt_tokens": 2268,
+    "total_tokens": 2380,
+    "prompt_tokens_details": {
+     "cached_tokens": 2048
+    },
+    "prompt_cache_hit_tokens": 2048,
+    "prompt_cache_miss_tokens": 220
+   }
+  },
+  {
+   "id": "0b004e68-6cc4-4a3c-8a36-ef05d3754d7a",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "The incident write-up documents this exactly. There's a slight discrepancy I should note: `get_runs` shows \"no runs recorded\" for option snapshots on 2026-10-26, while the incident write-up shows 82 failed runs plus 1 partial pre-open run. This gap in `pipeline_runs` is worth flagging.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_eKO8WHhEVnObilxTLDES9435",
+        "function": {
+         "arguments": "{\"root_cause\": \"The 08:15 contract_cache refresh overloaded IBKR's contract-definition (secdef) service (~24 MB across ~23k messages while re-listing ~55 expiries); the market-data farm broke (2103) and secdef stopped answering, and by ~09:16 ET the IB Gateway's API port stopped accepting connections entirely. The Gateway froze for the rest of the session, so all regular-hours option snapshot runs failed, and its self-healing never fired because check_gateway only caught connect errors, not a request that hung after connecting.\", \"category\": \"gateway_frozen\", \"runbook\": \"incidents/2026-10-26\", \"evidence\": [{\"day\": \"2026-10-26\", \"time_et\": \"08:15:04\", \"dataset\": \"option_snapshots\", \"detail\": \"contract_cache connects and starts refreshing every cached contract list (~55 expiries)\"}, {\"day\": \"2026-10-26\", \"time_et\": \"08:15:42\", \"detail\": \"Gateway 1100 connectivity lost, 1102 restored at 08:16:06 (same session, data maintained)\"}, {\"day\": \"2026-10-26\", \"time_et\": \"08:22:44\", \"detail\": \"2103 market-data farm hfarm broken\"}, {\"day\": \"2026-10-26\", \"time_et\": \"08:26:06\", \"detail\": \"contract_cache attempt 1 fails after 662s, received 23.7 MB in 23,376 messages\"}, {\"day\": \"2026-10-26\", \"time_et\": \"09:02:01\", \"detail\": \"Gateway check connects then qualifyContracts hangs 300s; TimeoutError escaped check_gateway so RECONNECTDATA/RESTART self-healing never ran\"}, {\"day\": \"2026-10-26\", \"time_et\": \"09:16:01\", \"detail\": \"Gateway API port stops accepting connections; every subsequent run fails its connect in 4s (TimeoutError) until close\"}, {\"day\": \"2026-10-26\", \"time_et\": \"19:38:08\", \"detail\": \"IBC RESTART accepted but Gateway UI wedged; 19:39:53 docker compose restart ib-gateway, login completed 19:40:10\"}, {\"day\": \"2026-10-26\", \"dataset\": \"option_snapshots\", \"detail\": \"Impact: 0 of 78 regular-hours slots; one partial pre-open run (spx_monthly) and 81 failed runs; index snapshots 0 successful (82 failed); equity_bars 90/90 succeeded\"}, {\"day\": \"2026-10-26\", \"dataset\": \"option_snapshots\", \"detail\": \"get_runs returns no runs recorded, while incident write-up reports 82 option runs — pipeline_runs missing-run-record discrepancy\"}], \"confidence\": \"high\"}",
+         "name": "submit_diagnosis"
+        },
+        "type": "function",
+        "index": 0
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794478373,
+   "model": "deepseek-v4-pro",
+   "object": "chat.completion",
+   "system_fingerprint": "a307abda487cd1b463329ccb945ce396",
+   "usage": {
+    "completion_tokens": 796,
+    "prompt_tokens": 4205,
+    "total_tokens": 5001,
+    "prompt_tokens_details": {
+     "cached_tokens": 2304
+    },
+    "prompt_cache_hit_tokens": 2304,
+    "prompt_cache_miss_tokens": 1901
+   }
+  }
+ ],
+ "tools": [
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-10-26",
+    "dataset": "option_snapshots"
+   },
+   "text": "{\n  \"day\": \"2026-10-26\",\n  \"runs\": [],\n  \"note\": \"no runs recorded\"\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "incidents/2026-10-26"
+   },
+   "text": "# 2026-10-26: Gateway API frozen all session, option and index snapshots lost\n\n| | |\n|---|---|\n| Date | Monday 2026-10-26; Gateway broken from ~08:22 ET, fixed 19:40 ET |\n| Severity | Major: a whole session of option and index snapshots lost, permanently (no backfill for option quotes) |\n| Detected by | Discord cards from 08:33 ET on; seen by the user at ~19:15 ET (overnight in their time zone, AEDT = ET + 15 h) |\n| Status | Resolved; fixes merged (see Actions). The same pattern recurred every morning 10-28 → 11-02 until `b927d63` |\n\n## Impact\n\n| Dataset | Result |\n|---|---|\n| Option snapshots | **0 of 78** regular-hours slots. One partial pre-open run (09:10: `spx_monthly`, 1,494 contracts); the other 81 runs failed |\n| Index snapshots | **0** successful runs (82 failed) |\n| Equity bars (Alpaca) | 90 of 90 runs succeeded |\n| EOD (corporate actions, assets, daily bars, dbt) | Succeeded |\n\n## Timeline (ET, from Airflow task logs, Gateway logs and `pipeline_runs`)\n\n| Time | Event |\n|---|---|\n| 08:15:04 | `contract_cache` connects and starts refreshing every cached contract list (about 55 expiries) |\n| 08:15:42 | Gateway: `1100` connectivity to IBKR lost; 08:16:06 `1102` restored, \"data maintained\" (same session) |\n| 08:22:44 | `2103` market-data farm `hfarm` broken |\n| 08:26:06 | `contract_cache` attempt 1 fails after 662 s, having received **23.7 MB in 23,376 messages** |\n| 08:28:07–08:33:08 | Attempt 2 hangs on its first request for 300 s and fails. **Card: task failed (warm)** |\n| 09:02:01–09:07:01 | Gateway check connects, then `qualifyContracts` hangs 300 s. The `TimeoutError` escaped `check_gateway`, so **self-healing (RECONNECTDATA → RESTART) never ran. Card: task failed (status check)** instead of a red Gateway card |\n| 09:10:01 | Option run connects, quotes flow; `spx_monthly` done, then `spx_weekly` / `xsp_weekly` fail and `spx_leaps` is skipped on the run budget (ends 09:16:10). Index run killed by its 2-min timeout at 09:12. **Cards: chain failed × 3, task failed (indices)** |\n| 09:16 onward | **The Gateway's API port stops accepting connections.** Every run fails its connect in 4 s (`TimeoutError`) until the close. **Card: task failed (option snapshots)** at 09:16:18 |\n| 09:28 | **Card: red warm-up check** |\n| 09:45 | **Cards: data stale 15 min (options, indices)** |\n| 10:00–15:00 | **Red hourly progress cards** |\n| 17:30 | **Red close summary**; equity bars, EOD and dbt fine |\n| ~19:15 | Investigation: a raw TCP connect to the API port inside the container hangs; IBC's command server still answers |\n| 19:38:08 | IBC `RESTART` accepted, but the Gateway never opens its config dialog: its UI is wedged too |\n| 19:39:53 | `docker compose restart ib-gateway`: full login. 19:40:10 login completed after the phone 2FA push |\n| 19:40+ | Gateway check green; test index snapshot (6 indices in 4 s) |\n\n## Root cause\n\n**The morning `contract_cache` refresh overloaded IBKR's contract-definition (secdef) service, and the Gateway then\nfroze.** Re-listing every expiry pulled ~24 MB in ~23k messages. About 7 minutes in, the data farms broke and\ncontract-definition requests stopped being answered. By 09:16 the Gateway no longer accepted API connections at all,\nand IBC could not restart it.\n\nEvidence:\n\n- The size of the refresh (23.7 MB / 23,376 messages in attempt 1) and the timing: the breakage started during it.\n- The same refresh stalled the secdef service about five minutes in **every morning from 10-28 to 11-02**, with or\n  without IBKR's ~08:15 server reconnect, and stopped once the refresh was made small and paced (`b927d63`).\n- The 08:15:42 `1100` / `1102` was a reconnect of the same session (\"data maintained\"), so it was not a second login.\n\n**Ruled out: a second machine logging in with the same IBKR username.** The user was setting up a Windows desktop\nthat weekend, and the 1100 happened at 23:15 their time, the planned switch-over deadline. But a competing login ends\nthe old session. Here the session survived (`1102`), there was no re-login or \"existing session\" dialog in the Mac\nGateway log, and the failure recurred on later days with one machine.\n\n## Contributing factors (why nothing recovered on its own)\n\n1. **The self-healing path had a hole:** `check_gateway` only caught connect errors. A request that hung after\n   connecting raised past `gateway_with_healing`, so the 09:02 check never sent RECONNECTDATA or RESTART.\n2. **Only the 09:02 check could heal.** Once the collectors failed, nothing during the session tried to heal.\n3. **IBC's RESTART can't fix a wedged Gateway.** Only a container restart could, and that needs a full login with phone 2FA.\n4. **The person who could approve 2FA was asleep.** Every card went out between 23:33 and 08:30 AEDT.\n\n## Actions\n\n| Action | Commit | Status |\n|---|---|---|\n| Runs make no contract-definition requests (day cache) | `56a1de2` | Done (from the 10-23 incident) |\n| `check_gateway`: 30 s request timeout; a hung request is a failed check, so healing runs | `4ff89ba` | Done |\n| Watchdog self-heals the Gateway once per stale episode during the session | `4ff89ba` | Done |\n| Carry the cache forward before refreshing; stop at the first refresh failure; IBC \"hung\" vs \"denied\"; a hung IBC asks for a manual restart instead of escalating | `2cb6f46` | Done |\n| `contract_cache` lists only new expiries plus a few of the oldest cached ones, with pauses between requests | `b927d63` | Done: the root-cause fix |\n| Gateway checks at 08:00, 08:20 and 08:40 ET, so a login or 2FA problem shows 70–90 min before the open; missing-subscription codes turn the card red; `TWOFA_DEVICE` picks the 2FA device for one-push logins | `93d0e89` | Done |\n| A full Gateway login still needs a human with a phone; overnight in AEDT | — | Accepted risk |\n\n## Lessons\n\n- A cache refresh can also be a load test against someone else's service. Make it incremental and paced.\n- Test the self-healing code against the failures that actually happen. \"Connects but never answers\" is not the\n  same as \"can't connect\".\n- Before trusting a recovery step, check it can run in the state that needs it. IBC's RESTART needs a working\n  Gateway UI, which is exactly what was broken here.\n- Write down the tempting explanation and the evidence that rules it out (the second machine). It is the first\n  thing anyone will suggest next time.\n"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-10-26"
+   },
+   "text": "{\n  \"day\": \"2026-10-26\",\n  \"runs\": [],\n  \"note\": \"no runs recorded\"\n}"
+  }
+ ]
+}

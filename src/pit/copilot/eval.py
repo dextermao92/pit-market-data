@@ -272,9 +272,12 @@ def main(argv=None) -> int:
     if a.cases:
         want = set(a.cases.split(","))
         cases = [c for c in cases if c["id"] in want]
-    if a.replay:
-        cases = [c for c in cases if (RECORDINGS / model / f"{c['id']}.json").exists()] or sys.exit(
-            f"no recordings in {RECORDINGS / model}")
+    if a.replay:  # a case without a recording would silently drop out of the score: refuse instead
+        missing = [c["id"] for c in cases if not (RECORDINGS / model / f"{c['id']}.json").exists()]
+        if missing:
+            print(f"no recording in {RECORDINGS / model} for: {', '.join(missing)} (run live once to record)",
+                  file=sys.stderr)
+            return 1
     tmp = None
     if a.replay:  # replayed calls aren't real spend: keep them out of data/llm_calls and its budget
         tmp = tempfile.TemporaryDirectory()

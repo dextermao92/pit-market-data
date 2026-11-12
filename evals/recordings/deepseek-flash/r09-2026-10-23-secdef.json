@@ -1,0 +1,252 @@
+{
+ "case": "r09-2026-10-23-secdef",
+ "model": "deepseek-flash",
+ "thinking": false,
+ "recorded_at": "2026-11-12T10:04:32+00:00",
+ "llm": [
+  {
+   "id": "942e3523-f560-4d3f-a6bb-fb9fe772368f",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "I'll start by pulling the runs for 2026-10-23 and listing the available runbooks.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_mmZJnypk3LLKUT0xdCy01860",
+        "function": {
+         "arguments": "{\"day\": \"2026-10-23\"}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_RiyTRjcWUrv3NeyL3lcr3816",
+        "function": {
+         "arguments": "{}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 1
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794477863,
+   "model": "deepseek-flash",
+   "object": "chat.completion",
+   "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+   "usage": {
+    "completion_tokens": 77,
+    "prompt_tokens": 2066,
+    "total_tokens": 2143,
+    "prompt_tokens_details": {
+     "cached_tokens": 1792
+    },
+    "prompt_cache_hit_tokens": 1792,
+    "prompt_cache_miss_tokens": 274
+   }
+  },
+  {
+   "id": "636834b4-1db0-4601-b68b-fe54572cf943",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "No runs recorded for 2026-10-23 in this host's pipeline_runs — that's itself a signal. There's an incident write-up for that date; let me read it, plus the likely runbook.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_PaxZa0nk8c1u6jOsCzHF3054",
+        "function": {
+         "arguments": "{\"name\": \"incidents/2026-10-23\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_IACPOOIqab0VNk6Iwuob6401",
+        "function": {
+         "arguments": "{\"name\": \"runbooks/stale-snapshots\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 1
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794477864,
+   "model": "deepseek-flash",
+   "object": "chat.completion",
+   "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+   "usage": {
+    "completion_tokens": 126,
+    "prompt_tokens": 2245,
+    "total_tokens": 2371,
+    "prompt_tokens_details": {
+     "cached_tokens": 2048
+    },
+    "prompt_cache_hit_tokens": 2048,
+    "prompt_cache_miss_tokens": 197
+   }
+  },
+  {
+   "id": "c39d3ef4-6a2f-45cf-b7dc-0b0c0be0e914",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "The incident write-up matches the question exactly. Let me verify with SLO coverage and check the 2026-10-26 incident (the other write-up referenced) to be sure the two aren't confused, plus confirm no run records exist on adjacent days.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_WblAKXZijfFhXuZO9z9b7462",
+        "function": {
+         "arguments": "{\"end\": \"2026-10-23\", \"sessions_back\": 5}",
+         "name": "slo_status"
+        },
+        "type": "function",
+        "index": 0
+       },
+       {
+        "id": "call_01_3tNNlvs9AaLEAH6sk6Fr2028",
+        "function": {
+         "arguments": "{\"day\": \"2026-10-22\", \"limit\": 5}",
+         "name": "get_runs"
+        },
+        "type": "function",
+        "index": 1
+       },
+       {
+        "id": "call_02_QWfetNTdYRksuDQwNZfY1014",
+        "function": {
+         "arguments": "{\"name\": \"runbooks/gateway\"}",
+         "name": "read_runbook"
+        },
+        "type": "function",
+        "index": 2
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794477865,
+   "model": "deepseek-flash",
+   "object": "chat.completion",
+   "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+   "usage": {
+    "completion_tokens": 196,
+    "prompt_tokens": 4581,
+    "total_tokens": 4777,
+    "prompt_tokens_details": {
+     "cached_tokens": 2304
+    },
+    "prompt_cache_hit_tokens": 2304,
+    "prompt_cache_miss_tokens": 2277
+   }
+  },
+  {
+   "id": "60e50edb-0bbc-4617-a778-b31325a25943",
+   "choices": [
+    {
+     "finish_reason": "tool_calls",
+     "index": 0,
+     "message": {
+      "content": "I have what I need. One important caveat before submitting: `pipeline_runs` has **no records at all** for 2026-10-22 or 2026-10-23 in this host, so the SLO numbers for those sessions (0/78) are a monitoring artifact, not evidence that every option slot was lost — while the incident write-up has a real timeline with exact times.",
+      "role": "assistant",
+      "tool_calls": [
+       {
+        "id": "call_00_UJOg4Uc9w3ROPyeJFO754669",
+        "function": {
+         "arguments": "{\"root_cause\": \"IBKR's contract-definition (secdef) service stopped answering for about 5 minutes during RTH. Every option and index run first called it (qualifyContracts / reqSecDefOptParams once per chain) before requesting any quote, so with RequestTimeout=300 s one hung request consumed the index task's 2-min timeout (both attempts) and the option run's 6-min budget. The Gateway itself was healthy: no data-farm errors and quotes flowed before and after. Not a market-data cause.\", \"category\": \"secdef_stall\", \"runbook\": \"incidents/2026-10-23\", \"evidence\": [{\"day\": \"2026-10-23\", \"time_et\": \"10:30:01\", \"dataset\": \"option_snapshots\", \"detail\": \"Last normal run: 3,364 option contracts in 213 s; indices in 5 s.\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:35:01\", \"dataset\": \"option_snapshots\", \"detail\": \"Option run starts; first chain (spx_monthly) waits on its first request, then raises TimeoutError() after RequestTimeout (300 s).\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:35:01\", \"dataset\": \"index_snapshots\", \"detail\": \"Index run gets no answer, killed by the 2-min execution timeout at 10:37:01.\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:38:02\", \"dataset\": \"index_snapshots\", \"detail\": \"Index retry, same failure, killed at 10:40:02. The 10:35 index slot is therefore lost; the 10:40 slot runs at 10:45:29.\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:41:16\", \"dataset\": \"option_snapshots\", \"detail\": \"Option run ends with the 6-min budget used up: spx_weekly failed and the other chains were skipped; all chains failed so the task failed.\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:42:17\", \"dataset\": \"option_snapshots\", \"detail\": \"Retry of the same 10:35 slot succeeds (3,060 contracts by 10:45:26), 7 min late.\"}, {\"day\": \"2026-10-23\", \"time_et\": \"10:45:29\", \"dataset\": \"option_snapshots\", \"detail\": \"Slots 10:40-10:55 start 3.5-5.5 min late (max_active_runs=1) until 10:56:47; back on schedule at 11:00:01.\"}, {\"day\": \"2026-10-23\", \"dataset\": \"equity_bars\", \"detail\": \"Alpaca equity bars unaffected; SLI3 bars 3900/3900 (100%) for the session.\"}, {\"day\": \"2026-10-23\", \"dataset\": \"option_snapshots\", \"detail\": \"Gateway logged no data-farm errors during the stall; quotes kept flowing. Ruling out data_farm_disconnected and gateway_frozen.\"}, {\"day\": \"2026-10-23\", \"detail\": \"Caveat: get_runs for 2026-10-22 and 2026-10-23 returns 'no runs recorded' on this host, so slo_status shows 0/78 option slots for both sessions (window SLI1 60%, SLI2 59.49%). That is a missing_run_records artifact, not evidence of lost slots; the timeline above comes from the incident write-up.\"}], \"confidence\": \"high\"}",
+         "name": "submit_diagnosis"
+        },
+        "type": "function",
+        "index": 0
+       }
+      ]
+     }
+    }
+   ],
+   "created": 1794477868,
+   "model": "deepseek-flash",
+   "object": "chat.completion",
+   "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+   "usage": {
+    "completion_tokens": 996,
+    "prompt_tokens": 7281,
+    "total_tokens": 8277,
+    "prompt_tokens_details": {
+     "cached_tokens": 4736
+    },
+    "prompt_cache_hit_tokens": 4736,
+    "prompt_cache_miss_tokens": 2545
+   }
+  }
+ ],
+ "tools": [
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-10-23"
+   },
+   "text": "{\n  \"day\": \"2026-10-23\",\n  \"runs\": [],\n  \"note\": \"no runs recorded\"\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {},
+   "text": "Available docs:\nincidents/2026-10-23\nincidents/2026-10-26\nrunbooks/disk-full\nrunbooks/duckdb-lock\nrunbooks/gateway\nrunbooks/stale-snapshots\nslo"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "incidents/2026-10-23"
+   },
+   "text": "# 2026-10-23: contract-definition server stall delays option snapshots ~20 min\n\n| | |\n|---|---|\n| Date | Friday 2026-10-23, 10:35–11:00 ET (regular trading hours) |\n| Severity | Minor: data late, one index snapshot lost |\n| Detected by | The first hourly progress card (sent at 16:16 ET, when `progress_check` was first enabled), not at the time |\n| Status | Resolved; fixes merged (see Actions) |\n\n## Impact\n\n- **Option snapshots: no slot lost, but late.** The 10:35 slot failed, its retry succeeded at 10:42:17\n  (7 min late), and the next four slots started 3.5–5.5 min late until 11:00, when the schedule caught up.\n- **Index snapshots: the 10:35 slot was lost.** Both attempts (10:35:01 and 10:38:02) hit the 2-min task\n  timeout; the 10:40 slot ran at 10:45:29.\n- Equity bars (Alpaca) were not affected.\n- Late snapshots are still valid point-in-time data: each row is stamped with its real `ingested_at`.\n\n## Timeline (ET, from `pipeline_runs` and Airflow task logs)\n\n| Time | Event |\n|---|---|\n| 10:30:01 | Normal run: 3,364 option contracts in 213 s; indices in 5 s |\n| 10:35:01 | Option run starts. The first chain (`spx_monthly`) waits on its first request; after `RequestTimeout` (300 s) it raises `TimeoutError()` |\n| 10:35:01 | Index run starts, gets no answer, killed by the 2-min execution timeout at 10:37:01 |\n| 10:38:02 | Index retry: same, killed at 10:40:02 |\n| 10:41:16 | Option run ends: the 6-min run budget was used up, so `spx_weekly` failed and the other chains were skipped. Every chain failed, so the task failed |\n| 10:42:17 | Option retry (same 10:35 slot) succeeds: 3,060 contracts by 10:45:26 |\n| 10:45:29–10:56:47 | Slots 10:40, 10:45, 10:50, 10:55 each start when the previous run ends (`max_active_runs=1`), 3.5–5.5 min late |\n| 11:00:01 | Back on schedule |\n\nDuring the stall, the Gateway logged no data-farm errors and quotes kept flowing before and after it.\n\n## Root cause\n\n**IBKR's contract-definition (secdef) server stopped answering for about 5 minutes.** At the time, every run asked\nit for the underlying contract (`qualifyContracts`) and the listed expirations (`reqSecDefOptParams`) before any quote\nrequest, once per chain. The option and index tasks used separate API connections but stalled at the same time.\nWhat they had in common was these contract-definition requests, not market data. So one slow upstream service held up\na run whose actual job, streaming quotes, didn't need it.\n\n## Contributing factors\n\n- `RequestTimeout = 300 s` (sized for cold contract-detail downloads) let one hung request use the whole 6-min run budget.\n- Retrying a failed run pushes the following slots back while `max_active_runs=1`.\n- The RTH coverage metric bins runs by `started_at`. It counted the late 10:35 retry (started 10:42) as the\n  10:40 slot and reported the 10:35 slot as missing (77/78), although that snapshot exists.\n\n## Actions\n\n| Action | Commit | Status |\n|---|---|---|\n| Cache underlyings, expirations and index contracts per New York day in the 08:15 `contract_cache` run; runs make no contract-definition requests | `56a1de2` | Done |\n| No retries for option and index snapshots (the next slot is the retry); one failure card per failing streak | `7fb6a8c` | Done. Trade-off: a failed run is now lost instead of late. On this day the retry kept the 10:35 option snapshot |\n| Coverage metric: count a run toward the slot in its `run_id`, not its start time | — | Open |\n\n## Lessons\n\n- Look at what a run actually depends on. The pipeline only needed quotes, but it depended on a second IBKR service\n  that it could just as well have asked once a day.\n- A timeout sized for the slowest legitimate request (a cold download) is too long for a request that is normally instant.\n"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "runbooks/stale-snapshots"
+   },
+   "text": "# Runbook: a dataset stops getting new data (stale snapshots or bars)\n\nBased on real incidents: [2026-10-23](../incidents/2026-10-23.md) (late runs), [2026-10-26](../incidents/2026-10-26.md)\n(a whole session lost).\n\n## Symptoms\n\n- `⏸️ 数据停滞：<dataset>已 15 分钟没有新数据`: the `watchdog_check` DAG (every 5 min, 09:00–16:55 on session days)\n  found no successful run of an intraday dataset that *finished* in the last 15 minutes, inside its window:\n\n  | Dataset | Expected | Source |\n  |---|---|---|\n  | `option_snapshots` | open → close | IBKR |\n  | `index_snapshots` | open → close | IBKR |\n  | `equity_bars` | open + 20 min → close + 30 min | Alpaca |\n\n- An hourly progress card with a red dataset, or RTH coverage below what's due (`正规时段覆盖 x/y`).\n- **No cards at all** on a session day (none at 08:00, 09:02, 09:28): the host, Docker or Airflow is down.\n\nThe stale alert fires once per episode. For option or index snapshots, the watchdog also runs Gateway self-healing\nonce and sends `数据停滞后的 Gateway 检查` with the outcome.\n\n**Time matters for options:** a missed option snapshot can never be fetched later. Equity bars can: the 17:30 `eod`\nrun refetches the last 10 sessions.\n\n## Triage\n\n1. Which dataset, and since when? The card says when the last run finished.\n2. Is a run stuck, or are runs failing?\n\n   ```bash\n   docker compose exec airflow airflow dags list-runs option_snapshots -o plain | head -5\n   docker compose exec airflow airflow dags list-runs equity_bars -o plain | head -5\n   ```\n\n   A run `running` for longer than its execution timeout (8 min option chains, 2 min indices, 3 min equity bars) is stuck.\n   A run of `failed` runs means each slot fails.\n\n3. Read the latest errors from `pipeline_runs`:\n\n   ```bash\n   docker compose exec airflow python -c \"\n   import polars as pl, glob, datetime as d\n   day = d.datetime.now(d.timezone.utc).date()\n   fs = glob.glob(f'/opt/airflow/data/pipeline_runs/dataset=*/ingest_date={day}/*.parquet')\n   df = pl.concat([pl.read_parquet(f, columns=['dataset','started_at','status','error']) for f in fs], how='diagonal')\n   print(df.sort('started_at').tail(12))\"\n   ```\n\n## By cause\n\n| What you see | Cause | Do |\n|---|---|---|\n| Options **and** indices failing, `TimeoutError()` after ~4 s | Gateway API not accepting connections | [gateway.md](gateway.md), section A |\n| Options failing, `every chain failed ... TimeoutError()` after ~6 min | One request hung for the whole run budget | [gateway.md](gateway.md), sections A–B |\n| `no spot price; sent RECONNECTDATA` | Underlying quote missing (farm down or not subscribed) | [gateway.md](gateway.md), sections C–D |\n| Some chains in `chain_errors` with `skipped: run budget used up` | Run too slow for the 6-min budget | Look at run times in the progress card; trim chains or cadence in `config/ibkr.toml` |\n| Only `equity_bars` stale | Alpaca: API down, keys, or the free plan's 15-min lag | `docker compose exec airflow python -c \"from pit.health import check_alpaca; print(check_alpaca())\"` |\n| Everything stale, no cards | Host / Docker / Airflow down | `docker compose ps`; `docker compose up -d`; check the machine woke from sleep |\n\n## Recover\n\n- IBKR datasets: fix the Gateway. Collection resumes at the next 5-min slot by itself (snapshot tasks have no retries:\n  the next slot is the retry).\n- Equity bars: nothing to backfill by hand for the last 10 sessions; `eod` refetches them. For older gaps:\n  `docker compose exec airflow python -m pit.pipeline backfill /opt/airflow/config/alpaca_bars.toml <start> <end>`.\n- A stuck run: it hits its execution timeout and fails on its own. To end it sooner, mark it failed in the Airflow UI\n  (`127.0.0.1:8080`).\n\n## Verify\n\n- The next run succeeds, and the failing task sends `✅ 已恢复`.\n- The next hourly progress card shows the dataset green.\n\n## Record\n\nWhole sessions or long gaps of option snapshots are permanent. Write them up in `ops/incidents/<date>.md`\n(impact, timeline, cause, actions), as for 2026-10-26.\n"
+  },
+  {
+   "name": "slo_status",
+   "args": {
+    "end": "2026-10-23",
+    "sessions_back": 5
+   },
+   "text": "{\n  \"objectives\": {\n    \"sli1_coverage_pct\": 99.0,\n    \"sli2_on_time_pct\": 95.0,\n    \"sli3_bars_pct\": 99.5\n  },\n  \"window\": {\n    \"session\": \"window\",\n    \"option_slots\": 390,\n    \"option_ok\": 234,\n    \"sli1_coverage_pct\": 60.0,\n    \"sli2_on_time_pct\": 59.49,\n    \"bars_present\": 19500,\n    \"bars_expected\": 19500,\n    \"sli3_bars_pct\": 100.0\n  },\n  \"met\": {\n    \"sli1_coverage_pct\": false,\n    \"sli2_on_time_pct\": false,\n    \"sli3_bars_pct\": true\n  },\n  \"per_session\": [\n    {\n      \"session\": \"2026-10-19\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 97.44,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-20\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-21\",\n      \"option_slots\": 78,\n      \"option_ok\": 78,\n      \"sli1_coverage_pct\": 100.0,\n      \"sli2_on_time_pct\": 100.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-22\",\n      \"option_slots\": 78,\n      \"option_ok\": 0,\n      \"sli1_coverage_pct\": 0.0,\n      \"sli2_on_time_pct\": 0.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    },\n    {\n      \"session\": \"2026-10-23\",\n      \"option_slots\": 78,\n      \"option_ok\": 0,\n      \"sli1_coverage_pct\": 0.0,\n      \"sli2_on_time_pct\": 0.0,\n      \"bars_present\": 3900,\n      \"bars_expected\": 3900,\n      \"sli3_bars_pct\": 100.0\n    }\n  ]\n}"
+  },
+  {
+   "name": "get_runs",
+   "args": {
+    "day": "2026-10-22",
+    "limit": 5
+   },
+   "text": "{\n  \"day\": \"2026-10-22\",\n  \"runs\": [],\n  \"note\": \"no runs recorded\"\n}"
+  },
+  {
+   "name": "read_runbook",
+   "args": {
+    "name": "runbooks/gateway"
+   },
+   "text": "# Runbook: IB Gateway down, login / 2FA, stalled contract definitions\n\nBased on real incidents: [2026-10-23](../incidents/2026-10-23.md), [2026-10-26](../incidents/2026-10-26.md), and the\ndaily morning stalls of 2026-10-28 → 11-02 (commit `b927d63`).\n\nCommands run from the repo root on the host that runs the stack. Times are ET.\n\n## Symptoms\n\n- A **Gateway check card** (08:00, 08:20, 08:40, 09:02 on session days) is red. Each red field points at a cause:\n\n  | Field | Meaning | Section |\n  |---|---|---|\n  | `❌ Gateway 无法连接` | The API port refuses or times out on connect | [A](#a-api-unreachable-or-hanging) |\n  | `❌ Gateway 已连接，但请求没有响应` | Connects, then requests hang | [A](#a-api-unreachable-or-hanging) |\n  | `❌ 合约查询` | Logged in, but contract definitions don't answer within 20 s | [B](#b-contract-definition-secdef-stall) |\n  | `❌ 行情权限` (codes 354, 10089, 10090, 10167, 10168, 10197) | This user gets no live data | [C](#c-no-data-subscriptions-or-competing-session) |\n  | `❌ Gateway 美股报价：无` plus farm codes 1100 / 2103 / 2105 / 2157 | Data farms disconnected | [D](#d-data-farms-disconnected) |\n  | `🔧 自动修复` ending in `❌ 自动修复失败` | Self-healing tried and failed | [E](#e-manual-restart-full-login) |\n\n- A **`⏸️ 数据停滞`** card for option or index snapshots: see [stale-snapshots.md](stale-snapshots.md). The watchdog has already\n  tried self-healing once.\n- `❌ 任务失败：期权快照 / 指数快照` with `TimeoutError()` after about 4 s means the connect timed out (section A).\n\n## What already happened automatically\n\nOn session days between 04:00 and 20:00, a red check (except section C) self-heals:\n`RECONNECTDATA` (20 s), then `RESTART` (120 s, no 2FA), re-checking after each. A contract-definition stall skips\nstraight to `RESTART`. If IBC takes a command and never replies (`Hung`), healing stops, because later commands queue\nbehind the stuck one. Outside that window, and for subscription problems, the check only reports.\n\n## Triage\n\n```bash\ndocker compose ps\ndocker compose exec airflow python -m pit.health gateway\ndocker compose logs --since 30m ib-gateway | grep -v \"remove Client\" | tail -40\n```\n\nThe second command runs the same check as the cards, without sending a card or healing. Add `--send` to post the result.\n\n## A. API unreachable or hanging\n\n**Seen 2026-10-26:** from 09:16 the API port accepted no connections at all, while IBC's command server still answered.\nSelf-healing can't fix this state: IBC's `RESTART` was accepted but the Gateway's UI never opened its config dialog.\n\n1. If the Gateway log shows a login dialog or `Second Factor Authentication`, it's waiting for 2FA: go to E, step 3.\n2. Otherwise go to E. A wedged Gateway only comes back from a container restart.\n\n## B. Contract-definition (secdef) stall\n\n**Seen 2026-10-23 (5 min) and every morning 2026-10-28 → 11-02**, caused by the 08:15 `contract_cache` refresh\ndownloading every expiry (~24 MB, ~23k messages).\n\n- Snapshot runs don't need secdef: they use the day's contract cache. Quotes keep flowing as long as the cache exists.\n- Check that today's cache exists: `ls data/cache/ibkr_contracts/` should list today's New York date. Never delete the\n  latest day's cache: without it the next morning re-lists every expiry, the refresh that causes this stall.\n- If it persists into the session, self-healing goes straight to `RESTART`. If that fails, go to E.\n- Do **not** run `warm_cache` or any bulk contract-details request by hand to \"help\": that's what caused the stalls.\n\n## C. No data: subscriptions or competing session\n\nSelf-healing never runs here: a restart can't fix a subscription.\n\n| Code | Meaning | Fix |\n|---|---|---|\n| 354 / 10089 / 10090 | Not subscribed for this instrument | Check the collector user's subscriptions in Client Portal (they are per username). Required: US Securities Snapshot and Futures Value Bundle, US Equity and Options Add-On Streaming Bundle. New subscriptions can take up to 24 h |\n| 10167 / 10168 | Delayed data shown instead of live (10167), or not subscribed with delayed data disabled (10168) | Same as above |\n| 10197 | Live data held by another session of the same user | Log the other session out (TWS, mobile, web) or move collection to its own user (done 2026-11-06: a second username used only for collection) |\n\n## D. Data farms disconnected\n\nFarm drops that recover within the same run (e.g. `2103` then `2104` for the same farm) are routine and not alerted.\nIf they persist, self-healing sends `RECONNECTDATA`. A `1100` followed by `1102 ... data maintained` is IBKR\nreconnecting the same session: no action needed.\n\n## E. Manual restart (full login)\n\nNeeds someone with the phone that receives IBKR's 2FA push. Prefer after 16:00 or before 08:00 on session days.\n\n1. Make sure no other machine runs a Gateway with the same username. Two Gateways with one user log each other out\n   (`EXISTING_SESSION_DETECTED_ACTION=primary` on both).\n2. `docker compose restart ib-gateway`\n3. Approve the push on the phone. With `TWOFA_DEVICE` set in `.env` (e.g. `IB Key`), the login picks that device. If\n   it is empty and the account has several devices, pick one over VNC (`127.0.0.1:5900`). IBC retries the login\n   if the push isn't approved within 180 s.\n4. Watch the login: `docker compose logs -f --since 2m ib-gateway | grep -E \"Second Factor|Login has completed\"`\n5. Changing `.env` (user, password, `TWOFA_DEVICE`) takes effect only when the container is recreated:\n   `docker compose up -d --no-deps ib-gateway`, not `restart`.\n\n## Verify\n\n```bash\ndocker compose exec airflow python -m pit.health gateway --send\n```\n\nThe card should be green, including `✅ 合约查询` and SPY / SPX / VIX quotes. During the session, the next option\nsnapshot should succeed within 5 minutes, and the next run of a failed task sends `✅ 已恢复`.\n\n## Don't\n\n- Don't start a second Gateway, or a test container, with the production username.\n- Don't restart the Gateway between 09:00 and 16:00 unless collection is already down: a full login needs 2FA.\n- Don't run heavy or cold contract-details tests against the production Gateway near or during market hours.\n- IBKR stays read-only (`READ_ONLY_API=yes`, `readonly=True`): never change that to fix anything.\n"
+  }
+ ]
+}

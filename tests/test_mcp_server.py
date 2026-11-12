@@ -20,10 +20,12 @@ def call(name, args=None):
     return anyio.run(go)
 
 
-def write_runs(tmp_path):
+def write_runs(tmp_path, error=None):
+    """Three failed option runs from 09:10 ET on 2026-10-26 and one good equity run. error: the failed runs' error."""
+    error = error or "TimeoutError() for account U1234567"
     rows = [{"run_id": f"scheduled__{AT + i * timedelta(minutes=5)}", "dataset": "option_snapshots",
              "started_at": AT + i * timedelta(minutes=5), "finished_at": AT + i * timedelta(minutes=5, seconds=4),
-             "status": "failed", "error": "TimeoutError() for account U1234567"} for i in range(3)]
+             "status": "failed", "error": error} for i in range(3)]
     rows.append({"run_id": "scheduled__x", "dataset": "equity_bars", "started_at": AT, "finished_at": AT,
                  "status": "success", "rows": 3900, "missing_bars": 0})
     for ds in ("option_snapshots", "equity_bars"):  # the real layout: one partition per dataset and UTC date

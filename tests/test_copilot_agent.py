@@ -28,11 +28,12 @@ class Scripted:
     """A fake OpenAI client that plays back replies in order and keeps what was sent."""
 
     def __init__(self, *replies):
-        self.replies, self.sent = list(replies), []
+        self.replies, self.sent, self.tools = list(replies), [], []
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
 
     def create(self, **kw):
         self.sent.append(json.loads(json.dumps(kw["messages"], default=vars)))
+        self.tools.append([t["function"]["name"] for t in kw.get("tools", [])])
         return self.replies.pop(0)
 
 
@@ -42,14 +43,15 @@ GOOD = {"root_cause": "IB Gateway API connect timed out", "category": "gateway_c
                       "detail": "TimeoutError()"}]}
 
 
-def run(client, tmp_path, monkeypatch, thinking=False, max_steps=8):
-    write_runs(tmp_path)
+def run(client, tmp_path, monkeypatch, thinking=False, max_steps=8, error=None, **kw):
+    """kw goes to diagnose (approve, send_command). error: the failed runs' error text (write_runs)."""
+    write_runs(tmp_path, error)
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setenv("PIT_AGENT_QUIET", "1")
     cfg = CFG | {"llm": CFG["llm"] | {"thinking": thinking}}
     llm = LLM(cfg=cfg, client=client, log_dir=tmp_path / "llm_calls")
     return anyio.run(lambda: diagnose("Why no option snapshots on 2026-10-26 morning?", llm, max_steps,
-                                      trace_dir=tmp_path / "traces", today="2026-11-12"))
+                                      trace_dir=tmp_path / "traces", today="2026-11-12", **kw))
 
 
 def trace_rows(tmp_path):

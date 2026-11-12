@@ -1,0 +1,16 @@
+id: s03-alpaca-auth
+simulated: true
+today: 2026-11-12
+question: There are no equity bars at all for 2026-11-12; option snapshots look fine. Why?
+expected:
+  categories: [vendor_api_error]
+  runbooks: [runbooks/stale-snapshots]
+label:
+  status: verified
+  source: Injected. Every equity_bars run fails with Alpaca's 401.
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults:
+    - {action: fail, datasets: [equity_bars, daily_bars], from: "00:00", to: "23:59", duration_s: 1,
+       error: "HTTPStatusError(\"Client error '401 Unauthorized' for url 'https://data.alpaca.markets/v2/stocks/bars'\")"}
+    - {action: drop_bars, from: "00:00", to: "23:59"}

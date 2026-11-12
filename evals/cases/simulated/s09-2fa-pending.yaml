@@ -1,0 +1,17 @@
+id: s09-2fa-pending
+simulated: true
+today: 2026-11-12
+question: >-
+  Every option and index snapshot failed from 09:10 to 10:15 on 2026-11-12 with TimeoutError. The Gateway log shows
+  "Second Factor Authentication initiated" at 08:58 and no "Login has completed" until 10:17. Why?
+expected:
+  categories: [gateway_restarting]
+  runbooks: [runbooks/gateway]
+label:
+  status: verified
+  source: Injected. Connect timeouts while the Gateway waits for the phone 2FA.
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults:
+    - {action: fail, datasets: [option_snapshots, index_snapshots], from: "09:10", to: "10:20", duration_s: 4,
+       error: "TimeoutError()"}

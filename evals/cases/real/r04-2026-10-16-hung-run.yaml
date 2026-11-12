@@ -1,0 +1,15 @@
+id: r04-2026-10-16-hung-run
+simulated: false
+today: 2026-11-11
+question: >-
+  On 2026-10-16 there were no new option or index snapshots between about 09:50 and 10:41, and many slots that
+  morning ran late. What was the cause?
+expected:
+  categories: [hung_request]
+  runbooks: [runbooks/stale-snapshots, runbooks/gateway, slo]
+label:
+  status: verified
+  source: >-
+    Commit 84ad5ae (10-16 10:43 ET): after IBKR's 1100 at 10:10 ET a pending request hung the option run until ~10:36
+    (ib_async RequestTimeout defaulted to 0 = forever), blocking every later run. ops/slo.md's 10-16 note says the
+    same; SLI2 60.3%. pipeline_runs: the 09:15 run took 28.8 min; nothing 09:50:30 -> 10:41:29, then a catch-up burst.

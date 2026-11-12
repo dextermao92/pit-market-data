@@ -1,0 +1,15 @@
+id: s01-disk-full
+simulated: true
+today: 2026-11-12
+question: Since about 13:05 on 2026-11-12 every dataset is failing. What's wrong?
+expected:
+  categories: [disk_full]
+  runbooks: [runbooks/disk-full]
+label:
+  status: verified
+  source: Injected. Error text as runbooks/disk-full.md describes it.
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults:
+    - {action: fail, datasets: all, from: "13:05", to: "23:59", duration_s: 2,
+       error: "OSError(28, 'No space left on device')"}

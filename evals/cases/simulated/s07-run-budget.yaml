@@ -1,0 +1,14 @@
+id: s07-run-budget
+simulated: true
+today: 2026-11-12
+question: Option snapshots between 11:00 and 11:30 on 2026-11-12 failed without an error message. Why?
+expected:
+  categories: [run_budget_exceeded]
+  runbooks: [runbooks/stale-snapshots]
+label:
+  status: verified
+  source: Injected. Option runs killed at the 8-min execution timeout; index runs and IBKR codes normal.
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults:
+    - {action: fail, datasets: [option_snapshots], from: "11:00", to: "11:30", duration_s: 480}

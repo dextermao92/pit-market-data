@@ -1,0 +1,14 @@
+id: r11-2026-10-27-30-morning-stall
+simulated: false
+today: 2026-11-11
+question: The 09:10 option and index snapshots failed on both 2026-10-27 and 2026-10-30 with TimeoutError. Same cause?
+expected:
+  categories: [secdef_stall, gateway_frozen]
+  runbooks: [runbooks/gateway, incidents/2026-10-26]
+label:
+  status: verified
+  source: >-
+    runbooks/gateway section B: the 08:15 contract_cache refresh stalled secdef every morning 10-28 -> 11-02 (and
+    the 10-26 incident). Ops notes for 10-27: from ~08:15 the Gateway stopped answering secdef, RECONNECTDATA hung
+    IBC, container restart + 2FA at 09:14 ET fixed it; 10-30: secdef stalled during the refresh and IBC RESTART hung.
+    pipeline_runs: only the 09:10 slot failed (4 s TimeoutError) on both days. Merged into one case: same cause.

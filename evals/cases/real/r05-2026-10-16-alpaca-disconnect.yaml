@@ -1,0 +1,12 @@
+id: r05-2026-10-16-alpaca-disconnect
+simulated: false
+today: 2026-11-11
+question: An equity_bars run failed on 2026-10-16 around 10:09. What was it, and do I need to do anything?
+expected:
+  categories: [vendor_api_error]
+  runbooks: [runbooks/stale-snapshots]
+label:
+  status: verified
+  source: >-
+    pipeline_runs: equity_bars 10:09:43 RemoteProtocolError('Server disconnected without sending a response.') from
+    the Alpaca HTTP client; the same slot succeeded at 10:41:29 and slo_status shows 10-16 bars 3900/3900.

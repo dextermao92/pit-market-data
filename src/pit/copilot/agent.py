@@ -30,6 +30,7 @@ import anyio
 from mcp import Client
 
 from pit.copilot.actions import ACTIONS, Approver, deny_all, execute, schema, terminal_approver
+from pit.copilot.categories import CATEGORIES
 from pit.copilot.llm import LLM, load_config
 from pit.copilot.mcp_server import server
 
@@ -41,7 +42,9 @@ SUBMIT = {"type": "function", "function": {
     "description": "Finish: submit the diagnosis. Call once, after looking at the runs and the relevant runbook.",
     "parameters": {"type": "object", "required": ["root_cause", "category", "runbook", "evidence"], "properties": {
         "root_cause": {"type": "string", "description": "What failed and why, in one or two sentences."},
-        "category": {"type": "string", "description": "Short snake_case label for the root cause."},
+        "category": {"type": "string", "enum": list(CATEGORIES),
+                     "description": "The root cause, not the symptom:\n"
+                                    + "\n".join(f"- {k}: {v}" for k, v in CATEGORIES.items())},
         "runbook": {"type": "string", "description": "The ops doc to follow, as read_runbook names it, "
                                                      "e.g. runbooks/gateway."},
         "evidence": {"type": "array", "description": "The facts the diagnosis rests on, from tool results.",
@@ -90,6 +93,8 @@ def check_diagnosis(d: dict, docs: set[str]) -> str | None:
     missing = [k for k in ("root_cause", "category", "runbook", "evidence") if not d.get(k)]
     if missing:
         return f"missing or empty: {', '.join(missing)}"
+    if d["category"] not in CATEGORIES:
+        return f"unknown category {d['category']!r}; use one of: {', '.join(CATEGORIES)}"
     if d["runbook"].removesuffix(".md") not in docs:
         return f"unknown runbook {d['runbook']!r}; use one of: {', '.join(sorted(docs))}"
     return None

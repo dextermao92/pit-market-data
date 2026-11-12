@@ -1,0 +1,18 @@
+id: s06-secdef-preopen
+simulated: true
+today: 2026-11-12
+question: >-
+  On 2026-11-12 the 08:20 Gateway check card was red with "❌ 合约查询" (contract definitions didn't answer within 20 s),
+  and the pre-open option and index snapshots failed. What's the cause?
+expected:
+  categories: [secdef_stall]
+  runbooks: [runbooks/gateway]
+label:
+  status: verified
+  source: Injected. Pre-open runs fail the way they did on the stalled mornings (runbooks/gateway section B).
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults:
+    - {action: fail, datasets: [option_snapshots], from: "09:00", to: "09:30", duration_s: 360,
+       error: "RuntimeError(\"every chain failed: [{'chain': 'spx_monthly', 'error': 'TimeoutError()'}, {'chain': 'spx_weekly', 'error': 'skipped: run budget used up'}]\")"}
+    - {action: fail, datasets: [index_snapshots], from: "09:00", to: "09:30", duration_s: 120}

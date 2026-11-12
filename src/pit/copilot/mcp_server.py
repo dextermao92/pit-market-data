@@ -76,6 +76,7 @@ def slo_status(end: str | None = None, sessions_back: int = 20) -> dict:
     """
     import tomllib
     n_symbols = len(tomllib.loads((ROOT / "config" / "alpaca_bars.toml").read_text())["alpaca"]["symbols"])
+    end = end or os.environ.get("PIT_TODAY")  # evals pin "today" to the frozen data
     rows = compute(_data_dir(), sessions(date.fromisoformat(end) if end else None, sessions_back), n_symbols).to_dicts()
     window = rows[-1]
     return {"objectives": OBJECTIVES, "window": window,

@@ -1,0 +1,15 @@
+id: s10-alpaca-gap
+simulated: true
+today: 2026-11-12
+question: The equity_bars runs on 2026-11-12 report missing bars from about 12:45 on. Is that data lost?
+expected:
+  categories: [vendor_data_gap]
+  runbooks: [runbooks/stale-snapshots, slo]
+label:
+  status: verified
+  source: Injected. Runs succeed but 450 bars (9 slots x 50 symbols) are missing for 12:00-12:45.
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults:
+    - {action: set, datasets: [equity_bars], from: "12:45", to: "23:59", fields: {missing_bars: 450}}
+    - {action: drop_bars, from: "12:00", to: "12:45"}

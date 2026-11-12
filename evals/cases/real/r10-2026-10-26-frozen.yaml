@@ -1,0 +1,12 @@
+id: r10-2026-10-26-frozen
+simulated: false
+today: 2026-11-11
+question: Why were there no option snapshots on 2026-10-26?
+expected:
+  categories: [secdef_stall, gateway_frozen]
+  runbooks: [incidents/2026-10-26, runbooks/gateway]
+label:
+  status: verified
+  source: >-
+    ops/incidents/2026-10-26.md: the contract_cache refresh overloaded secdef, then the Gateway froze (API port
+    accepted nothing from 09:16; IBC RESTART couldn't fix it). Both categories describe it. No pipeline_runs here.

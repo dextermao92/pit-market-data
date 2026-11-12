@@ -1,0 +1,15 @@
+id: r08-2026-10-22-slo-zero
+simulated: false
+today: 2026-11-11
+question: >-
+  slo_status shows 0% option coverage on 2026-10-22 and 2026-10-23, but ops/slo.md says 10-22 was 100%. Were those
+  sessions lost?
+expected:
+  categories: [missing_run_records]
+  runbooks: [slo, incidents/2026-10-23]
+label:
+  status: verified
+  source: >-
+    ops/slo.md current values ("Mac data") give 10-22 and 10-23 100% coverage; collection moved to Windows ~10-27.
+    This host's pipeline_runs has no rows for 10-22/10-23 (the Mac's pipeline_runs for those days were not copied),
+    while data/raw/source=ibkr has both days. So the 0% is missing run records, not lost data.

@@ -1,0 +1,15 @@
+id: s05-host-asleep
+simulated: true
+today: 2026-11-12
+question: There's no data at all for 2026-11-12 and no Discord status cards came in that day. What happened?
+expected:
+  categories: [host_down]
+  runbooks: [runbooks/stale-snapshots]
+label:
+  status: verified
+  source: Injected. The whole day's runs removed, as if the host slept.
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults:
+    - {action: drop, datasets: all, from: "00:00", to: "23:59"}
+    - {action: drop_bars, from: "00:00", to: "23:59"}

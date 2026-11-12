@@ -1,0 +1,14 @@
+id: r14-2026-11-10-docker-down
+simulated: false
+today: 2026-11-11
+question: Why did the 09:10 to 09:25 snapshots on 2026-11-10 run late and fail?
+expected:
+  categories: [host_down, gateway_restarting]
+  runbooks: [runbooks/stale-snapshots, runbooks/gateway]
+label:
+  status: verified
+  source: >-
+    Commit e48a049: Docker stopped on 11-10 (WSL auto-update). pipeline_runs: slots 09:10-09:25 all started
+    09:25:15-09:26:03 (catch-up); option and index TimeoutError in 4-5 s, one "every chain failed ... Socket
+    disconnect". Gateway container log: IBC started 09:24:50 ET, "autorestart file not found: full authentication
+    will be required", 2FA, "Login has completed" 09:25:29 and again 09:26:10. 09:30 runs OK.

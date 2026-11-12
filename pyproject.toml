@@ -13,6 +13,7 @@ dependencies = [
 copilot = [
     "mcp==2.3.0",
     "openai==3.48.0",
+    "pyyaml==6.0.3",
 ]
 dbt = [
     "dbt-core==1.11.15",

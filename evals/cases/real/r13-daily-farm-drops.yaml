@@ -1,0 +1,14 @@
+id: r13-daily-farm-drops
+simulated: false
+today: 2026-11-11
+question: >-
+  Almost every day an option run around 10:30 or 11:30 reports code 2157 and one around 14:30 reports 2103. Is
+  something wrong with the Gateway?
+expected:
+  categories: [transient_reconnect]
+  runbooks: [runbooks/gateway]
+label:
+  status: verified
+  source: >-
+    pipeline_runs: 2157 at 10:30/11:30 and 2103 at 14:30-15:35 on most sessions 10-19 -> 11-11, all in successful
+    runs. Runbook gateway D: farm drops that recover within the run are routine and not alerted.

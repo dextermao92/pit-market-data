@@ -1,0 +1,15 @@
+id: r12-2026-11-05-1100-blip
+simulated: false
+today: 2026-11-11
+question: >-
+  At 10:00 on 2026-11-05 the option run logged IBKR codes 1100 and 2103, then 1102 and 2110 at 10:05. Did we lose
+  data, and should I do anything?
+expected:
+  categories: [transient_reconnect]
+  runbooks: [runbooks/gateway]
+label:
+  status: verified
+  source: >-
+    pipeline_runs: 10:00 and 10:05 option and index runs successful, with codes 1100/2103/2157 then 1102/2110; no
+    failed runs on 11-05; slo_status 11-05 coverage 100%. Runbook gateway D: 1100 followed by 1102 "data maintained"
+    needs no action.

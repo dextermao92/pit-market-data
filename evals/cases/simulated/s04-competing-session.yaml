@@ -1,0 +1,18 @@
+id: s04-competing-session
+simulated: true
+today: 2026-11-12
+question: >-
+  Option snapshots on 2026-11-12 still succeed after 10:00, but nearly every contract comes back without a quote.
+  What's going on?
+expected:
+  categories: [subscription_missing]
+  runbooks: [runbooks/gateway]
+label:
+  status: verified
+  source: Injected. Code 10197 (live data held by another session of the same user), quotes empty.
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults:
+    - {action: set, datasets: [option_snapshots], from: "10:00", to: "16:00",
+       fields: {ibkr_error_codes: [10197], two_sided: 0, ask_only: 0, bid_only: 0, no_quote: 3400}}
+    - {action: set, datasets: [index_snapshots], from: "10:00", to: "16:00", fields: {ibkr_error_codes: [10197]}}

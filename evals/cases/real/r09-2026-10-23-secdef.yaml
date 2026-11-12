@@ -1,0 +1,10 @@
+id: r09-2026-10-23-secdef
+simulated: false
+today: 2026-11-11
+question: Why was the 10:35 index snapshot lost and the option snapshots late on 2026-10-23?
+expected:
+  categories: [secdef_stall]
+  runbooks: [incidents/2026-10-23, runbooks/gateway]
+label:
+  status: verified
+  source: ops/incidents/2026-10-23.md root cause. No pipeline_runs on this host for that day (collected on the Mac).

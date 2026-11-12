@@ -37,7 +37,7 @@ class Scripted:
         return self.replies.pop(0)
 
 
-GOOD = {"root_cause": "IB Gateway API connect timed out", "category": "gateway_connect_timeout",
+GOOD = {"root_cause": "IB Gateway API connect timed out", "category": "gateway_frozen",
         "runbook": "runbooks/gateway",
         "evidence": [{"day": "2026-10-26", "time_et": "09:10", "dataset": "option_snapshots",
                       "detail": "TimeoutError()"}]}
@@ -112,7 +112,7 @@ def test_thinking_mode_sends_reasoning_back(tmp_path, monkeypatch):
     assert "reasoning_content" not in assistant_turn(SimpleNamespace(content="x", tool_calls=None))
 
 
-@pytest.mark.parametrize("d, ok", [(GOOD, True), (GOOD | {"evidence": []}, False),
+@pytest.mark.parametrize("d, ok", [(GOOD, True), (GOOD | {"evidence": []}, False), (GOOD | {"category": "x"}, False),
                                    (GOOD | {"runbook": "runbooks/gateway.md"}, True)])
 def test_check_diagnosis(d, ok):
     assert (check_diagnosis(d, {"runbooks/gateway", "slo"}) is None) == ok

@@ -1,0 +1,14 @@
+id: r02-2026-10-15-alpaca-bar-gap
+simulated: false
+today: 2026-11-11
+question: On 2026-10-15 afternoon the equity_bars runs reported missing bars. What happened, and is data lost?
+expected:
+  categories: [vendor_data_gap]
+  runbooks: [runbooks/stale-snapshots, slo]
+label:
+  status: needs_review
+  source: >-
+    pipeline_runs: equity_bars from 13:20 ET rows stuck at 2100 while missing_bars grew 50 per run (50 symbols) to 700
+    at 14:25, then rows grew again but missing_bars stayed 700 to the 17:30 run: Alpaca returned no bars for about
+    13:15-14:25 intraday. slo_status today shows 10-15 bars 3900/3900, so a later refetch recovered them. Unsure it
+    was Alpaca's side (feed delay or outage) rather than ours.

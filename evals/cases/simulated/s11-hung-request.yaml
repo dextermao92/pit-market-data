@@ -1,0 +1,20 @@
+id: s11-hung-request
+simulated: true
+today: 2026-11-12
+question: >-
+  Option snapshots on 2026-11-12 ran late from about 11:00 to 11:30 and the 11:00 one failed. The Gateway was
+  connected the whole time. What happened?
+expected:
+  categories: [hung_request]
+  runbooks: [runbooks/stale-snapshots, runbooks/gateway]
+label:
+  status: verified
+  source: >-
+    Injected. The 11:00 run waits out the 300 s request timeout after a 1100 and fails; the next slots queue behind it
+    and start late.
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults:
+    - {action: fail, datasets: [option_snapshots], from: "11:00", to: "11:01", duration_s: 300,
+       ibkr_error_codes: [1100, 1102], error: "TimeoutError()"}
+    - {action: shift, datasets: [option_snapshots], from: "11:01", to: "11:21", seconds: 240}

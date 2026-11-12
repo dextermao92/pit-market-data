@@ -1,0 +1,16 @@
+id: s02-duckdb-lock
+simulated: true
+today: 2026-11-12
+question: >-
+  The close summary for 2026-11-12 shows a red dbt build, and the eod.dbt_build task log ends with: IO Error: Could not
+  set lock on file "/opt/airflow/data/curated.duckdb": Conflicting lock is held in /usr/local/bin/python3.12 (PID
+  4127). Is collection affected, and what do I do?
+expected:
+  categories: [duckdb_lock]
+  runbooks: [runbooks/duckdb-lock]
+label:
+  status: verified
+  source: Injected (the error is in the question; dbt results are not in pipeline_runs). Runs that day are normal.
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults: []

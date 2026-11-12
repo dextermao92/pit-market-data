@@ -1,0 +1,17 @@
+id: s08-farms-down
+simulated: true
+today: 2026-11-12
+question: Option snapshots failed from 13:00 to 13:30 on 2026-11-12. What happened, and what should be done?
+expected:
+  categories: [data_farm_disconnected]
+  runbooks: [runbooks/gateway]
+label:
+  status: verified
+  source: Injected. No spot price with farm codes 2103/2105 that persist across runs.
+sim:
+  clone: {from: 2026-11-11, to: 2026-11-12}
+  faults:
+    - {action: fail, datasets: [option_snapshots], from: "13:00", to: "13:30", duration_s: 25,
+       ibkr_error_codes: [2103, 2105],
+       error: "RuntimeError('SPX: no spot price; sent RECONNECTDATA (OK); if it persists, check the market-data subscription for the underlying')"}
+    - {action: set, datasets: [index_snapshots], from: "13:00", to: "13:30", fields: {ibkr_error_codes: [2103, 2105]}}

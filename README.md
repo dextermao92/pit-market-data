@@ -267,7 +267,7 @@ If `data/` is lost but `raw/` survives: `uv run python -m pit.pipeline restage d
 | P2 | Row rules + quarantine, partition checks, corporate actions, adjustment | Each rule has +/- tests; hand-computed adjustment golden test passes |
 | P3 | Market-hours Timetable (replaces cron), `eod` DAG; dbt curated layer, SCD2, rules 14–16; backfill; CI | 1-year equity backfill succeeds; a full week unattended except Gateway re-auth; `dbt build` green |
 | P4 | `as_of` queries + simulated bad-data drill | Same query differs across `as_of` values; drill written up, labelled simulated |
-| P5 | PIT Ops Copilot: ops docs (incident write-ups, runbooks, SLO), MCP server with read-only tools, retrieval over the docs, a hand-written agent loop with human approval for risky tools, evals replaying real incidents | One command scores the evals; adversarial set blocked; CI green on recorded responses |
+| P5 | PIT Ops Copilot: ops docs (incident write-ups, runbooks, SLO), MCP server with read-only tools (no retrieval index: the ops docs are a handful of files, so the agent lists and reads them by name with `read_runbook`), a hand-written agent loop with human approval for risky tools, evals replaying real incidents | One command scores the evals; adversarial set blocked; CI green on recorded responses |
 
 Option snapshots start in P1 and keep running, so history accumulates while the
 rest is built. Stop after P5.

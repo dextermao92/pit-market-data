@@ -70,7 +70,7 @@ def test_pipeline_records_equity_run(tmp_path, monkeypatch):
     rec = pipeline.collect_equity_bars("cfg.toml", run_id="e1")
     assert rec["status"] == "success" and rec["rows"] == 3 and rec["quarantined"] == 0
     assert rec["missing_bars"] == 1  # BRK.B has no 13:45 bar
-    assert rec["staged_path"].endswith("staged/equity_bars/ingest_date=2026-10-14/20261014T140000000000Z.parquet")
+    assert rec["staged_path"].replace("\\", "/").endswith("staged/equity_bars/ingest_date=2026-10-14/20261014T140000000000Z.parquet")
     runs = pl.read_parquet(tmp_path / "pipeline_runs/dataset=equity_bars/**/*.parquet")
     assert runs["two_sided"][0] is None  # option-only columns stay null
 

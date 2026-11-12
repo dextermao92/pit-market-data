@@ -6,7 +6,7 @@ expected:
   categories: [data_farm_disconnected]
   runbooks: [runbooks/gateway, runbooks/stale-snapshots]
 label:
-  status: needs_review
+  status: verified  # confirmed by the operator 2026-11-12
   source: >-
     pipeline_runs: 09:14:48 option run RuntimeError('SPX: no spot price ...') while the index run the same second
     logged IBKR codes 2103, 2105, 2157 (market-data, HMDS and secdef farms broken); 09:20:05 ConnectionError('Socket

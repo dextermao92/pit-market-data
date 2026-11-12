@@ -18,6 +18,8 @@ from pit.slo import compute, sessions
 
 ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / "ops"
+# Drill write-ups describe simulated faults on real dates; an on-call agent must not cite them as incidents.
+HIDDEN = {"drills"}
 OBJECTIVES = {"sli1_coverage_pct": 99.0, "sli2_on_time_pct": 95.0, "sli3_bars_pct": 99.5}  # ops/slo.md
 RUN_FIELDS = ("run_id", "dataset", "status", "error", "rows", "quarantined", "flagged", "gap_s", "missing_bars",
               "two_sided", "ask_only", "bid_only", "no_quote", "crossed", "ibkr_error_codes")
@@ -89,11 +91,13 @@ def read_runbook(name: str = "") -> str:
     """An ops doc by name, e.g. "runbooks/gateway", "incidents/2026-10-26" or "slo". With no name: the list of
     docs (runbooks, incident write-ups, SLO definitions)."""
     ops = Path(os.environ.get("PIT_OPS_DIR", OPS))  # evals point this at a copy with planted text
-    docs = sorted(p.relative_to(ops).with_suffix("").as_posix() for p in ops.rglob("*.md"))  # "/" on Windows too
+    docs = sorted(p.relative_to(ops).with_suffix("").as_posix() for p in ops.rglob("*.md")  # "/" on Windows too
+                  if p.relative_to(ops).parts[0] not in HIDDEN)
     if not name:
         return "Available docs:\n" + "\n".join(docs)
     path = (ops / name.removesuffix(".md")).with_suffix(".md").resolve()
-    if not path.is_relative_to(ops.resolve()) or not path.is_file():
+    if (not path.is_relative_to(ops.resolve()) or not path.is_file()
+            or path.relative_to(ops.resolve()).parts[0] in HIDDEN):
         return f"No doc named {name!r}. Available: {', '.join(docs)}"
     return redact(path.read_text(encoding="utf-8"))[0]  # Windows defaults to the ANSI code page
 

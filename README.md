@@ -4,9 +4,9 @@ A personal, local, batch pipeline for US equity/ETF 5-minute bars and 5-minute
 option chain snapshots that can answer **"what did I know as of time T?"** —
 reproducibly.
 
-Status (2026-11-12): P0–P3 built; collecting every session day since 2026-10-14. P4 (`as_of` queries) in
-progress: the interface and its tests are in [`pit.query`](src/pit/query.py), the implementation isn't. P5 (PIT
-Ops Copilot) built: [agent loop, approval-gated tool, evals replayed in CI](#ops-copilot-p5), with ops docs in
+Status (2026-11-13): P0–P3 built; collecting every session day since 2026-10-14. P4 built:
+[`as_of` queries](#point-in-time-queries-p4) and a [simulated bad-data drill](ops/drills/2026-11-13-bad-vendor-revision.md).
+P5 (PIT Ops Copilot) built: [agent loop, approval-gated tool, evals replayed in CI](#ops-copilot-p5), with ops docs in
 [`ops/`](ops/).
 
 ## Why point-in-time
@@ -260,6 +260,29 @@ New machine:
 
 If `data/` is lost but `raw/` survives: `uv run python -m pit.pipeline restage data`, then `dbt build`.
 
+## Point-in-time queries (P4)
+
+[`pit.query`](src/pit/query.py) answers "what did I know as of T?" from `staged/`, which keeps every fetch:
+
+- `get_bars(symbols, start, end, as_of)`: the 5-min bars in `[start, end)` as known at `as_of` (the latest version
+  per bar fetched by then), adjusted only with the corporate actions known by `as_of`. Rows keep `ingested_at` (the
+  version used) and `flags` (staging warnings, which are returned, not dropped).
+- `get_chain(underlying, at)`: the latest option snapshot of that underlying taken at or before `at`. A snapshot is
+  never revised, so it needs no separate `as_of`.
+
+Files fetched after `as_of` are skipped by name, so later fetches can't change an earlier answer.
+
+```python
+from pit.query import get_bars
+get_bars(["NFLX"], start, end, as_of=datetime(2026, 10, 16, 21, 30, 47, tzinfo=UTC))  # close 72.705
+get_bars(["NFLX"], start, end, as_of=datetime(2026, 10, 16, 21, 31, tzinfo=UTC))      # close 72.9 (eod revision)
+```
+
+Real data to 2026-11-12: of 1,057,200 bars, the vendor later revised 1,760, including the close of 75. Each
+revision showed up at the next day's `eod` re-fetch. The [drill](ops/drills/2026-11-13-bad-vendor-revision.md)
+(simulated, `scripts/drill_bad_revision.py`) injects four kinds of bad revision into a copy of the data. Every
+kind was caught by at least one check. A uniform 0.4% shift was caught only by the cross-source rule 16.
+
 ## Ops Copilot (P5)
 
 An on-call assistant for this pipeline. A hand-written tool-calling loop (`pit.copilot.agent`, no agent framework)
@@ -295,7 +318,7 @@ covered by tests).
 | P1 | Docker Compose up; ingest → raw → staged for both sources, idempotent; `pipeline_runs`; IBKR cycle-time check; ingest DAGs on cron + market-open check | Same run twice → identical staged data (hash of sorted rows, not file bytes); queryable in DuckDB; option snapshots collecting |
 | P2 | Row rules + quarantine, partition checks, corporate actions, adjustment | Each rule has +/- tests; hand-computed adjustment golden test passes |
 | P3 | Market-hours Timetable (replaces cron), `eod` DAG; dbt curated layer, SCD2, rules 14–16; backfill; CI | 1-year equity backfill succeeds; a full week unattended except Gateway re-auth; `dbt build` green |
-| P4 | `as_of` queries + simulated bad-data drill | Same query differs across `as_of` values; drill written up, labelled simulated |
+| P4 | `as_of` queries + simulated bad-data drill | Same query differs across `as_of` values; drill written up, labelled simulated. **Built 2026-11-13:** `pit.query`; real revisions differ across `as_of`; [drill](ops/drills/2026-11-13-bad-vendor-revision.md) |
 | P5 | PIT Ops Copilot: ops docs (incident write-ups, runbooks, SLO), MCP server with read-only tools (no retrieval index: the ops docs are a handful of files, so the agent lists and reads them by name with `read_runbook`), a hand-written agent loop with human approval for risky tools, evals replaying real incidents | One command scores the evals; adversarial set blocked; CI green on recorded responses. **Built 2026-11-12:** `python -m pit.copilot.eval` (25 cases, 76 % on deepseek-flash); injection set blocked 5 / 5; CI replays the recordings (≥ 70 %) |
 
 Option snapshots start in P1 and keep running, so history accumulates while the

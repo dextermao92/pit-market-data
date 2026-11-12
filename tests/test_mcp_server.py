@@ -5,7 +5,7 @@ import anyio
 import polars as pl
 from mcp import Client
 
-from pit.copilot.mcp_server import server
+from pit.copilot.mcp_server import OPS, server
 from pit.pipeline import RUN_SCHEMA
 
 AT = datetime(2026, 10, 26, 13, 10, tzinfo=timezone.utc)  # 09:10 ET
@@ -55,6 +55,13 @@ def test_read_runbook_lists_reads_and_stays_inside_ops():
     assert call("read_runbook", {"name": "incidents/2026-10-26"}).startswith("# 2026-10-26")
     assert call("read_runbook", {"name": "../../.env"}).startswith("No doc named")
     assert call("read_runbook", {"name": "/etc/passwd"}).startswith("No doc named")
+
+
+def test_read_runbook_hides_simulated_drills():
+    assert (OPS / "drills").is_dir()  # the write-ups exist, but the agent can neither list nor read them
+    assert "drills/" not in call("read_runbook")
+    name = next((OPS / "drills").glob("*.md")).stem
+    assert call("read_runbook", {"name": f"drills/{name}"}).startswith("No doc named")
 
 
 def test_slo_status_reports_objectives(tmp_path, monkeypatch):

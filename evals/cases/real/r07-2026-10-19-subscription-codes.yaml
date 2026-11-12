@@ -10,6 +10,6 @@ expected:
 label:
   status: verified
   source: >-
-    pipeline_runs: 26 option runs from 09:38 with 10090/10167, one 354, all successful. Commit 6574b79 added NDX,
-    QQQ, SPY, TSM, NVDA and AAPL chains that day; ca39eed removed NDX "(index data not subscribed)" and made 10167
+    pipeline_runs: 26 option runs from 09:38 with 10090/10167, one 354, all successful. Commit 39d1366 added NDX,
+    QQQ, SPY, TSM, NVDA and AAPL chains that day; 175457f removed NDX "(index data not subscribed)" and made 10167
     informational. Runbook gateway section C lists these codes.

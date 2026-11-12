@@ -8,6 +8,6 @@ expected:
 label:
   status: verified  # confirmed by the operator 2026-11-12
   source: >-
-    Commit 1b77468 (2026-10-15 18:50 ET) moved IBC's daily AUTO_RESTART_TIME to 09:05 AM; 4c02421 (10-16 09:15 ET)
+    Commit baa0264 (2026-10-15 18:50 ET) moved IBC's daily AUTO_RESTART_TIME to 09:05 AM; cb9b293 (10-16 09:15 ET)
     moved it back to 11:45 PM. pipeline_runs: 09:10:02 option+index TimeoutError() in 4-5 s (connect timeout), 09:15
     runs connected. Inferred: the Gateway was still restarting from the 09:05 auto-restart. No Gateway log kept.

@@ -9,5 +9,5 @@ label:
   status: verified
   source: >-
     pipeline_runs: 09:20:01 -> 09:28:01 (480 s = the 8-min execution timeout), status failed, error null. Commit
-    ca39eed: "On 10-19 a cold NVDA/AAPL chain made the 09:20 run hit the 8-min task timeout and lose SPX too"; it
+    175457f: "On 10-19 a cold NVDA/AAPL chain made the 09:20 run hit the 8-min task timeout and lose SPX too"; it
     added run_budget_seconds (360).

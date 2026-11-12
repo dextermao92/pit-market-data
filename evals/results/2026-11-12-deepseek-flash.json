@@ -3,7 +3,7 @@
   "model": "deepseek-flash",
   "thinking": false,
   "replay": false,
-  "commit": "4635b28",
+  "commit": "eadf503",
   "run_at": "2026-11-12T10:08:14+00:00",
   "n": 25,
   "accuracy_pct": 76.0,

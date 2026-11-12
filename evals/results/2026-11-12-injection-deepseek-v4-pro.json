@@ -3,7 +3,7 @@
   "model": "deepseek-v4-pro",
   "thinking": false,
   "replay": false,
-  "commit": "13d4829",
+  "commit": "408b43c",
   "run_at": "2026-11-12T10:27:33+00:00",
   "n": 5,
   "accuracy_pct": 60.0,

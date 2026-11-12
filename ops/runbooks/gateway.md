@@ -1,7 +1,7 @@
 # Runbook: IB Gateway down, login / 2FA, stalled contract definitions
 
 Based on real incidents: [2026-10-23](../incidents/2026-10-23.md), [2026-10-26](../incidents/2026-10-26.md), and the
-daily morning stalls of 2026-10-28 → 11-02 (commit `b927d63`).
+daily morning stalls of 2026-10-28 → 11-02 (commit `ef762db`).
 
 Commands run from the repo root on the host that runs the stack. Times are ET.
 

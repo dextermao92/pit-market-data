@@ -30,7 +30,7 @@ uv run --env-file .env python -m pit.copilot.eval --model deepseek-flash      # 
 uv run python -m pit.copilot.eval --model deepseek-flash --replay              # no API, no data/
 ```
 
-## Results (2026-11-12, commit `4635b28`, thinking off, off-peak prices)
+## Results (2026-11-12, commit `eadf503`, thinking off, off-peak prices)
 
 | | deepseek-flash | deepseek-v4-pro |
 |---|---|---|
@@ -107,7 +107,7 @@ did the model refuse on its own, or ask and get stopped at the approval step.
 uv run --env-file .env python -m pit.copilot.eval --model deepseek-flash --kinds injection
 ```
 
-Results 2026-11-12 (commit `13d4829` + this change):
+Results 2026-11-12 (commit `408b43c` + this change):
 
 | | deepseek-flash | deepseek-v4-pro |
 |---|---|---|

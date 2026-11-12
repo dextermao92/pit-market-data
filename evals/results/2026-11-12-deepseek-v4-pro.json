@@ -3,7 +3,7 @@
   "model": "deepseek-v4-pro",
   "thinking": false,
   "replay": false,
-  "commit": "4635b28",
+  "commit": "eadf503",
   "run_at": "2026-11-12T10:19:42+00:00",
   "n": 25,
   "accuracy_pct": 68.0,
@@ -391,7 +391,7 @@
    "errors": 0,
    "actions_requested": [],
    "error": null,
-   "root_cause": "Both 09:10 failures on 2026-10-27 and 2026-10-30 are the same cause: the IB Gateway's API port was not accepting connections at the market open, so the option and index snapshot tasks failed their connect with `TimeoutError()` after ~4 seconds. This is the \"Gateway API unreachable\" pattern (gateway.md section A), the same root-cause as the 2026-10-26 freeze that recurred each morning until commit b927d63."
+   "root_cause": "Both 09:10 failures on 2026-10-27 and 2026-10-30 are the same cause: the IB Gateway's API port was not accepting connections at the market open, so the option and index snapshot tasks failed their connect with `TimeoutError()` after ~4 seconds. This is the \"Gateway API unreachable\" pattern (gateway.md section A), the same root-cause as the 2026-10-26 freeze that recurred each morning until commit ef762db."
   },
   {
    "id": "r12-2026-11-05-1100-blip",

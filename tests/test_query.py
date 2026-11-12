@@ -14,9 +14,6 @@ import pytest
 from pit.query import get_bars, get_chain
 from pit.storage import TS, write_parquet
 
-# Exercise in progress: delete this line once pit.query is implemented (strict: passing tests then fail CI).
-pytestmark = pytest.mark.xfail(raises=NotImplementedError, strict=True)
-
 UTC = timezone.utc
 ET_10_00 = datetime(2026, 6, 9, 14, 0, tzinfo=UTC)
 ET_10_05 = datetime(2026, 6, 9, 14, 5, tzinfo=UTC)

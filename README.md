@@ -258,6 +258,29 @@ New machine:
 
 If `data/` is lost but `raw/` survives: `uv run python -m pit.pipeline restage data`, then `dbt build`.
 
+## Ops Copilot (P5)
+
+An on-call assistant for this pipeline. A hand-written tool-calling loop (`pit.copilot.agent`, no agent framework)
+answers an ops question by calling the read-only MCP tools (`get_runs`, `slo_status`, `read_runbook`) and ends with
+a structured diagnosis: root-cause category, the runbook to follow, and the evidence (runs, ET times, errors).
+One tool has side effects, `reconnect_market_data` (IBC `RECONNECTDATA`): it runs only after a person types the
+command at the terminal; nothing the model writes or a tool returns can approve it, and evals and CI never run it.
+
+```bash
+uv run --env-file .env python -m pit.copilot.agent "Why were there no option snapshots on 2026-10-26?"
+```
+
+Evals ([`evals/`](evals/README.md)), 2026-11-12: 25 cases (14 real, 11 simulated), scored by rule (category and
+runbook must match the label; no LLM judge).
+
+| Model | Root cause accuracy | Mean cost / diagnosis | Mean time / diagnosis |
+|---|---|---|---|
+| **deepseek-flash** (chosen) | **76.0 %** (real 64.3 %, simulated 90.9 %) | $0.0037 | 15.1 s |
+| deepseek-v4-pro | 68.0 % (real 64.3 %, simulated 72.7 %) | $0.0134 | 26.8 s |
+
+One run per model on a small set: a re-run can move these by a few points. Real cases are harder than simulated
+ones. See [evals/README.md](evals/README.md#limitations).
+
 ## Milestones
 
 | Phase | Scope | Done when |

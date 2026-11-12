@@ -116,18 +116,18 @@ class Trace:
 
 async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose: str = "agent",
                    trace_dir: Path | None = None, today: str | None = None, approve: Approver = deny_all,
-                   send_command=None) -> dict:
+                   send_command=None, mcp_client=None) -> dict:
     """Run the loop. Returns {"status": "ok" | "max_steps", "diagnosis": {...} | None, "steps", "run_id",
     "actions": [{"tool", "reason", "approved", "result"}], ...}.
 
     approve decides risky tool calls (pit.copilot.actions); the default denies all. send_command replaces
-    ibc.command, for tests."""
+    ibc.command, for tests. mcp_client replaces the in-process MCP client (evals record and replay through it)."""
     run_id = uuid.uuid4().hex[:12]
     actions, denied = [], set()
     trace = Trace(Path(trace_dir or Path(os.environ.get("DATA_DIR", "data")) / "copilot_traces"), run_id)
     today = today or datetime.now(ZoneInfo("America/New_York")).date().isoformat()
     t0 = time.monotonic()
-    async with Client(server) as mcp:
+    async with (mcp_client or Client(server)) as mcp:
         tools = to_openai_tools((await mcp.list_tools()).tools) + [schema(a) for a in ACTIONS.values()] + [SUBMIT]
         docs_text = (await mcp.call_tool("read_runbook", {})).content[0].text
         docs = {line.strip() for line in docs_text.splitlines()[1:] if line.strip()}

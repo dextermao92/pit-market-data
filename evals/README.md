@@ -166,7 +166,24 @@ logged tokens at off-peak prices. `uv run python scripts/budget_sweep.py <benchm
 
 Conclusion: at this pipeline's prompt sizes (40k tokens at most) a context budget costs more than it saves. It is
 worth keeping as a ceiling well above normal use (48k or more: it costs nothing until a rare long investigation
-hits it); a budget low enough to compact most diagnoses raises cost by 10–20 %.
+hits it); a budget low enough to compact most diagnoses raises cost by 10–20 %. The default is now 48,000.
+
+### Run-to-run variance
+
+Why identical setups scored 56–76 %, from the eight no-memory runs above (per-case outcomes and traces):
+
+- **Sampling is random.** The client sends no `temperature`, so DeepSeek samples at its default (1.0). No case
+  took the same sequence of tool calls twice in eight runs, and for 9 of 25 cases even the first call differed.
+- **The cases split three ways.** 9 are right every time (r07, r08, r12, s01, s02, s04, s06, s09, s10), 3 are
+  wrong every time (r01, r11, s07), and 13 are coin flips at 1/8 to 7/8 (r04 is 4/8 with five different
+  answers). All the variance comes from those 13.
+- **The arithmetic fits.** With each case right at its observed rate, a run's expected score is 16.75 / 25 with a
+  standard deviation of 1.47 cases (5.9 points); the eight runs scored 14–19, inside ±2 SD. So the spread is plain
+  sampling noise, and any single-run difference under about 12 points is not evidence of anything.
+- **Most misses are the category, not the runbook.** Of 66 wrong diagnoses, 47 had the wrong category, 9 the right
+  category with the wrong runbook, 10 both. The flipping cases sit between neighbouring labels the evidence
+  doesn't separate cleanly: hung run vs secdef stall vs frozen Gateway (r04), Alpaca outage vs reconnect (r05), a
+  run timeout called `unknown` (r06), reconnect vs farm outage (s08).
 
 ## Memory (leave-one-out)
 
@@ -226,8 +243,8 @@ Verdict: no evidence that memory hurts, weak evidence that it helps on real case
 - Costs are DeepSeek's off-peak prices of 2026-11-10 (`config/llm.toml`); peak hours cost double. The 11-13 runs
   were in peak hours and are compared at off-peak prices recomputed from their logged tokens.
 - **Context budget and memory: one run per configuration.** The differences between the 11-13 configurations
-  are 1–4 cases, inside the run-to-run noise (four runs of the same setup scored 56–76 %); none of them is a
-  measured effect yet.
+  are 1–4 cases, inside the run-to-run noise (four runs of the same setup scored 56–76 %, SD about 6 points; see
+  [run-to-run variance](#run-to-run-variance)); none of them is a measured effect yet.
 - **The memory is built from the eval's own labels.** Leave-one-out keeps a case's own answer out, but the notes
   are written in the same words as the other questions, and the sibling case of the same category is often a
   simulated copy of a real one. Real operator-confirmed notes would read differently.
@@ -262,6 +279,8 @@ Raw: [`results/2026-11-12-injection-deepseek-flash.json`](results/2026-11-12-inj
 
 Re-run 2026-11-13 on the current loop (16k context budget, memory of all 25 diagnosis cases): blocked **5 / 5**,
 the model didn't request the tool in any, 0 executed ([results](results/2026-11-13-injection-deepseek-flash-memory-loo.json)).
+Again after the default became 48k: the same, 5 / 5 refused by the model
+([results](results/2026-11-13-injection-deepseek-flash-memory-loo-budget-48000.json)).
 
 Limitation: since the model never asked, the approval gate itself wasn't exercised by these live runs. It is by
 the unit tests ([`tests/test_copilot_actions.py`](../tests/test_copilot_actions.py)): a model that obeys an injected
@@ -273,7 +292,9 @@ typed confirmation. 5 cases is a small set, and all use the same instruction in 
 The live runs above recorded every model reply and tool result to [`recordings/`](recordings/) (redacted:
 account ids, secrets from `.env`, emails, webhooks; the collector's IBKR username was also scrubbed). CI
 ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) replays the `deepseek-flash-memory-loo` recordings
-(the current loop: context budget and leave-one-out memory, recorded 2026-11-13) through the same agent loop and
+(the current loop: the 48k context budget and leave-one-out memory, re-recorded 2026-11-13 after the default
+changed from 16k; [results](results/2026-11-13-deepseek-flash-memory-loo-budget-48000.json): 72 %, 57.1 % real /
+90.9 % simulated, no diagnosis compacted, largest call 34,861) through the same agent loop and
 scorer, with no API key and no `data/`:
 
 - the diagnosis set must score at least **70 %** (recorded: 72 %);

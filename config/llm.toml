@@ -9,9 +9,9 @@ thinking = false              # thinking mode is the API default; with tools, re
 timeout_seconds = 60
 daily_budget_usd = 1.00       # calls are refused once today's logged cost reaches this
 # Prompt tokens per call. Over it, older tool results are compacted into stubs (pit.copilot.context); 0 = off.
-# 16000 was fixed before measuring its effect: in the 2026-11-12 eval, 18 of 25 diagnoses had a call above it
-# (largest call per diagnosis: mean 19,820, max 36,055).
-context_budget_tokens = 16000
+# A ceiling, not a saving: the 2026-11-13 sweep (evals/README.md#budget-sweep) found every budget that compacted
+# cost 6-21 % more (compaction breaks the prompt cache), while 48k never compacted (largest call 39,637).
+context_budget_tokens = 48000
 
 # USD per 1M tokens, [off-peak, peak]. Reasoning tokens are billed as output.
 [prices.deepseek-flash]

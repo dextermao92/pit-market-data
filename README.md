@@ -313,8 +313,8 @@ covered by tests).
 
 ### Context management and memory (2026-11-13)
 
-- **Context budget** (`context_budget_tokens = 16000` in `config/llm.toml`): before each call the prompt is
-  estimated; over the budget, older tool results are replaced by stubs made by fixed rules (tool, arguments, run
+- **Context budget** (`context_budget_tokens = 48000` in `config/llm.toml`, a ceiling that normal diagnoses
+  never reach; 16000 until the sweep below): before each call the prompt is estimated; over the budget, older tool results are replaced by stubs made by fixed rules (tool, arguments, run
   counts, failures grouped by error, durations, gaps; doc titles and sections), and the latest round stays whole.
   Each compaction is logged in the trace.
 - **Memory**: after a CLI diagnosis the operator is asked `confirm? [y/N]`; only a yes saves a case note to

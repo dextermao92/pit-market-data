@@ -49,11 +49,15 @@ def problems(case: dict, docs: set[str] = DOCS) -> list[str]:
 
 
 def data_dir(case: dict, base: Path = BASE, fixtures: Path = FIXTURES) -> Path:
-    """Where this case's tools read from: the frozen base, or the simulated case's own copy (built if missing)."""
+    """Where this case's tools read from: the frozen base, or the simulated case's own copy (built if missing, and
+    rebuilt if its copy of the ops docs is older than ops/: an edited runbook must reach the eval, and recordings)."""
     if not case.get("simulated"):
         return base
     root = fixtures / case["id"]
-    return root if root.exists() else build_case(case["id"], case["sim"], base, fixtures)
+    copies = list((root / "ops").rglob("*.md")) if root.exists() else []
+    stale = copies and max(p.stat().st_mtime for p in (ROOT / "ops").rglob("*.md")) > min(
+        p.stat().st_mtime for p in copies)
+    return root if root.exists() and not stale else build_case(case["id"], case["sim"], base, fixtures)
 
 
 def main() -> int:

@@ -124,3 +124,21 @@ def test_leave_one_out_memory_never_holds_the_case_itself():
         assert not {n["category"] for n in strict} & set(case["expected"]["categories"])
         assert case["question"] not in {n["question"] for n in strict}
         assert memory_for(case, pool, "off") == []
+
+
+def test_a_case_copy_of_the_ops_docs_older_than_ops_is_rebuilt(tmp_path, monkeypatch):
+    """A runbook edited after a fixture was built (e.g. to scrub a name) must not live on in the eval's copy."""
+    import os
+
+    from pit.copilot import cases
+    root = tmp_path / "i99"
+    (root / "ops" / "runbooks").mkdir(parents=True)
+    old = root / "ops" / "runbooks" / "gateway.md"
+    old.write_text("stale copy")
+    rebuilt = []
+    monkeypatch.setattr(cases, "build_case", lambda cid, sim, base, fx: rebuilt.append(cid) or root)
+    case = {"id": "i99", "simulated": True, "sim": {}}
+    assert cases.data_dir(case, base=tmp_path, fixtures=tmp_path) == root and rebuilt == []  # fresh: reused
+    os.utime(old, (0, 0))
+    cases.data_dir(case, base=tmp_path, fixtures=tmp_path)
+    assert rebuilt == ["i99"]

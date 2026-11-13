@@ -68,6 +68,18 @@ def test_call_is_redacted_logged_and_costed(tmp_path, monkeypatch):
     assert row["cost_usd"] > 0 and row["latency_s"] >= 0 and "content" not in json.dumps(row)  # no text in the log
 
 
+def test_temperature_comes_from_config_and_is_logged(tmp_path):
+    fake = FakeClient()
+    LLM(cfg=CFG | {"llm": CFG["llm"] | {"temperature": 0}}, client=fake, log_dir=tmp_path).chat(
+        [{"role": "user", "content": "hi"}], purpose="test")
+    without = {k: v for k, v in CFG["llm"].items() if k != "temperature"}
+    LLM(cfg=CFG | {"llm": without}, client=fake, log_dir=tmp_path).chat([{"role": "user", "content": "hi"}],
+                                                                        purpose="test")
+    assert fake.sent[0]["temperature"] == 0 and "temperature" not in fake.sent[1]  # omitted = API default
+    rows = [json.loads(x) for x in next(tmp_path.glob("*.jsonl")).read_text().splitlines()]
+    assert [r["temperature"] for r in rows] == [0, None]
+
+
 def test_failed_call_is_logged_and_raised(tmp_path):
     llm = LLM(cfg=CFG, client=FakeClient(fail=True), log_dir=tmp_path)
     with pytest.raises(TimeoutError):

@@ -7,6 +7,9 @@ api_key_env = "DEEPSEEK_API_KEY"
 model = "deepseek-flash"      # DeepSeek-V4.1-Flash; "deepseek-v4-pro" is the bigger one
 thinking = false              # thinking mode is the API default; with tools, reasoning_content must be sent back
 timeout_seconds = 60
+# Sampling temperature sent with every call; omit to use the API default (1.0 for DeepSeek). 0 since 2026-11-13: at
+# 1.0, identical eval setups scored 56-76 % (evals/README.md#run-to-run-variance).
+temperature = 0
 daily_budget_usd = 1.00       # calls are refused once today's logged cost reaches this
 # Prompt tokens per call. Over it, older tool results are compacted into stubs (pit.copilot.context); 0 = off.
 # A ceiling, not a saving: the 2026-11-13 sweep (evals/README.md#budget-sweep) found every budget that compacted

@@ -86,8 +86,10 @@ class LLM:
             raise BudgetExceeded(f"today's LLM spend reached the {budget} USD budget (config/llm.toml)")
         messages, redactions = redact_messages(messages)
         at, t0 = datetime.now(timezone.utc), time.monotonic()
+        if (temperature := self.cfg["llm"].get("temperature")) is not None:
+            kwargs = {"temperature": temperature} | kwargs
         row = {"at": at.isoformat(), "purpose": purpose, "model": self.model, "thinking": self.thinking,
-               "tools": len(tools or []), "redactions": redactions}
+               "temperature": kwargs.get("temperature"), "tools": len(tools or []), "redactions": redactions}
         try:
             resp = self.client.chat.completions.create(
                 model=self.model, messages=messages, **({"tools": tools} if tools else {}),

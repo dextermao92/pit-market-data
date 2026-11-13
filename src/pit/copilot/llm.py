@@ -1,7 +1,9 @@
 """LLM client for the Copilot: DeepSeek's OpenAI-compatible API. Every call is logged with tokens, cost and latency.
 
 Each call appends one JSON line to data/llm_calls/<UTC date>.jsonl: usage and timing only, never the prompt or the
-answer (those can hold account data). Outgoing message text is redacted first (pit.copilot.redact).
+answer (those can hold account data). Outgoing message text is redacted first (pit.copilot.redact). Writers take
+an exclusive lock (llm_calls/.lock) so parallel processes can't interleave lines; readers (read_log) skip a line
+that doesn't parse rather than fail, since the daily budget check reads the log before every call.
 
 Usage (the key comes from .env):
   uv run --env-file .env python -m pit.copilot.llm "question"   one call: the answer, then its log row
@@ -13,6 +15,7 @@ import os
 import sys
 import time
 import tomllib
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -77,7 +80,7 @@ class LLM:
         path = self.log_dir / f"{datetime.now(timezone.utc):%Y-%m-%d}.jsonl"
         if not path.exists():
             return 0.0
-        return sum(json.loads(line).get("cost_usd") or 0.0 for line in path.read_text().splitlines())
+        return sum(r.get("cost_usd") or 0.0 for r in read_log(path))
 
     def chat(self, messages: list, purpose: str, tools: list | None = None, **kwargs):
         """One chat completion; returns the SDK response. purpose labels the call in the log (e.g. "ask", "eval")."""
@@ -106,12 +109,57 @@ class LLM:
 
     def _log(self, row: dict) -> None:
         self.log_dir.mkdir(parents=True, exist_ok=True)
-        with open(self.log_dir / f"{row['at'][:10]}.jsonl", "a") as f:
-            f.write(json.dumps(row) + "\n")
+        line = (json.dumps(row) + "\n").encode()
+        with _locked(self.log_dir / ".lock"), open(self.log_dir / f"{row['at'][:10]}.jsonl", "ab") as f:
+            f.write(line)
+
+
+@contextmanager
+def _locked(path: Path):
+    """Exclusive lock on a side file, across processes (Windows and POSIX)."""
+    with open(path, "a+b") as f:
+        if os.name == "nt":
+            import msvcrt
+            f.seek(0)
+            while True:
+                try:
+                    msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)  # retries for ~10 s, then raises
+                    break
+                except OSError:
+                    continue
+            try:
+                yield
+            finally:
+                f.seek(0)
+                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def read_log(path: Path) -> list[dict]:
+    """The rows of one day's call log; a line that isn't a JSON object (a torn write) is skipped."""
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+    return rows
+
+
+def read_logs(log_dir: Path) -> list[dict]:
+    return [r for f in sorted(log_dir.glob("*.jsonl")) for r in read_log(f)]
 
 
 def report(log_dir: Path) -> pl.DataFrame:
-    calls = pl.concat([pl.read_ndjson(f) for f in sorted(log_dir.glob("*.jsonl"))], how="diagonal_relaxed")
+    calls = pl.DataFrame(read_logs(log_dir), infer_schema_length=None)
     return (calls.with_columns(day=pl.col("at").str.slice(0, 10))
             .group_by("day", "model").agg(
                 calls=pl.len(), errors=(pl.col("status") == "error").sum(),

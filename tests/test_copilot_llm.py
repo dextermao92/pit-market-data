@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from pit.copilot.llm import LLM, BudgetExceeded, cost_usd, is_peak, load_config, report
+from pit.copilot.llm import LLM, BudgetExceeded, cost_usd, is_peak, load_config, read_log, report
 from pit.copilot.redact import redact
 
 CFG = load_config()
@@ -98,3 +98,31 @@ def test_daily_budget_stops_calls(tmp_path):
     assert len(fake.sent) == 1
     r = report(tmp_path).to_dicts()[0]
     assert (r["calls"], r["errors"], r["prompt_tokens"]) == (1, 0, 1200)
+
+
+def test_torn_log_line_is_skipped_not_fatal(tmp_path):
+    """Parallel evals once tore a line in the call log; every later call then failed in the budget check."""
+    llm = LLM(cfg=CFG, client=FakeClient(), log_dir=tmp_path)
+    llm.chat([{"role": "user", "content": "hi"}], purpose="test")
+    log = next(tmp_path.glob("*.jsonl"))
+    log.write_text(log.read_text() + "99996}\n")
+    assert llm.spent_today() > 0
+    llm.chat([{"role": "user", "content": "again"}], purpose="test")
+    assert len(read_log(log)) == 2 and report(tmp_path)["calls"].sum() == 2
+
+
+def _log_from_process(log_dir, n):
+    llm = LLM(cfg=CFG, client=FakeClient(), log_dir=log_dir)
+    for _ in range(n):
+        llm._log({"at": "2026-11-13T00:00:00+00:00", "purpose": "x" * 3000, "cost_usd": 0.001})
+
+
+def test_parallel_writers_dont_interleave(tmp_path):
+    import multiprocessing as mp
+    procs = [mp.Process(target=_log_from_process, args=(tmp_path, 100)) for _ in range(4)]
+    for p in procs:
+        p.start()
+    for p in procs:
+        p.join()
+    lines = (tmp_path / "2026-11-13.jsonl").read_text().splitlines()
+    assert len(lines) == 400 and all(json.loads(x)["cost_usd"] == 0.001 for x in lines)

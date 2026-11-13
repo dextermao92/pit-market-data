@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-from pit.copilot.llm import load_config
+from pit.copilot.llm import load_config, read_logs
 
 
 def offpeak_usd(row: dict, prices: dict) -> float:
@@ -24,12 +24,10 @@ def offpeak_usd(row: dict, prices: dict) -> float:
 
 def calls_by_run(log_dir: Path, run_ids: set[str]) -> dict[str, list[dict]]:
     out = {r: [] for r in run_ids}
-    for f in sorted(log_dir.glob("*.jsonl")):
-        for line in f.read_text(encoding="utf-8").splitlines():
-            row = json.loads(line)
-            rid = row.get("purpose", "").rsplit(":", 1)[-1]
-            if rid in out and row.get("status") == "ok":
-                out[rid].append(row)
+    for row in read_logs(log_dir):
+        rid = row.get("purpose", "").rsplit(":", 1)[-1]
+        if rid in out and row.get("status") == "ok":
+            out[rid].append(row)
     return {r: sorted(rows, key=lambda x: x["at"]) for r, rows in out.items()}
 
 

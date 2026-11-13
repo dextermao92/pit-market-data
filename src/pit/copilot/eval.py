@@ -42,7 +42,7 @@ from mcp import Client
 from pit.copilot.agent import diagnose, make_llm
 from pit.copilot.cases import INJECTION, KINDS, data_dir, load_cases
 from pit.copilot.fixtures import ROOT
-from pit.copilot.llm import load_config
+from pit.copilot.llm import load_config, read_logs
 from pit.copilot.mcp_server import server
 from pit.copilot.memory import make_note, write_note
 from pit.copilot.redact import redact
@@ -62,8 +62,7 @@ def score(case: dict, out: dict) -> dict:
 
 
 def llm_usage(log_dir: Path, run_id: str) -> dict:
-    rows = [r for f in sorted(log_dir.glob("*.jsonl")) for line in f.read_text().splitlines()
-            if run_id in (r := json.loads(line)).get("purpose", "")]
+    rows = [r for r in read_logs(log_dir) if run_id in r.get("purpose", "")]
     return {"llm_calls": len(rows), "cost_usd": round(sum(r.get("cost_usd") or 0 for r in rows), 6),
             "llm_latency_s": round(sum(r.get("latency_s") or 0 for r in rows), 3),
             "prompt_tokens": sum(r.get("prompt_tokens") or 0 for r in rows),

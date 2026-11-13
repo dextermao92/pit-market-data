@@ -12,6 +12,7 @@ from pathlib import Path
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
+from pit.copilot.memory import format_recall, recall
 from pit.copilot.redact import redact
 from pit.health import _runs
 from pit.slo import compute, sessions
@@ -100,6 +101,13 @@ def read_runbook(name: str = "") -> str:
             or path.relative_to(ops.resolve()).parts[0] in HIDDEN):
         return f"No doc named {name!r}. Available: {', '.join(docs)}"
     return redact(path.read_text(encoding="utf-8"))[0]  # Windows defaults to the ANSI code page
+
+
+@server.tool(annotations=READ_ONLY)
+def recall_similar(query: str, limit: int = 3) -> str:
+    """Past diagnoses the operator confirmed, most similar to `query` first (matched on error names, IBKR codes
+    and keywords; no dates). Pass the error text or the symptoms. Hints from other days: check them against runs."""
+    return format_recall(recall(query, max(1, min(limit, 5))))
 
 
 if __name__ == "__main__":

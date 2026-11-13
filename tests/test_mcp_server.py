@@ -36,7 +36,7 @@ def write_runs(tmp_path, error=None):
 
 def test_tools_are_read_only():
     tools = {t.name: t for t in call("list_tools")}
-    assert set(tools) == {"get_runs", "slo_status", "read_runbook"}
+    assert set(tools) == {"get_runs", "slo_status", "read_runbook", "recall_similar"}  # memory: read-only too
     assert all(t.annotations.read_only_hint and not t.annotations.destructive_hint for t in tools.values())
 
 

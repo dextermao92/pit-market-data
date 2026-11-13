@@ -108,3 +108,18 @@ def test_recordings_cover_every_case_and_hold_no_account_data():
     leaks = re.compile(r"\b(?:DU|U)\d{6,9}\b|discord(?:app)?\.com/api/webhooks/\d|[\w.+-]+@[\w-]+\.[a-z]{2,}"
                        r"|sk-[A-Za-z0-9]{16,}")
     assert {k: leaks.findall(v)[:3] for k, v in rec.items() if leaks.search(v)} == {}
+
+
+def test_leave_one_out_memory_never_holds_the_case_itself():
+    from pit.copilot.cases import KINDS
+    from pit.copilot.eval import case_note, memory_for
+    pool = load_cases(kinds=KINDS)
+    for case in pool:
+        own = case_note(case)
+        loo = memory_for(case, pool, "loo")
+        assert len(loo) == len(pool) - 1 and own not in loo
+        assert case["question"] not in {n["question"] for n in loo}
+        strict = memory_for(case, pool, "loo-category")
+        assert not {n["category"] for n in strict} & set(case["expected"]["categories"])
+        assert case["question"] not in {n["question"] for n in strict}
+        assert memory_for(case, pool, "off") == []

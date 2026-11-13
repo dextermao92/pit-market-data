@@ -119,3 +119,18 @@ def test_replay_refuses_cases_without_a_recording(tmp_path, monkeypatch):
     monkeypatch.setattr(ev, "RECORDINGS", tmp_path)
     monkeypatch.setattr(ev, "load_cases", lambda kinds: [CASE])
     assert ev.main(["--replay", "--model", "deepseek-flash"]) == 1
+
+
+def test_memory_run_recalls_other_cases_but_never_the_one_being_run(sandbox):
+    tmp_path, scripts = sandbox
+    other = CASE | {"id": "t02", "question": "Why did every run fail with TimeoutError on 2026-10-27?",
+                    "label": {"source": "TimeoutError: Gateway frozen, fixed by restart."}}
+    own = CASE | {"label": {"source": "TimeoutError: OWN ANSWER, must never be recalled."}}
+    scripts["replies"] = [reply(call("recall_similar", {"query": "TimeoutError option snapshots"})),
+                          reply(call("submit_diagnosis", GOOD, "c2"))]
+    out = ev.run_case(own, "deepseek-flash", False, replay=False, record=True, log_dir=tmp_path / "llm_calls",
+                      memory="loo", pool=[own, other])
+    rec = json.loads((tmp_path / "recordings/deepseek-flash-memory-loo/t01.json").read_text(encoding="utf-8"))
+    recalled = next(t["text"] for t in rec["tools"] if t["name"] == "recall_similar")
+    assert "Gateway frozen, fixed by restart" in recalled and "OWN ANSWER" not in recalled
+    assert out["memory_notes"] == 1 and "PIT_MEMORY_DIR" not in __import__("os").environ

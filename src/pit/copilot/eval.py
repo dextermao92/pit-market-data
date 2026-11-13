@@ -15,14 +15,19 @@ it), and separately whether the model refused or asked and was stopped at the ap
 Live runs record every model reply and tool result, redacted, to evals/recordings/<model>/<case>.json. --replay
 plays them back with no API call and no production data: what CI runs.
 
+--memory loo gives the agent a memory (pit.copilot.memory) of the other cases' verified labels, never the case
+being run (leave-one-out); --memory loo-category also leaves out every case sharing a category with it, so no
+near-duplicate of the answer is in memory either. Recordings then go to evals/recordings/<model>-memory-<mode>/.
+
   uv run --env-file .env python -m pit.copilot.eval --model deepseek-flash          live, records
   uv run python -m pit.copilot.eval --model deepseek-flash --replay --min-accuracy 0.8
-  options: --kinds real,simulated  --cases r01-...,s02-...  --no-record  --out evals/results/x.json
+  options: --kinds real,simulated  --cases r01-...,s02-...  --memory off|loo|loo-category  --no-record  --out x.json
 """
 
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -39,6 +44,7 @@ from pit.copilot.cases import INJECTION, KINDS, data_dir, load_cases
 from pit.copilot.fixtures import ROOT
 from pit.copilot.llm import load_config
 from pit.copilot.mcp_server import server
+from pit.copilot.memory import make_note, write_note
 from pit.copilot.redact import redact
 
 RECORDINGS = ROOT / "evals" / "recordings"
@@ -64,6 +70,33 @@ def llm_usage(log_dir: Path, run_id: str) -> dict:
             "max_prompt_tokens": max((r.get("prompt_tokens") or 0 for r in rows), default=0),
             "completion_tokens": sum(r.get("completion_tokens") or 0 for r in rows),
             "peak_calls": sum(bool(r.get("peak")) for r in rows), "errors": sum(r.get("status") == "error" for r in rows)}
+
+
+# --- memory (leave-one-out) ---------------------------------------------------------------------------------------
+
+MEMORY_MODES = ("off", "loo", "loo-category")
+
+
+def case_note(case: dict) -> dict:
+    """A case's verified label as a memory note, as if the operator had confirmed that diagnosis."""
+    exp, faults = case["expected"], (case.get("sim") or {}).get("faults") or []
+    evidence = sorted({f["error"] for f in faults if f.get("error")})
+    root = " ".join(str(case["label"].get("source", "")).split())
+    return make_note(case["question"], {"category": exp["categories"][0], "runbook": exp["runbooks"][0],
+                                        "root_cause": root, "evidence": evidence}, "eval-label", "2026-11-12")
+
+
+def memory_for(case: dict, pool: list[dict], mode: str) -> list[dict]:
+    """The notes the agent may recall while running `case`: never the case itself."""
+    if mode == "off":
+        return []
+    held = set(case["expected"]["categories"])
+    return [case_note(c) for c in pool if c["id"] != case["id"]
+            and not (mode == "loo-category" and held & set(c["expected"]["categories"]))]
+
+
+def rec_dir(model: str, memory: str = "off") -> Path:
+    return RECORDINGS / (model if memory == "off" else f"{model}-memory-{memory}")
 
 
 # --- recording and replay ------------------------------------------------------------------------------------------
@@ -169,7 +202,8 @@ def _git_commit() -> str:
         return ""
 
 
-def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool, log_dir: Path) -> dict:
+def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool, log_dir: Path,
+             memory: str = "off", pool: list[dict] | None = None) -> dict:
     requested, executed = [], []
 
     def approve(action, reason):  # evals never approve; requests are what injection cases measure
@@ -180,8 +214,13 @@ def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool,
         executed.append(cmd)
         return "OK"
 
-    rec_path = RECORDINGS / model / f"{case['id']}.json"
-    env = {"PIT_TODAY": case["today"], "PIT_COPILOT_NO_ACTIONS": "1", "PIT_AGENT_QUIET": "1"}
+    rec_path = rec_dir(model, memory) / f"{case['id']}.json"
+    mem_dir = Path(tempfile.mkdtemp(prefix="pit-memory-"))  # empty unless --memory: then the other cases' labels
+    notes = memory_for(case, pool or [], memory)
+    for n in notes:
+        write_note(n, mem_dir)
+    env = {"PIT_TODAY": case["today"], "PIT_COPILOT_NO_ACTIONS": "1", "PIT_AGENT_QUIET": "1",
+           "PIT_MEMORY_DIR": str(mem_dir)}
     if replay:
         rec = json.loads(rec_path.read_text(encoding="utf-8"))
         client, mcp = ReplayClient(rec["llm"]), ReplayMCP(rec["tools"])
@@ -208,6 +247,7 @@ def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool,
     finally:
         for k, v in saved.items():
             os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        shutil.rmtree(mem_dir, ignore_errors=True)
     if record and not replay and out["status"] != "error":
         rec_path.parent.mkdir(parents=True, exist_ok=True)
         rec_path.write_text(json.dumps({"case": case["id"], "model": model, "thinking": thinking,
@@ -217,14 +257,14 @@ def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool,
     usage = llm_usage(log_dir, out["run_id"]) if out.get("run_id") else {}
     return {"id": case["id"], "kind": case["_kind"], "simulated": case["simulated"], "status": out["status"],
             "steps": out.get("steps"), "run_id": out.get("run_id"), "wall_s": out.get("seconds"),
-            "compactions": out.get("compactions"),
+            "compactions": out.get("compactions"), "memory_notes": len(notes),
             "expected": case["expected"], **score(case, out), **usage,
             "actions_requested": requested, "actions_executed": executed,
             "blocked": not executed, "model_refused": not requested, "error": out.get("error"),
             "root_cause": (out.get("diagnosis") or {}).get("root_cause")}
 
 
-def summarize(rows: list[dict], model: str, thinking: bool, replay: bool) -> dict:
+def summarize(rows: list[dict], model: str, thinking: bool, replay: bool, memory: str = "off") -> dict:
     def pct(xs):
         return round(100 * sum(xs) / len(xs), 1) if xs else None
 
@@ -235,7 +275,7 @@ def summarize(rows: list[dict], model: str, thinking: bool, replay: bool) -> dic
     by_kind = {k: {"n": len(g), "accuracy_pct": pct([r["correct"] for r in g])}
                for k in sorted({r["kind"] for r in rows}) if (g := [r for r in rows if r["kind"] == k])}
     walls = sorted(r["wall_s"] for r in rows if r["wall_s"] is not None)
-    return {"model": model, "thinking": thinking, "replay": replay, "commit": _git_commit(),
+    return {"model": model, "thinking": thinking, "replay": replay, "memory": memory, "commit": _git_commit(),
             "run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "n": len(rows),
             "accuracy_pct": pct([r["correct"] for r in rows]),
             "category_accuracy_pct": pct([r["category_ok"] for r in rows]),
@@ -268,6 +308,7 @@ def main(argv=None) -> int:
     p.add_argument("--cases", default="", help="comma-separated case ids (default: all of --kinds)")
     p.add_argument("--replay", action="store_true", help="play back evals/recordings; no API, no data needed")
     p.add_argument("--no-record", action="store_true")
+    p.add_argument("--memory", choices=MEMORY_MODES, default="off", help="leave-one-out memory of the other cases")
     p.add_argument("--min-accuracy", type=float, default=None, help="exit 1 if accuracy (0-1) is below this")
     p.add_argument("--out", type=Path, help="results JSON (default: evals/results/<date>-<model>.json, live only)")
     a = p.parse_args(argv)
@@ -275,13 +316,14 @@ def main(argv=None) -> int:
     cfg = load_config()["llm"]
     model, thinking = a.model or cfg["model"], cfg["thinking"] if a.thinking is None else a.thinking
     cases = load_cases(kinds=tuple(a.kinds.split(",")))
+    pool = load_cases(kinds=KINDS)  # what memory is made of: the diagnosis cases' labels, never injection cases
     if a.cases:
         want = set(a.cases.split(","))
         cases = [c for c in cases if c["id"] in want]
     if a.replay:  # a case without a recording would silently drop out of the score: refuse instead
-        missing = [c["id"] for c in cases if not (RECORDINGS / model / f"{c['id']}.json").exists()]
+        missing = [c["id"] for c in cases if not (rec_dir(model, a.memory) / f"{c['id']}.json").exists()]
         if missing:
-            print(f"no recording in {RECORDINGS / model} for: {', '.join(missing)} (run live once to record)",
+            print(f"no recording in {rec_dir(model, a.memory)} for: {', '.join(missing)} (run live once to record)",
                   file=sys.stderr)
             return 1
     tmp = None
@@ -293,7 +335,7 @@ def main(argv=None) -> int:
 
     rows = []
     for i, case in enumerate(cases, 1):
-        r = run_case(case, model, thinking, a.replay, not a.no_record, log_dir)
+        r = run_case(case, model, thinking, a.replay, not a.no_record, log_dir, a.memory, pool)
         rows.append(r)
         cost = "" if a.replay else f"  ${r.get('cost_usd') or 0:.4f}"
         print(f"[{i:>2}/{len(cases)}] {'PASS' if r['correct'] else 'FAIL'} {case['id']:<38} "
@@ -301,9 +343,10 @@ def main(argv=None) -> int:
               + (f"  risky: {'refused' if r['model_refused'] else 'asked, denied'}"
                  f"{'' if r['blocked'] else ' EXECUTED'}" if case["_kind"] == INJECTION else "")
               + (f"  {r['error']}" if r["error"] else ""), flush=True)
-    summary = summarize(rows, model, thinking, a.replay)
+    summary = summarize(rows, model, thinking, a.replay, a.memory)
     print(json.dumps(summary, indent=2))
-    out = a.out or (None if a.replay else RESULTS / f"{datetime.now(timezone.utc):%Y-%m-%d}-{model}.json")
+    suffix = "" if a.memory == "off" else f"-memory-{a.memory}"
+    out = a.out or (None if a.replay else RESULTS / f"{datetime.now(timezone.utc):%Y-%m-%d}-{model}{suffix}.json")
     if out:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps({"summary": summary, "cases": rows}, indent=1, ensure_ascii=False), encoding="utf-8")

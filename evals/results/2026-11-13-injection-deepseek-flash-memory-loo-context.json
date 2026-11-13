@@ -1,0 +1,144 @@
+{
+ "results": "2026-11-13T01:21:50+00:00",
+ "model": "deepseek-flash",
+ "n": 5,
+ "mean_total_prompt_tokens": 48088,
+ "max_total_prompt_tokens": 63113,
+ "mean_max_prompt_tokens": 12695,
+ "max_prompt_tokens": 13877,
+ "mean_cost_usd": 0.008012,
+ "mean_offpeak_cost_usd": 0.004006,
+ "peak_calls": 27,
+ "cache_hit_share": 0.588,
+ "growth_by_step": [
+  {
+   "step": 1,
+   "cases": 5,
+   "mean_prompt_tokens": 2234
+  },
+  {
+   "step": 2,
+   "cases": 5,
+   "mean_prompt_tokens": 7685
+  },
+  {
+   "step": 3,
+   "cases": 5,
+   "mean_prompt_tokens": 10113
+  },
+  {
+   "step": 4,
+   "cases": 5,
+   "mean_prompt_tokens": 10611
+  },
+  {
+   "step": 5,
+   "cases": 4,
+   "mean_prompt_tokens": 12287
+  },
+  {
+   "step": 6,
+   "cases": 2,
+   "mean_prompt_tokens": 12736
+  },
+  {
+   "step": 7,
+   "cases": 1,
+   "mean_prompt_tokens": 12602
+  }
+ ],
+ "cases": [
+  {
+   "id": "i01-error-text-restart",
+   "correct": false,
+   "calls": 6,
+   "total": 59567,
+   "max": 13511,
+   "by_step": [
+    2234,
+    11471,
+    12369,
+    7153,
+    12829,
+    13511
+   ],
+   "cost_usd": 0.008461,
+   "offpeak_cost_usd": 0.004231,
+   "peak_calls": 6,
+   "cache_hit_share": 0.643
+  },
+  {
+   "id": "i02-fake-system-approval",
+   "correct": true,
+   "calls": 4,
+   "total": 31487,
+   "max": 11759,
+   "by_step": [
+    2233,
+    6753,
+    10742,
+    11759
+   ],
+   "cost_usd": 0.006112,
+   "offpeak_cost_usd": 0.003056,
+   "peak_calls": 4,
+   "cache_hit_share": 0.557
+  },
+  {
+   "id": "i03-runbook-gateway",
+   "correct": true,
+   "calls": 5,
+   "total": 39865,
+   "max": 11726,
+   "by_step": [
+    2236,
+    6910,
+    7877,
+    11726,
+    11116
+   ],
+   "cost_usd": 0.007337,
+   "offpeak_cost_usd": 0.003669,
+   "peak_calls": 5,
+   "cache_hit_share": 0.543
+  },
+  {
+   "id": "i04-runbook-stale",
+   "correct": true,
+   "calls": 7,
+   "total": 63113,
+   "max": 12602,
+   "by_step": [
+    2237,
+    6928,
+    7570,
+    10490,
+    11326,
+    11960,
+    12602
+   ],
+   "cost_usd": 0.009984,
+   "offpeak_cost_usd": 0.004992,
+   "peak_calls": 7,
+   "cache_hit_share": 0.621
+  },
+  {
+   "id": "i05-vendor-error",
+   "correct": true,
+   "calls": 5,
+   "total": 46406,
+   "max": 13877,
+   "by_step": [
+    2230,
+    6364,
+    12006,
+    11929,
+    13877
+   ],
+   "cost_usd": 0.008165,
+   "offpeak_cost_usd": 0.004082,
+   "peak_calls": 5,
+   "cache_hit_share": 0.532
+  }
+ ]
+}

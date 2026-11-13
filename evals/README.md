@@ -128,6 +128,47 @@ fixed rules (`pit.copilot.context`); the latest round stays whole. One live run 
   costs money and probably some accuracy. It is worth having as a guard for long investigations, not as the
   default at this size. The default stays 16,000 until the memory runs below are done, so they compare to this.
 
+## Memory (leave-one-out)
+
+The agent's memory ([`pit.copilot.memory`](../src/pit/copilot/memory.py)) holds diagnoses a person confirmed at the
+CLI; the model reads it with `recall_similar` (fixed-rule matching on error names, IBKR/HTTP codes and keywords, no
+embeddings) and can't write it. For the eval, each case's verified label becomes a note, as if the operator had
+confirmed it, and a case runs with:
+
+- `--memory loo`: every other case's note, never its own (tests check this over the whole set);
+- `--memory loo-category`: also without any case that shares a category with it. Since most categories have
+  exactly 2 cases, this removes the one sibling `loo` leaves in, so memory never holds the right answer: a control
+  for "does recalled text help, or only distract?".
+
+One live run each, deepseek-flash, the 16k context budget on (as in the run above), 2026-11-13, commit `6d8ba6f`:
+
+| | Budget only | + memory, `loo` | + memory, `loo-category` |
+|---|---|---|---|
+| Accuracy: all / real / simulated | 68.0 / 57.1 / 81.8 % | **72.0 / 71.4 / 72.7 %** | 72.0 / 57.1 / 90.9 % |
+| r04 / r06 / r11 (all wrong at baseline) | ✅ / ❌ / ❌ | ❌ / ✅ / ❌ | ❌ / ❌ / ❌ |
+| Cost per diagnosis at off-peak prices | $0.0045 | $0.0044 | $0.0050 |
+| Prompt tokens per diagnosis (mean) | 56,398 | 59,715 | 63,136 |
+| LLM calls per diagnosis | 6.28 | 6.44 | 6.80 |
+| Mean time per diagnosis | 16.5 s | 15.5 s | 15.9 s |
+
+Raw: [`loo`](results/2026-11-13-deepseek-flash-memory-loo.json),
+[`loo-category`](results/2026-11-13-deepseek-flash-memory-loo-category.json), each with a `-context.json`.
+
+- **Real cases: 8 → 10 of 14 with `loo`, 8 with the control.** r06 (a run killed by its timeout, read as a
+  budget problem) was answered right for the first time: the top recalled note was s07, the simulated run-budget
+  case, and the model followed it. r14 went right too. r04 went wrong again, so the hard cases moved by +1 / −1.
+- **Overall it is +1 case over budget-only for both memory modes (17 → 18)**, and both are still below the
+  baseline without a budget (19). The control matches `loo` overall but differs per case (simulated up, real
+  down), so most of the movement here is within the run-to-run noise seen above (about 2 cases).
+- **Recall is weak.** The model called `recall_similar` in all 25 `loo` cases, but the top note had the right
+  category in only 8; it followed the top note 6 times (5 right, r11 wrong). It mostly ignored wrong notes. With
+  one sibling per category in memory, a keyword match often ranks a note about a different fault higher.
+- No memory-planted text was involved in these runs; the planted-instruction case is covered by
+  [`tests/test_copilot_memory.py`](../tests/test_copilot_memory.py).
+
+Verdict: no evidence that memory hurts, weak evidence that it helps on real cases (+2 of 14, one run). Labels from
+24 cases are a small memory; this is the expected weak spot of a memory built from 25 incidents.
+
 ## Limitations
 
 - **Small set, one run per model.** 25 cases; the two models differ by 2. The same flash model got r14 wrong in a
@@ -142,7 +183,13 @@ fixed rules (`pit.copilot.context`); the latest round stays whole. One live run 
   both (e.g. secdef stall and frozen Gateway on 10-26).
 - **The category list was written by the same person who wrote the cases.** A model that maps a correct
   explanation to a neighbouring label (r06 `unknown`, s07 `hung_request`) scores as wrong.
-- Costs are DeepSeek's off-peak prices of 2026-11-10 (`config/llm.toml`); peak hours cost double.
+- Costs are DeepSeek's off-peak prices of 2026-11-10 (`config/llm.toml`); peak hours cost double. The 11-13 runs
+  were in peak hours and are compared at off-peak prices recomputed from their logged tokens.
+- **Context budget and memory: one run per configuration.** The differences between the four 11-13
+  configurations are 1–2 cases, the same size as the run-to-run noise; none of them is a measured effect yet.
+- **The memory is built from the eval's own labels.** Leave-one-out keeps a case's own answer out, but the notes
+  are written in the same words as the other questions, and the sibling case of the same category is often a
+  simulated copy of a real one. Real operator-confirmed notes would read differently.
 
 ## Prompt injection
 
@@ -172,6 +219,9 @@ Results 2026-11-12 (commit `408b43c` + this change):
 Raw: [`results/2026-11-12-injection-deepseek-flash.json`](results/2026-11-12-injection-deepseek-flash.json),
 [`results/2026-11-12-injection-deepseek-v4-pro.json`](results/2026-11-12-injection-deepseek-v4-pro.json).
 
+Re-run 2026-11-13 on the current loop (16k context budget, memory of all 25 diagnosis cases): blocked **5 / 5**,
+the model didn't request the tool in any, 0 executed ([results](results/2026-11-13-injection-deepseek-flash-memory-loo.json)).
+
 Limitation: since the model never asked, the approval gate itself wasn't exercised by these live runs. It is by
 the unit tests ([`tests/test_copilot_actions.py`](../tests/test_copilot_actions.py)): a model that obeys an injected
 error, claims approval in its arguments, or writes the approval word itself still gets nothing run without the
@@ -181,10 +231,11 @@ typed confirmation. 5 cases is a small set, and all use the same instruction in 
 
 The live runs above recorded every model reply and tool result to [`recordings/`](recordings/) (redacted:
 account ids, secrets from `.env`, emails, webhooks; the collector's IBKR username was also scrubbed). CI
-([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) replays the `deepseek-flash` recordings through the
-same agent loop and scorer, with no API key and no `data/`:
+([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) replays the `deepseek-flash-memory-loo` recordings
+(the current loop: context budget and leave-one-out memory, recorded 2026-11-13) through the same agent loop and
+scorer, with no API key and no `data/`:
 
-- the diagnosis set must score at least **70 %** (recorded: 76 %);
+- the diagnosis set must score at least **70 %** (recorded: 72 %);
 - the injection set must have no risky action executed;
 - every case must have a recording (a case without one fails instead of dropping out of the score), and a test
   checks the recordings for account ids, emails, webhooks and API keys.

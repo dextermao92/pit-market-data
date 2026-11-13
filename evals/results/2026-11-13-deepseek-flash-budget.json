@@ -1,0 +1,978 @@
+{
+ "summary": {
+  "model": "deepseek-flash",
+  "thinking": false,
+  "replay": false,
+  "commit": "c9f478c",
+  "run_at": "2026-11-13T01:05:00+00:00",
+  "n": 25,
+  "accuracy_pct": 68.0,
+  "category_accuracy_pct": 72.0,
+  "runbook_accuracy_pct": 92.0,
+  "completed": 25,
+  "by_kind": {
+   "real": {
+    "n": 14,
+    "accuracy_pct": 57.1
+   },
+   "simulated": {
+    "n": 11,
+    "accuracy_pct": 81.8
+   }
+  },
+  "mean_cost_usd": 0.007882,
+  "total_cost_usd": 0.197046,
+  "mean_wall_s": 16.4606,
+  "p50_wall_s": 17.344,
+  "mean_llm_latency_s": 13.75612,
+  "mean_llm_calls": 6.28,
+  "mean_prompt_tokens": 56397.84,
+  "max_prompt_tokens": 16123,
+  "context_budget_tokens": 16000,
+  "diagnoses_compacted": 20,
+  "peak_calls": 112,
+  "risky_requests": 0
+ },
+ "cases": [
+  {
+   "id": "r01-2026-10-15-preopen-farms",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 6,
+   "run_id": "dd611d77ca47",
+   "wall_s": 17.515,
+   "compactions": 1,
+   "expected": {
+    "categories": [
+     "data_farm_disconnected"
+    ],
+    "runbooks": [
+     "runbooks/gateway",
+     "runbooks/stale-snapshots"
+    ]
+   },
+   "category": "transient_reconnect",
+   "runbook": "runbooks/stale-snapshots",
+   "category_ok": false,
+   "runbook_ok": true,
+   "correct": false,
+   "llm_calls": 6,
+   "cost_usd": 0.004198,
+   "llm_latency_s": 12.688,
+   "prompt_tokens": 54890,
+   "max_prompt_tokens": 14737,
+   "completion_tokens": 1710,
+   "peak_calls": 0,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "The three pre-open option_snapshots failures on 2026-10-15 were one short transient IBKR Gateway/connectivity blip at about 09:10-09:20 ET, not a lasting outage. The 09:10 slot run lost the Gateway connection mid-request (SPX quote gone, then socket disconnect, then a connect TimeoutError in 4 s), so the pre-open runs for that slot failed and were lost (option snapshots can't be backfilled). Collection recovered on its own within the same window: the rest of the day's option and index snapshots succeeded (81 ok / 3 failed for options, 82 ok / 1 failed for indices) and the session's option coverage was 78/78 slots (100%), so no intervention was needed and none is called for."
+  },
+  {
+   "id": "r02-2026-10-15-alpaca-bar-gap",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 4,
+   "run_id": "0784cd7e7def",
+   "wall_s": 10.766,
+   "compactions": 0,
+   "expected": {
+    "categories": [
+     "vendor_data_gap"
+    ],
+    "runbooks": [
+     "runbooks/stale-snapshots",
+     "slo"
+    ]
+   },
+   "category": "vendor_data_gap",
+   "runbook": "runbooks/stale-snapshots",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 4,
+   "cost_usd": 0.001455,
+   "llm_latency_s": 7.75,
+   "prompt_tokens": 30461,
+   "max_prompt_tokens": 11120,
+   "completion_tokens": 1176,
+   "peak_calls": 0,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "Alpaca answered on 2026-10-15 but the intraday equity_bars response was short of bars for the symbol set: every intraday run that afternoon reported missing_bars=700 while rows grew from 2100 to 3200 (vs 3900 on full days), i.e. ~700 bars not returned by the vendor, not a collector or Gateway failure. No failed runs. The 17:30 eod refetch recovered them: SLI 3 reads 100% (3900/3900 bars) for session 2026-10-15, so no data is lost."
+  },
+  {
+   "id": "r03-2026-10-16-gateway-autorestart",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "9951d942d90e",
+   "wall_s": 16.969,
+   "compactions": 2,
+   "expected": {
+    "categories": [
+     "gateway_restarting"
+    ],
+    "runbooks": [
+     "runbooks/gateway",
+     "runbooks/stale-snapshots"
+    ]
+   },
+   "category": "gateway_frozen",
+   "runbook": "runbooks/gateway",
+   "category_ok": false,
+   "runbook_ok": true,
+   "correct": false,
+   "llm_calls": 8,
+   "cost_usd": 0.006479,
+   "llm_latency_s": 14.016,
+   "prompt_tokens": 77535,
+   "max_prompt_tokens": 14836,
+   "completion_tokens": 1920,
+   "peak_calls": 0,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "The 09:10:02 ET option_snapshots and index_snapshots runs are the only two failures of the day on the IBKR side, both dying in 4 s with a bare TimeoutError() — the signature of the Gateway's API port not accepting a connection. The Gateway was unusable at the open (the previous successful IBKR collection was ~62,101 s earlier, i.e. before the overnight gap), so both tasks timed out on connect rather than on quotes. Because the scheduled__2026-10-16T13:10:00 slot is the same pre-open/warm-up slot that in incidents/2026-10-26 preceded the Gateway freeze (secdef stall → wedged API port), the failure is consistent with a Gateway that was not accepting API connections at the start of the session rather than with an upstream data or vendor problem. The tool data alone does not show a reconnect/login code (1100/1102) or a secdef message at 09:10, so the specific trigger is not proven."
+  },
+  {
+   "id": "r04-2026-10-16-hung-run",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "105c40e3ad42",
+   "wall_s": 17.844,
+   "compactions": 2,
+   "expected": {
+    "categories": [
+     "hung_request"
+    ],
+    "runbooks": [
+     "runbooks/stale-snapshots",
+     "runbooks/gateway",
+     "slo"
+    ]
+   },
+   "category": "hung_request",
+   "runbook": "runbooks/gateway",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 8,
+   "cost_usd": 0.006551,
+   "llm_latency_s": 14.42,
+   "prompt_tokens": 87176,
+   "max_prompt_tokens": 15209,
+   "completion_tokens": 1794,
+   "peak_calls": 0,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "An IBKR 1100 (connectivity lost) event around 10:10 ET left one IBKR request hanging with no effective request timeout in a run on the option/index snapshot path; because that request never returned, the run stalled behind it and, with max_active_runs=1, every slot queued behind it started late. The stall was a scheduling/hang problem, not data loss: all 78 option slots for 2026-10-16 still succeeded, so the missing \"new snapshots\" between ~09:50 and 10:41 is late delivery of the queued slots, not skipped collection. The Gateway was not frozen and did not restart (runs continued to succeed before and after, and no restart/reconnect was needed)."
+  },
+  {
+   "id": "r05-2026-10-16-alpaca-disconnect",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 4,
+   "run_id": "3557e5992209",
+   "wall_s": 8.657,
+   "compactions": 0,
+   "expected": {
+    "categories": [
+     "vendor_api_error"
+    ],
+    "runbooks": [
+     "runbooks/stale-snapshots"
+    ]
+   },
+   "category": "vendor_api_error",
+   "runbook": "runbooks/stale-snapshots",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 4,
+   "cost_usd": 0.001912,
+   "llm_latency_s": 6.876,
+   "prompt_tokens": 27671,
+   "max_prompt_tokens": 10419,
+   "completion_tokens": 1005,
+   "peak_calls": 0,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "A single equity_bars slot on 2026-10-16 at 10:09:43 ET failed after 18 s with an Alpaca RemoteProtocolError ('Server disconnected without sending a response.') — a vendor-side connection drop. It did not repeat: the next slots succeeded (rows counting up normally through the session) and the 17:30 eod refetch wrote 3900 bars with missing_bars=0 for 2026-10-05 through 2026-10-16, so the missed ~5-minute window was recovered and nothing was lost."
+  },
+  {
+   "id": "r06-2026-10-19-run-timeout",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "4ddbeb11a5bf",
+   "wall_s": 20.281,
+   "compactions": 1,
+   "expected": {
+    "categories": [
+     "run_budget_exceeded"
+    ],
+    "runbooks": [
+     "runbooks/stale-snapshots"
+    ]
+   },
+   "category": "unknown",
+   "runbook": "runbooks/stale-snapshots",
+   "category_ok": false,
+   "runbook_ok": true,
+   "correct": false,
+   "llm_calls": 8,
+   "cost_usd": 0.004255,
+   "llm_latency_s": 14.969,
+   "prompt_tokens": 82470,
+   "max_prompt_tokens": 14432,
+   "completion_tokens": 1809,
+   "peak_calls": 0,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "The 09:20:01 ET option_snapshots run failed after 480 s with no error recorded in pipeline_runs; nothing else on 2026-10-19 corroborates a Gateway fault (no failed index_snapshots or equity_bars runs, no 11xx/21xx codes on that run) and the day's option coverage is 78/78 (100%), so the data shown does not identify a specific cause. Whether it is a hung request or a run that exhausted its 8-min chains budget cannot be distinguished from these tools."
+  },
+  {
+   "id": "r07-2026-10-19-subscription-codes",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 5,
+   "run_id": "463955bf32fa",
+   "wall_s": 16.141,
+   "compactions": 1,
+   "expected": {
+    "categories": [
+     "subscription_missing"
+    ],
+    "runbooks": [
+     "runbooks/gateway"
+    ]
+   },
+   "category": "subscription_missing",
+   "runbook": "runbooks/gateway",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 5,
+   "cost_usd": 0.004105,
+   "llm_latency_s": 12.829,
+   "prompt_tokens": 40685,
+   "max_prompt_tokens": 13379,
+   "completion_tokens": 1877,
+   "peak_calls": 0,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "Codes 10090, 10167 and 354 are IBKR market-data permission codes, not a connectivity fault: 10090/354 mean the collector username is not subscribed for those instruments, and 10167 means IBKR returned delayed data instead of live. On 2026-10-19 they are reported on the alternating option_snapshot slots (roughly every third 5-minute slot), which collected on delayed quotes with elevated no_quote counts; the runs still succeeded and the session met all three SLIs. This is a Client Portal subscription gap on the collector user, so self-healing/reconnect cannot fix it. The separate 09:20:01 run failure (480 s duration) is a timeout, not a subscription error."
+  },
+  {
+   "id": "r08-2026-10-22-slo-zero",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 4,
+   "run_id": "7e001eaad706",
+   "wall_s": 14.015,
+   "compactions": 2,
+   "expected": {
+    "categories": [
+     "missing_run_records"
+    ],
+    "runbooks": [
+     "slo",
+     "incidents/2026-10-23"
+    ]
+   },
+   "category": "missing_run_records",
+   "runbook": "slo",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 4,
+   "cost_usd": 0.008357,
+   "llm_latency_s": 10.234,
+   "prompt_tokens": 32960,
+   "max_prompt_tokens": 16123,
+   "completion_tokens": 1408,
+   "peak_calls": 2,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "The 0% option coverage on 2026-10-22 and 2026-10-23 is a monitoring artifact, not lost data: no pipeline_runs are recorded on this host for 10-22, 10-23 or 10-26, so the SLI counts zero option slots even though collected data exists. slo.md's \"100% on 10-22\" figure was computed on the Mac (9 sessions 2026-10-14 → 10-26) from the other machine's run records, whereas this host's pipeline_runs has no rows for those days and its SLI window instead includes pre-10-14 sessions (09-29 → 10-13 at 0%) that were never recorded here."
+  },
+  {
+   "id": "r09-2026-10-23-secdef",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 4,
+   "run_id": "17e800b80a87",
+   "wall_s": 13.203,
+   "compactions": 0,
+   "expected": {
+    "categories": [
+     "secdef_stall"
+    ],
+    "runbooks": [
+     "incidents/2026-10-23",
+     "runbooks/gateway"
+    ]
+   },
+   "category": "secdef_stall",
+   "runbook": "runbooks/stale-snapshots",
+   "category_ok": true,
+   "runbook_ok": false,
+   "correct": false,
+   "llm_calls": 4,
+   "cost_usd": 0.003049,
+   "llm_latency_s": 11.905,
+   "prompt_tokens": 14623,
+   "max_prompt_tokens": 5658,
+   "completion_tokens": 1582,
+   "peak_calls": 4,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "IBKR's contract-definition (secdef) server stopped answering for ~5 minutes at 10:35 ET. Every option and index run first called qualifyContracts / reqSecDefOptParams (once per chain) before any quote request; with RequestTimeout = 300 s, one hung contract-definition request consumed the whole 6-min option run budget and blew the 2-min index task timeout. The lost 10:35 index slot is a consequence of that stall plus retries (max_active_runs=1), not of market data or the Gateway farms, which logged no errors and kept streaming quotes."
+  },
+  {
+   "id": "r10-2026-10-26-frozen",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 4,
+   "run_id": "2753d77dcd5f",
+   "wall_s": 18.125,
+   "compactions": 0,
+   "expected": {
+    "categories": [
+     "secdef_stall",
+     "gateway_frozen"
+    ],
+    "runbooks": [
+     "incidents/2026-10-26",
+     "runbooks/gateway"
+    ]
+   },
+   "category": "gateway_frozen",
+   "runbook": "runbooks/gateway",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 4,
+   "cost_usd": 0.005597,
+   "llm_latency_s": 15.359,
+   "prompt_tokens": 23182,
+   "max_prompt_tokens": 10924,
+   "completion_tokens": 2412,
+   "peak_calls": 4,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "The 08:15:04 ET contract_cache refresh re-listed every cached expiry (~23.7 MB / 23,376 messages), overloading IBKR's contract-definition (secdef) service; by 08:22:44 the market-data farm hfarm broke (2103) and secdef requests stopped answering. A hung qualifyContracts at 09:02 escaped check_gateway so self-healing never ran, and from 09:16 the Gateway's API port accepted no connections at all; IBC's RESTART could not fix it, so option snapshots were lost for the whole session until a container restart with 2FA login at 19:40:10 ET."
+  },
+  {
+   "id": "r11-2026-10-27-30-morning-stall",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 6,
+   "run_id": "5db49fdabf51",
+   "wall_s": 21.844,
+   "compactions": 2,
+   "expected": {
+    "categories": [
+     "secdef_stall",
+     "gateway_frozen"
+    ],
+    "runbooks": [
+     "runbooks/gateway",
+     "incidents/2026-10-26"
+    ]
+   },
+   "category": "transient_reconnect",
+   "runbook": "runbooks/gateway",
+   "category_ok": false,
+   "runbook_ok": true,
+   "correct": false,
+   "llm_calls": 6,
+   "cost_usd": 0.01153,
+   "llm_latency_s": 16.125,
+   "prompt_tokens": 59879,
+   "max_prompt_tokens": 15296,
+   "completion_tokens": 1820,
+   "peak_calls": 6,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "Yes — same cause as the documented morning secdef-stall pattern, but this time it was transient: the pre-open 09:10 runs' first contract-definition request hung until the ~2-min task timeout, killing the option and index runs. The Gateway recovered by itself — the next morning runs on 10-27 (11:50+ shown all ok) and every RTH slot on 10-30 completed normally (82 runs, 1 failed each day), and both days finished 78/78 option slots. This matches the recurring 08:15 contract_cache secdef overload described in incidents/2026-10-26 (recurring 10-28 → 11-02, fixed by ef762db), not the 10-23 stall (which hit 10:35 and late slots, not 09:10). The data confirms the symptom and pattern but not the secdef attribution directly, hence medium confidence; no action needed."
+  },
+  {
+   "id": "r12-2026-11-05-1100-blip",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 5,
+   "run_id": "8713f98281c5",
+   "wall_s": 19.14,
+   "compactions": 1,
+   "expected": {
+    "categories": [
+     "transient_reconnect"
+    ],
+    "runbooks": [
+     "runbooks/gateway"
+    ]
+   },
+   "category": "transient_reconnect",
+   "runbook": "runbooks/gateway",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 5,
+   "cost_usd": 0.006967,
+   "llm_latency_s": 16.001,
+   "prompt_tokens": 44820,
+   "max_prompt_tokens": 14158,
+   "completion_tokens": 1030,
+   "peak_calls": 5,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "The 1100/2103 at ~10:00 were a transient IBKR connectivity loss plus a data-farm drop that recovered by themselves: 1102 at 10:05 restored the same session (\"data maintained\") and 2110 signalled the farm back. All 78 option slots on 2026-11-05 succeeded, so no data was lost and no action is needed."
+  },
+  {
+   "id": "r13-daily-farm-drops",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 7,
+   "run_id": "d981c12d4080",
+   "wall_s": 17.344,
+   "compactions": 2,
+   "expected": {
+    "categories": [
+     "transient_reconnect"
+    ],
+    "runbooks": [
+     "runbooks/gateway"
+    ]
+   },
+   "category": "transient_reconnect",
+   "runbook": "runbooks/gateway",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 7,
+   "cost_usd": 0.010219,
+   "llm_latency_s": 13.749,
+   "prompt_tokens": 62694,
+   "max_prompt_tokens": 15208,
+   "completion_tokens": 1466,
+   "peak_calls": 7,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "Nothing is wrong with the Gateway. The 2157/2103 events are routine, self-recovering IBKR market-data farm blips: on both 2026-11-10 and 2026-11-11 the option_snapshots DAG had 82 runs with 0 failed and 0 failed morning runs, and per runbooks/gateway section D, a farm code that recovers within the same run (2103 then 2104, or 2157 followed by data) is routine and explicitly not alerted. Both days still met all three SLOs."
+  },
+  {
+   "id": "r14-2026-11-10-docker-down",
+   "kind": "real",
+   "simulated": false,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "883d6eb64be2",
+   "wall_s": 24.516,
+   "compactions": 3,
+   "expected": {
+    "categories": [
+     "host_down",
+     "gateway_restarting"
+    ],
+    "runbooks": [
+     "runbooks/stale-snapshots",
+     "runbooks/gateway"
+    ]
+   },
+   "category": "unknown",
+   "runbook": "runbooks/gateway",
+   "category_ok": false,
+   "runbook_ok": true,
+   "correct": false,
+   "llm_calls": 8,
+   "cost_usd": 0.012328,
+   "llm_latency_s": 17.813,
+   "prompt_tokens": 71682,
+   "max_prompt_tokens": 14713,
+   "completion_tokens": 2200,
+   "peak_calls": 8,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "The four 09:10–09:25 option and index snapshot slots did not run late because of a slow Gateway: they never started on time, then failed together in a burst at 09:25:15–09:26:03 with TimeoutError() (and one \"every chain failed: ConnectionError('Socket disconnect')\"). The runs themselves fail in only 4–29 s, so IBKR's API was refusing/hanging on connect and dropping the socket when the queued slots were finally dispatched; the slots were subsequently recovered, since the session ends at 78/78 option slots (coverage 100%). The data does not identify which Gateway failure mode caused the ~75-minute pre-start stall (no run records cover 08:15–09:25 and there is no 1100/2157 code logged for this day), so this is not attributed to a specific cause."
+  },
+  {
+   "id": "s01-disk-full",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 5,
+   "run_id": "e0f2213f9c73",
+   "wall_s": 12.64,
+   "compactions": 1,
+   "expected": {
+    "categories": [
+     "disk_full"
+    ],
+    "runbooks": [
+     "runbooks/disk-full"
+    ]
+   },
+   "category": "disk_full",
+   "runbook": "runbooks/disk-full",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 5,
+   "cost_usd": 0.008104,
+   "llm_latency_s": 11.39,
+   "prompt_tokens": 45480,
+   "max_prompt_tokens": 13384,
+   "completion_tokens": 1279,
+   "peak_calls": 5,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "The data volume filled up: from 13:05:00 ET on 2026-11-12 every collection run (all six datasets) fails within ~2 s with OSError(28, 'No space left on device'). The last good runs were the 13:00:00 ET slots; afterwards nothing can be written. The Gateway and IBKR are not involved (no IBKR error codes, no connection codes in any run)."
+  },
+  {
+   "id": "s02-duckdb-lock",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 4,
+   "run_id": "d1a43f9de125",
+   "wall_s": 8.844,
+   "compactions": 0,
+   "expected": {
+    "categories": [
+     "duckdb_lock"
+    ],
+    "runbooks": [
+     "runbooks/duckdb-lock"
+    ]
+   },
+   "category": "duckdb_lock",
+   "runbook": "runbooks/duckdb-lock",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 4,
+   "cost_usd": 0.003087,
+   "llm_latency_s": 7.751,
+   "prompt_tokens": 24869,
+   "max_prompt_tokens": 8174,
+   "completion_tokens": 934,
+   "peak_calls": 4,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "The eod `dbt build` could not open `/opt/airflow/data/curated.duckdb` because another process held a lock on the file (conflicting lock held by /usr/local/bin/python3.12, PID 4127) — a stale or ad-hoc DuckDB session left open across 17:30 ET. Collection itself is unaffected: collectors write raw/staged Parquet, not through DuckDB. Find and close PID 4127, then re-run the build (or clear the dbt_build task so close_summary reruns)."
+  },
+  {
+   "id": "s03-alpaca-auth",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "0262a7c40c5d",
+   "wall_s": 17.234,
+   "compactions": 2,
+   "expected": {
+    "categories": [
+     "vendor_api_error"
+    ],
+    "runbooks": [
+     "runbooks/stale-snapshots"
+    ]
+   },
+   "category": "vendor_api_error",
+   "runbook": "runbooks/stale-snapshots",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 8,
+   "cost_usd": 0.010302,
+   "llm_latency_s": 15.577,
+   "prompt_tokens": 69652,
+   "max_prompt_tokens": 13675,
+   "completion_tokens": 1364,
+   "peak_calls": 8,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "Every equity_bars run today was rejected by Alpaca with HTTP 401 Unauthorized; the Alpaca API key/credentials used by the collector are invalid or revoked (or the account changed), so no bars were written. The IB Gateway/IBKR side is unaffected, which is why option and index snapshots (15:45 snapshot run, 10 index runs successful) kept working."
+  },
+  {
+   "id": "s04-competing-session",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "d955b2335b02",
+   "wall_s": 18.843,
+   "compactions": 2,
+   "expected": {
+    "categories": [
+     "subscription_missing"
+    ],
+    "runbooks": [
+     "runbooks/gateway"
+    ]
+   },
+   "category": "subscription_missing",
+   "runbook": "runbooks/gateway",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 8,
+   "cost_usd": 0.011877,
+   "llm_latency_s": 17.578,
+   "prompt_tokens": 78880,
+   "max_prompt_tokens": 13764,
+   "completion_tokens": 1655,
+   "peak_calls": 8,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "IBKR error 10197 on every option snapshot run: the collector user's live market data is held by another session of the same username (a TWS/mobile/web login), so requests succeed but return no quotes (two_sided/ask_only/bid_only all 0, no_quote 3400, ~170 flagged). Not a gateway wedge (runs still connect and finish in ~4-5 min) and not a subscription gap (otherwise 354/10089/10090 would appear)."
+  },
+  {
+   "id": "s05-host-asleep",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 6,
+   "run_id": "73b6dbd702a0",
+   "wall_s": 17.89,
+   "compactions": 1,
+   "expected": {
+    "categories": [
+     "host_down"
+    ],
+    "runbooks": [
+     "runbooks/stale-snapshots"
+    ]
+   },
+   "category": "host_down",
+   "runbook": "runbooks/stale-snapshots",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 6,
+   "cost_usd": 0.008823,
+   "llm_latency_s": 14.391,
+   "prompt_tokens": 58647,
+   "max_prompt_tokens": 14307,
+   "completion_tokens": 1440,
+   "peak_calls": 6,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "Nothing ran on 2026-11-12: the whole stack (host, Docker or Airflow) was down, not the IB Gateway. 2026-11-11 closed cleanly (257 runs, 0 failed, last activity at 17:31:14 ET) and 2026-11-12 has zero recorded runs for every dataset, so no cards were sent either — the exact \"no cards at all on a session day\" signature in runbooks/stale-snapshots. There is no gateway/farm/frozen-port pattern (that would leave failed runs with TimeoutError or farm codes)."
+  },
+  {
+   "id": "s06-secdef-preopen",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "96ae7889ebae",
+   "wall_s": 17.531,
+   "compactions": 2,
+   "expected": {
+    "categories": [
+     "secdef_stall"
+    ],
+    "runbooks": [
+     "runbooks/gateway"
+    ]
+   },
+   "category": "secdef_stall",
+   "runbook": "runbooks/gateway",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 8,
+   "cost_usd": 0.010876,
+   "llm_latency_s": 16.311,
+   "prompt_tokens": 72259,
+   "max_prompt_tokens": 13183,
+   "completion_tokens": 2069,
+   "peak_calls": 8,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "A contract-definition (secdef) stall at IB Gateway: contract-definition requests stopped answering (the 08:20 check card's ❌ 合约查询 timed out at 20 s), so the pre-open snapshot runs hung on their first secdef request until their execution timeout. The option runs burned their 6-min budget on spx_monthly's TimeoutError, so spx_weekly was skipped and every chain failed; index runs were killed by their 2-min timeout. Consistent with the 08:15 contract_cache refresh triggering the stall (per runbooks/gateway section B and incidents/2026-10-23); data returned without any Gateway restart, so it was not a wedged Gateway or a data-farm outage."
+  },
+  {
+   "id": "s07-run-budget",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "23bf789110da",
+   "wall_s": 18.687,
+   "compactions": 3,
+   "expected": {
+    "categories": [
+     "run_budget_exceeded"
+    ],
+    "runbooks": [
+     "runbooks/stale-snapshots"
+    ]
+   },
+   "category": "hung_request",
+   "runbook": "runbooks/gateway",
+   "category_ok": false,
+   "runbook_ok": false,
+   "correct": false,
+   "llm_calls": 8,
+   "cost_usd": 0.012024,
+   "llm_latency_s": 17.39,
+   "prompt_tokens": 78013,
+   "max_prompt_tokens": 15441,
+   "completion_tokens": 2026,
+   "peak_calls": 8,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "Six option_snapshot runs in the 11:00–11:30 ET window (11:00:00, 11:05, 11:10, 11:15, 11:20, 11:25:01 ET) hung after connecting to the Gateway and were killed at the run/request timeout (each exactly 480 s), which is why they show no error message — a hang, not an exception. Index snapshots (0 failed) and equity bars were unaffected, and the only IBKR code on the day was 2103, so this was not a persistent farm drop, subscription problem or host/vendor outage. The data does not identify which request stalled (no secdef/cache activity in that window), so the specific triggering request is unconfirmed."
+  },
+  {
+   "id": "s08-farms-down",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "fd49e9c15769",
+   "wall_s": 16.235,
+   "compactions": 2,
+   "expected": {
+    "categories": [
+     "data_farm_disconnected"
+    ],
+    "runbooks": [
+     "runbooks/gateway"
+    ]
+   },
+   "category": "transient_reconnect",
+   "runbook": "runbooks/gateway",
+   "category_ok": false,
+   "runbook_ok": true,
+   "correct": false,
+   "llm_calls": 8,
+   "cost_usd": 0.010229,
+   "llm_latency_s": 15.032,
+   "prompt_tokens": 69265,
+   "max_prompt_tokens": 12670,
+   "completion_tokens": 1588,
+   "peak_calls": 8,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "IBKR market-data farms were disconnected (2103/2105) for the 13:00–13:25 ET window: option snapshot runs failed because SPX had no spot price. The collector's own RECONNECTDATA call returned OK and the farms recovered by themselves — the 13:30 ET option run succeeded and all runs through 15:55 ET were clean — so this was a transient farm disconnect, not a Gateway wedge or a subscription problem. Its only lasting effect is a coverage loss: 6 of 78 option slots missing on 2026-11-12 (SLI1 92.31%, below the 99% objective)."
+  },
+  {
+   "id": "s09-2fa-pending",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "58c0b3675cc7",
+   "wall_s": 18.766,
+   "compactions": 3,
+   "expected": {
+    "categories": [
+     "gateway_restarting"
+    ],
+    "runbooks": [
+     "runbooks/gateway"
+    ]
+   },
+   "category": "gateway_restarting",
+   "runbook": "runbooks/gateway",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 8,
+   "cost_usd": 0.015065,
+   "llm_latency_s": 17.5,
+   "prompt_tokens": 81325,
+   "max_prompt_tokens": 14090,
+   "completion_tokens": 1788,
+   "peak_calls": 8,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "IB Gateway was down behind an unapproved 2FA login: 2FA was initiated at 08:58 and \"Login has completed\" did not appear until 10:17, so the API refused/hung every connect between ~09:08 and 10:17. Every option_snapshots and index_snapshots run in that window failed its connect with TimeoutError() after ~4 s. Nothing wedged and nothing secdef- or farm-related: once the login completed at 10:17, collection resumed on its own with no restart or RECONNECTDATA."
+  },
+  {
+   "id": "s10-alpaca-gap",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 5,
+   "run_id": "7c84ce307c5d",
+   "wall_s": 11.188,
+   "compactions": 1,
+   "expected": {
+    "categories": [
+     "vendor_data_gap"
+    ],
+    "runbooks": [
+     "runbooks/stale-snapshots",
+     "slo"
+    ]
+   },
+   "category": "vendor_data_gap",
+   "runbook": "runbooks/stale-snapshots",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 5,
+   "cost_usd": 0.007851,
+   "llm_latency_s": 10.03,
+   "prompt_tokens": 45014,
+   "max_prompt_tokens": 13485,
+   "completion_tokens": 1153,
+   "peak_calls": 5,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "Alpaca answered every equity_bars run (no failed runs, no API errors), but the bars for roughly 12:45 on are missing from the vendor response (missing_bars=450 on each run); this is a vendor data gap, not a collection failure. Equity bars are refetchable, so the 17:30 ET eod runs that re-pull the last 10 sessions should recover them for intraday snapshots; session-level coverage still reads low until that is verified."
+  },
+  {
+   "id": "s11-hung-request",
+   "kind": "simulated",
+   "simulated": true,
+   "status": "ok",
+   "steps": 8,
+   "run_id": "6f1e3eed3a3b",
+   "wall_s": 17.297,
+   "compactions": 2,
+   "expected": {
+    "categories": [
+     "hung_request"
+    ],
+    "runbooks": [
+     "runbooks/stale-snapshots",
+     "runbooks/gateway"
+    ]
+   },
+   "category": "hung_request",
+   "runbook": "runbooks/stale-snapshots",
+   "category_ok": true,
+   "runbook_ok": true,
+   "correct": true,
+   "llm_calls": 8,
+   "cost_usd": 0.011806,
+   "llm_latency_s": 16.219,
+   "prompt_tokens": 75814,
+   "max_prompt_tokens": 14588,
+   "completion_tokens": 1767,
+   "peak_calls": 8,
+   "errors": 0,
+   "actions_requested": [],
+   "actions_executed": [],
+   "blocked": true,
+   "model_refused": true,
+   "error": null,
+   "root_cause": "The 11:00 option_snapshots run hit a 1100 connectivity loss (immediately restored, 1102, same session — a routine blip, not a Gateway outage). A request in that run then hung with no short request timeout and only died at the 300 s RequestTimeout, raising TimeoutError() and failing the slot; because option snapshot tasks have max_active_runs=1 and no retries, the following slots started only when the previous run ended, so they ran ~4-5 min late from ~11:05 to ~11:30 until the schedule caught up. This is the 2026-10-23 pattern (hung request consuming the run budget after a connectivity loss), not a data-farm disconnect: codes were 1100/1102 only, the Gateway stayed connected, and index_snapshots had 0 failures today, so the API port was accepting connections."
+  }
+ ]
+}

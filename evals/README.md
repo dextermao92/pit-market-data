@@ -97,6 +97,37 @@ full numbers in [`results/2026-11-12-deepseek-flash-context.json`](results/2026-
 74.7 % of those prompt tokens were DeepSeek prompt-cache hits (the unchanged prefix of the conversation), billed at
 1/50 of a miss. Misses were 71 % of the cost.
 
+### With a 16,000-token context budget (2026-11-13, commit `c9f478c`)
+
+`context_budget_tokens = 16000` in `config/llm.toml`, fixed before this run from the baseline above (18 of 25
+diagnoses had a call over it) and not tuned after. Over the budget, the oldest tool results become stubs made by
+fixed rules (`pit.copilot.context`); the latest round stays whole. One live run of deepseek-flash, same 25 cases
+([results](results/2026-11-13-deepseek-flash-budget.json), [context stats](results/2026-11-13-deepseek-flash-budget-context.json)):
+
+| | Before (11-12) | With budget (11-13) |
+|---|---|---|
+| Accuracy: all / real / simulated | 76.0 / 64.3 / 90.9 % | **68.0 / 57.1 / 81.8 %** |
+| Prompt tokens per diagnosis: mean / max | 69,896 / 168,875 | 56,398 / 87,176 (−19 % mean) |
+| Largest single call: mean / max | 19,820 / 36,055 | 13,319 / 16,123 |
+| Cost per diagnosis at off-peak prices | $0.0037 | **$0.0045 (+22 %)** |
+| Prompt-cache hit share | 74.7 % | 59.0 % |
+| LLM calls per diagnosis | 5.72 | 6.28 |
+| Diagnoses that used all 8 steps | 5 | 11 |
+
+- The budget held: no call went above 16,123 tokens (2 compactions couldn't get under the limit because the latest
+  round alone was large; that round is never compacted). 20 of 25 diagnoses were compacted at least once.
+- **Fewer tokens, higher cost.** Every compaction changes the prompt prefix, so DeepSeek's cache misses from that
+  point on, and misses cost 50× hits. The model also called a stubbed tool again 14 times (in 10 diagnoses) and
+  used more steps. This run was in DeepSeek's peak hours (billed $0.0079 per diagnosis); the cost above is
+  recomputed from the logged tokens at off-peak prices so it compares with the baseline.
+- **Accuracy fell by 2 cases (19 → 17).** Six cases changed: r03, r09, r14 and s08 went wrong, r04 and r05 went
+  right. Three of the four losses were compacted, but so was one gain, and r05 / r09 changed without any
+  compaction, which is the run-to-run noise. One run per configuration can't separate a 2-case effect from that
+  noise.
+- Conclusion for this pipeline: the prompts here are small for the model (36k tokens at most), so a 16k budget
+  costs money and probably some accuracy. It is worth having as a guard for long investigations, not as the
+  default at this size. The default stays 16,000 until the memory runs below are done, so they compare to this.
+
 ## Limitations
 
 - **Small set, one run per model.** 25 cases; the two models differ by 2. The same flash model got r14 wrong in a

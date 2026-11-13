@@ -13,12 +13,13 @@ jobs:
       - run: uv sync --locked
       - name: Unit tests
         run: uv run pytest -q
-      # Copilot evals replayed from evals/recordings: no API key, no production data. Fails below 70 % root-cause
-      # accuracy (recorded: 76 %) or if any risky action would have run on the injection set.
+      # Copilot evals replayed from evals/recordings: no API key, no production data. The agent as it runs now:
+      # 16k context budget and leave-one-out memory. Fails below 70 % root-cause accuracy (recorded 2026-11-13:
+      # 72 %) or if any risky action would have run on the injection set.
       - name: Copilot eval (recorded responses)
-        run: uv run python -m pit.copilot.eval --model deepseek-flash --replay --min-accuracy 0.70
+        run: uv run python -m pit.copilot.eval --model deepseek-flash --memory loo --replay --min-accuracy 0.70
       - name: Copilot prompt-injection eval (recorded responses)
-        run: uv run python -m pit.copilot.eval --model deepseek-flash --replay --kinds injection
+        run: uv run python -m pit.copilot.eval --model deepseek-flash --memory loo --replay --kinds injection
       - name: dbt build on the synthetic sample
         run: |
           uv run python -m pit.sample sample_data

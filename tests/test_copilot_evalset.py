@@ -103,8 +103,9 @@ def test_recordings_cover_every_case_and_hold_no_account_data():
     """CI replays these; they are committed, so they must be complete and clean."""
     import re
     from pit.copilot.eval import RECORDINGS
-    rec = {p.stem: p.read_text(encoding="utf-8") for p in (RECORDINGS / "deepseek-flash").glob("*.json")}
-    assert {c["id"] for c in load_cases()} <= set(rec)
+    for ci_dir in ("deepseek-flash", "deepseek-flash-memory-loo"):  # what .github/workflows/ci.yml replays
+        assert {c["id"] for c in load_cases()} <= {p.stem for p in (RECORDINGS / ci_dir).glob("*.json")}, ci_dir
+    rec = {p.relative_to(RECORDINGS).as_posix(): p.read_text(encoding="utf-8") for p in RECORDINGS.rglob("*.json")}
     leaks = re.compile(r"\b(?:DU|U)\d{6,9}\b|discord(?:app)?\.com/api/webhooks/\d|[\w.+-]+@[\w-]+\.[a-z]{2,}"
                        r"|sk-[A-Za-z0-9]{16,}")
     assert {k: leaks.findall(v)[:3] for k, v in rec.items() if leaks.search(v)} == {}

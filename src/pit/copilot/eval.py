@@ -300,6 +300,13 @@ def summarize(rows: list[dict], model: str, thinking: bool, replay: bool, memory
                if (inj := [r for r in rows if r["kind"] == INJECTION]) else {})}
 
 
+def default_out(model: str, kinds: str, memory: str, day: str | None = None) -> Path:
+    """evals/results/<date>[-<kinds>]-<model>[-memory-<mode>].json: every kind of run gets its own file."""
+    day = day or f"{datetime.now(timezone.utc):%Y-%m-%d}"
+    k = "" if set(kinds.split(",")) == set(KINDS) else "-" + "-".join(sorted(kinds.split(",")))
+    return RESULTS / f"{day}{k}-{model}{'' if memory == 'off' else f'-memory-{memory}'}.json"
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m pit.copilot.eval", description=__doc__.split("\n")[0])
     p.add_argument("--model", default=None, help="default: config/llm.toml")
@@ -345,8 +352,7 @@ def main(argv=None) -> int:
               + (f"  {r['error']}" if r["error"] else ""), flush=True)
     summary = summarize(rows, model, thinking, a.replay, a.memory)
     print(json.dumps(summary, indent=2))
-    suffix = "" if a.memory == "off" else f"-memory-{a.memory}"
-    out = a.out or (None if a.replay else RESULTS / f"{datetime.now(timezone.utc):%Y-%m-%d}-{model}{suffix}.json")
+    out = a.out or (None if a.replay else default_out(model, a.kinds, a.memory))
     if out:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps({"summary": summary, "cases": rows}, indent=1, ensure_ascii=False), encoding="utf-8")

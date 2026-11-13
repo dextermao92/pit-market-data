@@ -134,3 +134,13 @@ def test_memory_run_recalls_other_cases_but_never_the_one_being_run(sandbox):
     recalled = next(t["text"] for t in rec["tools"] if t["name"] == "recall_similar")
     assert "Gateway frozen, fixed by restart" in recalled and "OWN ANSWER" not in recalled
     assert out["memory_notes"] == 1 and "PIT_MEMORY_DIR" not in __import__("os").environ
+
+
+def test_default_results_names_never_collide():
+    names = {ev.default_out(m, k, mem, "2026-11-13").name
+             for m in ("deepseek-flash", "deepseek-v4-pro") for k in ("real,simulated", "injection", "real")
+             for mem in ev.MEMORY_MODES}
+    assert len(names) == 2 * 3 * 3
+    assert ev.default_out("deepseek-flash", "simulated,real", "off", "2026-11-12").name == "2026-11-12-deepseek-flash.json"
+    assert ev.default_out("deepseek-flash", "injection", "loo", "2026-11-13").name == \
+        "2026-11-13-injection-deepseek-flash-memory-loo.json"

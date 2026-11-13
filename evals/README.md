@@ -109,7 +109,7 @@ fixed rules (`pit.copilot.context`); the latest round stays whole. One live run 
 | Accuracy: all / real / simulated | 76.0 / 64.3 / 90.9 % | **68.0 / 57.1 / 81.8 %** |
 | Prompt tokens per diagnosis: mean / max | 69,896 / 168,875 | 56,398 / 87,176 (−19 % mean) |
 | Largest single call: mean / max | 19,820 / 36,055 | 13,319 / 16,123 |
-| Cost per diagnosis at off-peak prices | $0.0037 | **$0.0045 (+22 %)** |
+| Cost per diagnosis at off-peak prices | $0.0037 | **$0.0045 (+21 %)** |
 | Prompt-cache hit share | 74.7 % | 59.0 % |
 | LLM calls per diagnosis | 5.72 | 6.28 |
 | Diagnoses that used all 8 steps | 5 | 11 |
@@ -127,6 +127,39 @@ fixed rules (`pit.copilot.context`); the latest round stays whole. One live run 
 - Conclusion for this pipeline: the prompts here are small for the model (36k tokens at most), so a 16k budget
   costs money and probably some accuracy. It is worth having as a guard for long investigations, not as the
   default at this size. The default stays 16,000 until the memory runs below are done, so they compare to this.
+
+### Budget sweep (2026-11-13)
+
+The same 25 cases at four more budgets, one live run each (`--context-budget N`, no memory), against the first run
+(11-12, no budget) as the benchmark. All 11-13 runs were in DeepSeek's peak hours; cost is recomputed from the
+logged tokens at off-peak prices. `uv run python scripts/budget_sweep.py <benchmark> <runs...>`
+([data](results/2026-11-13-budget-sweep.json)).
+
+| Run | Budget | Accuracy (real / sim) | Diagnoses compacted | Stubbed tool called again | LLM calls | Prompt tokens / diagnosis | Largest call | Cache hit | Cost / diagnosis | vs benchmark |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **benchmark** 11-12 | none | 76.0 % (64.3 / 90.9) | 0 | 0 | 5.72 | 69,896 | 36,055 | 74.7 % | $0.0037 | — |
+| 11-13 | none | 68.0 % (50.0 / 90.9) | 0 | 0 | 5.84 | 72,248 (+3 %) | 39,637 | 76.1 % | $0.0037 | −2 % |
+| 11-13 | 12,000 | 72.0 % (57.1 / 90.9) | 21 | 11 | 6.36 | 46,737 (−33 %) | 11,469 | 55.3 % | $0.0041 | +11 % |
+| 11-13 | 16,000 | 68.0 % (57.1 / 81.8) | 20 | 14 | 6.28 | 56,398 (−19 %) | 16,123 | 59.0 % | $0.0045 | +21 % |
+| 11-13 | 24,000 | 68.0 % (50.0 / 90.9) | 6 | 1 | 5.68 | 63,488 (−9 %) | 23,564 | 67.5 % | $0.0042 | +13 % |
+| 11-13 | 32,000 | 68.0 % (57.1 / 81.8) | 2 | 0 | 5.96 | 76,069 (+9 %) | 31,243 | 75.2 % | $0.0040 | +6 % |
+
+- **No budget saved money.** Every budget cost 6–21 % more than the benchmark and 8–23 % more than the same-day
+  run without one. Fewer tokens don't help when the tokens removed were cache hits: each compaction rewrites the
+  prompt from the first stubbed result on, so that part is billed as a miss (50× a hit) on the next call. The
+  cache hit share falls as compaction gets more frequent: 76 % (none) → 75 % (32k) → 68 % (24k) → 59 % (16k) →
+  55 % (12k).
+- **Cost isn't monotonic in the budget.** 12k cut tokens enough (−33 %) to come out cheaper than 16k despite the
+  worst cache share; 16k compacts almost as often as 12k but saves less per compaction.
+- **Each budget does cap the context**: the largest call stays under the budget plus the latest round (11,469 at
+  12k, 16,123 at 16k). That is the one thing a budget buys here.
+- **Accuracy differences are noise.** The benchmark configuration re-run on 11-13 scored 68 % instead of 76 %, with
+  4 cases changing (r03, r04, r10, r14). Every budget run is within 2 cases of that re-run. 11 cases were right in
+  all six runs; r01, r11 and s07 were wrong in all six.
+
+Conclusion: at this pipeline's prompt sizes (40k tokens at most) a context budget costs more than it saves. It is
+worth keeping as a ceiling well above normal use (only the rare long investigation would be compacted); a budget
+low enough to compact most diagnoses raises cost by 10–20 %.
 
 ## Memory (leave-one-out)
 

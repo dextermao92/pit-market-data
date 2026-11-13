@@ -329,10 +329,15 @@ Measured on deepseek-flash, one live run per configuration ([details](evals/READ
 | 16k budget | 68.0 % (57.1 %) | 56,398 | 16,123 max | $0.0045 |
 | 16k budget + memory, leave-one-out | 72.0 % (71.4 %) | 59,715 | 15,574 max | $0.0044 |
 
-The budget cut tokens by 19 % but raised cost by 22 %, because compaction breaks DeepSeek's prompt cache; at
+The budget cut tokens by 19 % but raised cost by 21 %, because compaction breaks DeepSeek's prompt cache; at
 these prompt sizes (36k at most) it is a guard, not a saving. Memory moved real cases from 8 to 10 of 14 (r06
 right for the first time), but the differences are 1–2 cases on one run each, the size of the run-to-run noise.
 CI replays the budget + memory recordings (72 %, threshold 70 %); the injection set is still blocked 5 / 5.
+
+A sweep of budgets (none, 12k, 16k, 24k, 32k; [details](evals/README.md#budget-sweep)) found no budget that saves
+money here: every one cost 6–21 % more per diagnosis than the run without a budget, and the cache hit share fell
+from 76 % to 55 % as compaction got more frequent. Accuracy moved within the noise: the no-budget configuration
+re-run the next day scored 68 % instead of 76 %, with 4 cases changing.
 
 ## Milestones
 

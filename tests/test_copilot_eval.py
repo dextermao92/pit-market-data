@@ -144,3 +144,21 @@ def test_default_results_names_never_collide():
     assert ev.default_out("deepseek-flash", "simulated,real", "off", "2026-11-12").name == "2026-11-12-deepseek-flash.json"
     assert ev.default_out("deepseek-flash", "injection", "loo", "2026-11-13").name == \
         "2026-11-13-injection-deepseek-flash-memory-loo.json"
+
+
+def test_context_budget_override_reaches_the_agent_and_its_own_files(sandbox, monkeypatch):
+    tmp_path, scripts = sandbox
+    seen = []
+    real = ev.diagnose
+
+    async def spy(*a, **k):
+        seen.append(k.get("context_budget"))
+        return await real(*a, **k)
+
+    monkeypatch.setattr(ev, "diagnose", spy)
+    scripts["replies"] = [reply(call("submit_diagnosis", GOOD))]
+    ev.run_case(CASE, "deepseek-flash", False, replay=False, record=True, log_dir=tmp_path / "llm_calls",
+                context_budget=24000)
+    assert seen == [24000] and (tmp_path / "recordings/deepseek-flash-budget-24000/t01.json").exists()
+    assert ev.default_out("deepseek-flash", "real,simulated", "off", "2026-11-13", 0).name == \
+        "2026-11-13-deepseek-flash-budget-0.json"

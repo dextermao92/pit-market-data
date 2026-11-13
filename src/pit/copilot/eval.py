@@ -95,8 +95,9 @@ def memory_for(case: dict, pool: list[dict], mode: str) -> list[dict]:
             and not (mode == "loo-category" and held & set(c["expected"]["categories"]))]
 
 
-def rec_dir(model: str, memory: str = "off") -> Path:
-    return RECORDINGS / (model if memory == "off" else f"{model}-memory-{memory}")
+def rec_dir(model: str, memory: str = "off", budget: int | None = None) -> Path:
+    name = model if memory == "off" else f"{model}-memory-{memory}"
+    return RECORDINGS / (name if budget is None else f"{name}-budget-{budget}")
 
 
 # --- recording and replay ------------------------------------------------------------------------------------------
@@ -203,7 +204,7 @@ def _git_commit() -> str:
 
 
 def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool, log_dir: Path,
-             memory: str = "off", pool: list[dict] | None = None) -> dict:
+             memory: str = "off", pool: list[dict] | None = None, context_budget: int | None = None) -> dict:
     requested, executed = [], []
 
     def approve(action, reason):  # evals never approve; requests are what injection cases measure
@@ -214,7 +215,7 @@ def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool,
         executed.append(cmd)
         return "OK"
 
-    rec_path = rec_dir(model, memory) / f"{case['id']}.json"
+    rec_path = rec_dir(model, memory, context_budget) / f"{case['id']}.json"
     mem_dir = Path(tempfile.mkdtemp(prefix="pit-memory-"))  # empty unless --memory: then the other cases' labels
     notes = memory_for(case, pool or [], memory)
     for n in notes:
@@ -240,6 +241,7 @@ def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool,
         try:
             out = anyio.run(lambda: diagnose(case["question"], llm, purpose=f"eval:{case['id']}", today=case["today"],
                                              approve=approve, send_command=send_command, mcp_client=mcp,
+                                             context_budget=context_budget,
                                              trace_dir=log_dir.parent / "copilot_traces"))
         except Exception as e:  # a crashed case counts as wrong, with the reason kept
             out = {"status": "error", "error": repr(e)[:300], "diagnosis": None, "run_id": None, "steps": None,
@@ -264,7 +266,8 @@ def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool,
             "root_cause": (out.get("diagnosis") or {}).get("root_cause")}
 
 
-def summarize(rows: list[dict], model: str, thinking: bool, replay: bool, memory: str = "off") -> dict:
+def summarize(rows: list[dict], model: str, thinking: bool, replay: bool, memory: str = "off",
+              context_budget: int | None = None) -> dict:
     def pct(xs):
         return round(100 * sum(xs) / len(xs), 1) if xs else None
 
@@ -289,7 +292,8 @@ def summarize(rows: list[dict], model: str, thinking: bool, replay: bool, memory
             "mean_llm_calls": mean([r.get("llm_calls") for r in rows]),
             "mean_prompt_tokens": None if replay else mean([r.get("prompt_tokens") for r in rows]),
             "max_prompt_tokens": None if replay else max((r.get("max_prompt_tokens") or 0 for r in rows), default=0),
-            "context_budget_tokens": load_config()["llm"].get("context_budget_tokens", 0),
+            "context_budget_tokens": load_config()["llm"].get("context_budget_tokens", 0)
+            if context_budget is None else context_budget,
             "diagnoses_compacted": sum(bool(r.get("compactions")) for r in rows),
             "peak_calls": None if replay else sum(r.get("peak_calls") or 0 for r in rows),
             "risky_requests": sum(bool(r["actions_requested"]) for r in rows),
@@ -300,11 +304,13 @@ def summarize(rows: list[dict], model: str, thinking: bool, replay: bool, memory
                if (inj := [r for r in rows if r["kind"] == INJECTION]) else {})}
 
 
-def default_out(model: str, kinds: str, memory: str, day: str | None = None) -> Path:
-    """evals/results/<date>[-<kinds>]-<model>[-memory-<mode>].json: every kind of run gets its own file."""
+def default_out(model: str, kinds: str, memory: str, day: str | None = None, budget: int | None = None) -> Path:
+    """evals/results/<date>[-<kinds>]-<model>[-memory-<mode>][-budget-<n>].json: every kind of run gets its own
+    file."""
     day = day or f"{datetime.now(timezone.utc):%Y-%m-%d}"
     k = "" if set(kinds.split(",")) == set(KINDS) else "-" + "-".join(sorted(kinds.split(",")))
-    return RESULTS / f"{day}{k}-{model}{'' if memory == 'off' else f'-memory-{memory}'}.json"
+    b = "" if budget is None else f"-budget-{budget}"
+    return RESULTS / f"{day}{k}-{model}{'' if memory == 'off' else f'-memory-{memory}'}{b}.json"
 
 
 def main(argv=None) -> int:
@@ -316,6 +322,8 @@ def main(argv=None) -> int:
     p.add_argument("--replay", action="store_true", help="play back evals/recordings; no API, no data needed")
     p.add_argument("--no-record", action="store_true")
     p.add_argument("--memory", choices=MEMORY_MODES, default="off", help="leave-one-out memory of the other cases")
+    p.add_argument("--context-budget", type=int, default=None,
+                   help="prompt tokens per call, overriding config/llm.toml (0 = no budget)")
     p.add_argument("--min-accuracy", type=float, default=None, help="exit 1 if accuracy (0-1) is below this")
     p.add_argument("--out", type=Path, help="results JSON (default: evals/results/<date>-<model>.json, live only)")
     a = p.parse_args(argv)
@@ -328,9 +336,10 @@ def main(argv=None) -> int:
         want = set(a.cases.split(","))
         cases = [c for c in cases if c["id"] in want]
     if a.replay:  # a case without a recording would silently drop out of the score: refuse instead
-        missing = [c["id"] for c in cases if not (rec_dir(model, a.memory) / f"{c['id']}.json").exists()]
+        missing = [c["id"] for c in cases
+                   if not (rec_dir(model, a.memory, a.context_budget) / f"{c['id']}.json").exists()]
         if missing:
-            print(f"no recording in {rec_dir(model, a.memory)} for: {', '.join(missing)} (run live once to record)",
+            print(f"no recording in {rec_dir(model, a.memory, a.context_budget)} for: {', '.join(missing)} (run live once to record)",
                   file=sys.stderr)
             return 1
     tmp = None
@@ -342,7 +351,7 @@ def main(argv=None) -> int:
 
     rows = []
     for i, case in enumerate(cases, 1):
-        r = run_case(case, model, thinking, a.replay, not a.no_record, log_dir, a.memory, pool)
+        r = run_case(case, model, thinking, a.replay, not a.no_record, log_dir, a.memory, pool, a.context_budget)
         rows.append(r)
         cost = "" if a.replay else f"  ${r.get('cost_usd') or 0:.4f}"
         print(f"[{i:>2}/{len(cases)}] {'PASS' if r['correct'] else 'FAIL'} {case['id']:<38} "
@@ -350,9 +359,9 @@ def main(argv=None) -> int:
               + (f"  risky: {'refused' if r['model_refused'] else 'asked, denied'}"
                  f"{'' if r['blocked'] else ' EXECUTED'}" if case["_kind"] == INJECTION else "")
               + (f"  {r['error']}" if r["error"] else ""), flush=True)
-    summary = summarize(rows, model, thinking, a.replay, a.memory)
+    summary = summarize(rows, model, thinking, a.replay, a.memory, a.context_budget)
     print(json.dumps(summary, indent=2))
-    out = a.out or (None if a.replay else default_out(model, a.kinds, a.memory))
+    out = a.out or (None if a.replay else default_out(model, a.kinds, a.memory, budget=a.context_budget))
     if out:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps({"summary": summary, "cases": rows}, indent=1, ensure_ascii=False), encoding="utf-8")

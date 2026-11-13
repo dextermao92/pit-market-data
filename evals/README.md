@@ -76,6 +76,27 @@ uv run python -m pit.copilot.eval --model deepseek-flash --replay              #
 | `s10-alpaca-gap` | sim | `vendor_data_gap` | ✅ `vendor_data_gap` · `runbooks/stale-snapshots` | ✅ `vendor_data_gap` · `runbooks/stale-snapshots` |
 | `s11-hung-request` | sim | `hung_request` | ✅ `hung_request` · `runbooks/stale-snapshots` | ❌ `transient_reconnect` · `runbooks/gateway` |
 
+## Context management
+
+### Baseline (the 2026-11-12 deepseek-flash run, no context budget)
+
+Every step sends the whole conversation, so the prompt grows by each tool result (cut at 12,000 characters). From
+`data/llm_calls`, matched by run_id (`uv run python scripts/context_stats.py evals/results/2026-11-12-deepseek-flash.json`,
+full numbers in [`results/2026-11-12-deepseek-flash-context.json`](results/2026-11-12-deepseek-flash-context.json)):
+
+| | Mean | Max |
+|---|---|---|
+| Prompt tokens per diagnosis (all calls) | 69,896 | 168,875 |
+| Largest single call per diagnosis | 19,820 | 36,055 |
+
+| Step | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Mean prompt tokens | 2,077 | 5,905 | 10,024 | 14,501 | 19,057 | 21,823 | 24,820 | 27,143 |
+| Diagnoses still running | 25 | 25 | 25 | 24 | 19 | 15 | 5 | 5 |
+
+74.7 % of those prompt tokens were DeepSeek prompt-cache hits (the unchanged prefix of the conversation), billed at
+1/50 of a miss. Misses were 71 % of the cost.
+
 ## Limitations
 
 - **Small set, one run per model.** 25 cases; the two models differ by 2. The same flash model got r14 wrong in a

@@ -1,0 +1,447 @@
+{
+ "results": "2026-11-12T10:08:14+00:00",
+ "model": "deepseek-flash",
+ "n": 25,
+ "mean_total_prompt_tokens": 69896,
+ "max_total_prompt_tokens": 168875,
+ "mean_max_prompt_tokens": 19820,
+ "max_prompt_tokens": 36055,
+ "mean_cost_usd": 0.003744,
+ "growth_by_step": [
+  {
+   "step": 1,
+   "cases": 25,
+   "mean_prompt_tokens": 2077
+  },
+  {
+   "step": 2,
+   "cases": 25,
+   "mean_prompt_tokens": 5905
+  },
+  {
+   "step": 3,
+   "cases": 25,
+   "mean_prompt_tokens": 10024
+  },
+  {
+   "step": 4,
+   "cases": 24,
+   "mean_prompt_tokens": 14501
+  },
+  {
+   "step": 5,
+   "cases": 19,
+   "mean_prompt_tokens": 19057
+  },
+  {
+   "step": 6,
+   "cases": 15,
+   "mean_prompt_tokens": 21823
+  },
+  {
+   "step": 7,
+   "cases": 5,
+   "mean_prompt_tokens": 24820
+  },
+  {
+   "step": 8,
+   "cases": 5,
+   "mean_prompt_tokens": 27143
+  }
+ ],
+ "cases": [
+  {
+   "id": "r01-2026-10-15-preopen-farms",
+   "correct": false,
+   "calls": 6,
+   "total": 67287,
+   "max": 18325,
+   "by_step": [
+    2069,
+    6731,
+    9159,
+    14744,
+    16259,
+    18325
+   ],
+   "cost_usd": 0.003636
+  },
+  {
+   "id": "r02-2026-10-15-alpaca-bar-gap",
+   "correct": true,
+   "calls": 8,
+   "total": 106202,
+   "max": 23148,
+   "by_step": [
+    2067,
+    6854,
+    8905,
+    12563,
+    14508,
+    16714,
+    21443,
+    23148
+   ],
+   "cost_usd": 0.004333
+  },
+  {
+   "id": "r03-2026-10-16-gateway-autorestart",
+   "correct": true,
+   "calls": 6,
+   "total": 82662,
+   "max": 25386,
+   "by_step": [
+    2071,
+    6810,
+    9001,
+    18197,
+    21197,
+    25386
+   ],
+   "cost_usd": 0.004611
+  },
+  {
+   "id": "r04-2026-10-16-hung-run",
+   "correct": false,
+   "calls": 8,
+   "total": 168875,
+   "max": 36055,
+   "by_step": [
+    2083,
+    6839,
+    17556,
+    22644,
+    25598,
+    26741,
+    31359,
+    36055
+   ],
+   "cost_usd": 0.00657
+  },
+  {
+   "id": "r05-2026-10-16-alpaca-disconnect",
+   "correct": false,
+   "calls": 8,
+   "total": 87292,
+   "max": 19406,
+   "by_step": [
+    2073,
+    6877,
+    7113,
+    9705,
+    12099,
+    13904,
+    16115,
+    19406
+   ],
+   "cost_usd": 0.003778
+  },
+  {
+   "id": "r06-2026-10-19-run-timeout",
+   "correct": false,
+   "calls": 8,
+   "total": 136472,
+   "max": 29254,
+   "by_step": [
+    2064,
+    6800,
+    8820,
+    14501,
+    22088,
+    24171,
+    28774,
+    29254
+   ],
+   "cost_usd": 0.005526
+  },
+  {
+   "id": "r07-2026-10-19-subscription-codes",
+   "correct": true,
+   "calls": 5,
+   "total": 53288,
+   "max": 16322,
+   "by_step": [
+    2081,
+    6705,
+    13049,
+    15131,
+    16322
+   ],
+   "cost_usd": 0.002923
+  },
+  {
+   "id": "r08-2026-10-22-slo-zero",
+   "correct": true,
+   "calls": 5,
+   "total": 56011,
+   "max": 20135,
+   "by_step": [
+    2086,
+    4580,
+    9974,
+    19236,
+    20135
+   ],
+   "cost_usd": 0.003753
+  },
+  {
+   "id": "r09-2026-10-23-secdef",
+   "correct": true,
+   "calls": 4,
+   "total": 16173,
+   "max": 7281,
+   "by_step": [
+    2066,
+    2245,
+    4581,
+    7281
+   ],
+   "cost_usd": 0.001664
+  },
+  {
+   "id": "r10-2026-10-26-frozen",
+   "correct": true,
+   "calls": 4,
+   "total": 21304,
+   "max": 10353,
+   "by_step": [
+    2057,
+    2246,
+    6648,
+    10353
+   ],
+   "cost_usd": 0.002118
+  },
+  {
+   "id": "r11-2026-10-27-30-morning-stall",
+   "correct": false,
+   "calls": 6,
+   "total": 95672,
+   "max": 29570,
+   "by_step": [
+    2077,
+    2702,
+    15650,
+    20786,
+    24887,
+    29570
+   ],
+   "cost_usd": 0.005842
+  },
+  {
+   "id": "r12-2026-11-05-1100-blip",
+   "correct": true,
+   "calls": 3,
+   "total": 18222,
+   "max": 9345,
+   "by_step": [
+    2094,
+    6783,
+    9345
+   ],
+   "cost_usd": 0.001639
+  },
+  {
+   "id": "r13-daily-farm-drops",
+   "correct": true,
+   "calls": 6,
+   "total": 68239,
+   "max": 19483,
+   "by_step": [
+    2081,
+    6755,
+    8670,
+    12402,
+    18848,
+    19483
+   ],
+   "cost_usd": 0.003603
+  },
+  {
+   "id": "r14-2026-11-10-docker-down",
+   "correct": true,
+   "calls": 8,
+   "total": 128289,
+   "max": 27854,
+   "by_step": [
+    2068,
+    6824,
+    10451,
+    15812,
+    17110,
+    21759,
+    26411,
+    27854
+   ],
+   "cost_usd": 0.005401
+  },
+  {
+   "id": "s01-disk-full",
+   "correct": true,
+   "calls": 4,
+   "total": 36663,
+   "max": 15766,
+   "by_step": [
+    2064,
+    6670,
+    12163,
+    15766
+   ],
+   "cost_usd": 0.002766
+  },
+  {
+   "id": "s02-duckdb-lock",
+   "correct": true,
+   "calls": 4,
+   "total": 25761,
+   "max": 9035,
+   "by_step": [
+    2125,
+    6868,
+    7733,
+    9035
+   ],
+   "cost_usd": 0.001673
+  },
+  {
+   "id": "s03-alpaca-auth",
+   "correct": true,
+   "calls": 6,
+   "total": 98033,
+   "max": 27212,
+   "by_step": [
+    2065,
+    6613,
+    14137,
+    21183,
+    26823,
+    27212
+   ],
+   "cost_usd": 0.005062
+  },
+  {
+   "id": "s04-competing-session",
+   "correct": true,
+   "calls": 5,
+   "total": 49192,
+   "max": 15824,
+   "by_step": [
+    2075,
+    6705,
+    10567,
+    14021,
+    15824
+   ],
+   "cost_usd": 0.003032
+  },
+  {
+   "id": "s05-host-asleep",
+   "correct": true,
+   "calls": 5,
+   "total": 54651,
+   "max": 18564,
+   "by_step": [
+    2068,
+    2241,
+    14529,
+    17249,
+    18564
+   ],
+   "cost_usd": 0.003457
+  },
+  {
+   "id": "s06-secdef-preopen",
+   "correct": true,
+   "calls": 6,
+   "total": 72545,
+   "max": 21814,
+   "by_step": [
+    2094,
+    6840,
+    9610,
+    11512,
+    20675,
+    21814
+   ],
+   "cost_usd": 0.004085
+  },
+  {
+   "id": "s07-run-budget",
+   "correct": false,
+   "calls": 6,
+   "total": 66059,
+   "max": 20013,
+   "by_step": [
+    2070,
+    6744,
+    7367,
+    13105,
+    16760,
+    20013
+   ],
+   "cost_usd": 0.003741
+  },
+  {
+   "id": "s08-farms-down",
+   "correct": true,
+   "calls": 6,
+   "total": 66431,
+   "max": 19574,
+   "by_step": [
+    2073,
+    6760,
+    7743,
+    12465,
+    17816,
+    19574
+   ],
+   "cost_usd": 0.003705
+  },
+  {
+   "id": "s09-2fa-pending",
+   "correct": true,
+   "calls": 6,
+   "total": 69063,
+   "max": 22341,
+   "by_step": [
+    2100,
+    4835,
+    8462,
+    14234,
+    17091,
+    22341
+   ],
+   "cost_usd": 0.004181
+  },
+  {
+   "id": "s10-alpaca-gap",
+   "correct": true,
+   "calls": 4,
+   "total": 33187,
+   "max": 13113,
+   "by_step": [
+    2070,
+    6839,
+    11165,
+    13113
+   ],
+   "cost_usd": 0.002523
+  },
+  {
+   "id": "s11-hung-request",
+   "correct": true,
+   "calls": 6,
+   "total": 69832,
+   "max": 20333,
+   "by_step": [
+    2085,
+    6760,
+    8196,
+    12977,
+    19481,
+    20333
+   ],
+   "cost_usd": 0.003984
+  }
+ ]
+}

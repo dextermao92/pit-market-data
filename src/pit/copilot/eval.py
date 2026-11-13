@@ -61,6 +61,7 @@ def llm_usage(log_dir: Path, run_id: str) -> dict:
     return {"llm_calls": len(rows), "cost_usd": round(sum(r.get("cost_usd") or 0 for r in rows), 6),
             "llm_latency_s": round(sum(r.get("latency_s") or 0 for r in rows), 3),
             "prompt_tokens": sum(r.get("prompt_tokens") or 0 for r in rows),
+            "max_prompt_tokens": max((r.get("prompt_tokens") or 0 for r in rows), default=0),
             "completion_tokens": sum(r.get("completion_tokens") or 0 for r in rows),
             "peak_calls": sum(bool(r.get("peak")) for r in rows), "errors": sum(r.get("status") == "error" for r in rows)}
 
@@ -216,6 +217,7 @@ def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool,
     usage = llm_usage(log_dir, out["run_id"]) if out.get("run_id") else {}
     return {"id": case["id"], "kind": case["_kind"], "simulated": case["simulated"], "status": out["status"],
             "steps": out.get("steps"), "run_id": out.get("run_id"), "wall_s": out.get("seconds"),
+            "compactions": out.get("compactions"),
             "expected": case["expected"], **score(case, out), **usage,
             "actions_requested": requested, "actions_executed": executed,
             "blocked": not executed, "model_refused": not requested, "error": out.get("error"),
@@ -245,6 +247,10 @@ def summarize(rows: list[dict], model: str, thinking: bool, replay: bool) -> dic
             "p50_wall_s": walls[len(walls) // 2] if walls else None,
             "mean_llm_latency_s": None if replay else mean([r.get("llm_latency_s") for r in rows]),
             "mean_llm_calls": mean([r.get("llm_calls") for r in rows]),
+            "mean_prompt_tokens": None if replay else mean([r.get("prompt_tokens") for r in rows]),
+            "max_prompt_tokens": None if replay else max((r.get("max_prompt_tokens") or 0 for r in rows), default=0),
+            "context_budget_tokens": load_config()["llm"].get("context_budget_tokens", 0),
+            "diagnoses_compacted": sum(bool(r.get("compactions")) for r in rows),
             "peak_calls": None if replay else sum(r.get("peak_calls") or 0 for r in rows),
             "risky_requests": sum(bool(r["actions_requested"]) for r in rows),
             **({"injection": {"blocked": sum(r["blocked"] for r in inj), "total": len(inj),

@@ -6,6 +6,8 @@ category, the runbook to follow and the evidence (runs, ET times, errors). A run
 diagnosis rather than with a guess.
 
 Every step is appended to data/copilot_traces/<UTC date>.jsonl: tool names, arguments, result sizes, latency.
+The prompt is kept under config/llm.toml's context_budget_tokens by compacting older tool results into stubs
+(pit.copilot.context); each compaction is a trace row too.
 Token counts and cost are in data/llm_calls/ (pit.copilot.llm), joined by the same purpose label.
 
 Usage (the key comes from .env):
@@ -31,6 +33,7 @@ from mcp import Client
 
 from pit.copilot.actions import ACTIONS, Approver, deny_all, execute, schema, terminal_approver
 from pit.copilot.categories import CATEGORIES
+from pit.copilot.context import Budget
 from pit.copilot.llm import LLM, load_config
 from pit.copilot.mcp_server import server
 
@@ -116,14 +119,17 @@ class Trace:
 
 async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose: str = "agent",
                    trace_dir: Path | None = None, today: str | None = None, approve: Approver = deny_all,
-                   send_command=None, mcp_client=None) -> dict:
+                   send_command=None, mcp_client=None, context_budget: int | None = None) -> dict:
     """Run the loop. Returns {"status": "ok" | "max_steps", "diagnosis": {...} | None, "steps", "run_id",
     "actions": [{"tool", "reason", "approved", "result"}], ...}.
 
     approve decides risky tool calls (pit.copilot.actions); the default denies all. send_command replaces
-    ibc.command, for tests. mcp_client replaces the in-process MCP client (evals record and replay through it)."""
+    ibc.command, for tests. mcp_client replaces the in-process MCP client (evals record and replay through it).
+    context_budget: prompt tokens per call (default: config/llm.toml context_budget_tokens; 0 = no budget)."""
     run_id = uuid.uuid4().hex[:12]
-    actions, denied = [], set()
+    actions, denied, compactions = [], set(), 0
+    budget = Budget(llm.cfg["llm"].get("context_budget_tokens", 0) if context_budget is None else context_budget)
+    calls = {}  # tool_call_id -> (name, args), to name what a compaction replaced
     trace = Trace(Path(trace_dir or Path(os.environ.get("DATA_DIR", "data")) / "copilot_traces"), run_id)
     today = today or datetime.now(ZoneInfo("America/New_York")).date().isoformat()
     t0 = time.monotonic()
@@ -137,11 +143,21 @@ async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose:
         for step in range(1, max_steps + 1):
             if step == max_steps:
                 messages.append({"role": "user", "content": "Last step: call submit_diagnosis now."})
+            if (c := budget.enforce(messages)) is not None:
+                compactions += 1
+                trace(step=step, kind="compact", note=f"{len(c['compacted'])} tool results compacted",
+                      estimate_before=c["estimate_before"], estimate_after=c["estimate_after"], limit=c["limit"],
+                      still_over=c["still_over"],
+                      compacted=[{"tool": calls.get(x["tool_call_id"], ("?", None))[0],
+                                  "args": calls.get(x["tool_call_id"], ("?", None))[1],
+                                  "chars_before": x["chars_before"], "chars_after": x["chars_after"]}
+                                 for x in c["compacted"]])
             s0 = time.monotonic()
             resp = llm.chat(messages, purpose=f"{purpose}:{run_id}", tools=tools)
             msg = resp.choices[0].message
             messages.append(assistant_turn(msg))
             usage = getattr(resp, "usage", None)
+            budget.observed(usage, len(messages))
             trace(step=step, kind="llm", latency_s=round(time.monotonic() - s0, 3),
                   request_id=getattr(resp, "id", None), tool_calls=[c.function.name for c in msg.tool_calls or []],
                   prompt_tokens=getattr(usage, "prompt_tokens", None),
@@ -183,6 +199,8 @@ async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose:
                 elif name in {t["function"]["name"] for t in tools}:
                     out = await mcp.call_tool(name, args)
                     result = "\n".join(getattr(c, "text", "") for c in out.content)
+                    budget.add_stub(call.id, name, args, result)  # from the whole result, before truncation
+                    calls[call.id] = (name, args)
                     if len(result) > MAX_TOOL_CHARS:
                         result = result[:MAX_TOOL_CHARS] + f"\n[truncated: {len(result)} chars; narrow the query]"
                 else:
@@ -193,11 +211,12 @@ async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose:
             if final:
                 trace(step=step, kind="final", note=final["category"], diagnosis=final)
                 return {"status": "ok", "diagnosis": final, "steps": step, "run_id": run_id,
-                        "model": llm.model, "seconds": round(time.monotonic() - t0, 3), "actions": actions}
+                        "model": llm.model, "seconds": round(time.monotonic() - t0, 3), "actions": actions,
+                        "compactions": compactions}
 
     trace(step=max_steps, kind="final", note="max_steps reached without a diagnosis")
     return {"status": "max_steps", "diagnosis": None, "steps": max_steps, "run_id": run_id, "model": llm.model,
-            "seconds": round(time.monotonic() - t0, 3), "actions": actions}
+            "seconds": round(time.monotonic() - t0, 3), "actions": actions, "compactions": compactions}
 
 
 def make_llm(model: str | None = None, thinking: bool | None = None, **kw) -> LLM:

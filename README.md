@@ -338,6 +338,9 @@ A sweep of budgets (none, 12k, 16k, 24k, 32k, 48k, 96k; [details](evals/README.m
 that saves money here: every one that compacted cost 6–21 % more per diagnosis than the run without a budget, and
 the cache hit share fell from 76 % to 55 % as compaction got more frequent. 48k and 96k never compacted and cost
 the same as no budget. Accuracy moved within the noise: four runs that never compacted scored 76, 68, 56 and 60 %.
+The noise came from sampling at the API's default temperature (1.0); at temperature 0, now the default, three runs
+scored 80, 80 and 76 %, gave the same answer for 20 of 25 cases, and cost about 15 % less
+([details](evals/README.md#temperature-0-2026-11-13-commit-d8edc55)).
 
 ## Milestones
 

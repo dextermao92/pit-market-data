@@ -185,6 +185,32 @@ Why identical setups scored 56–76 %, from the eight no-memory runs above (per-
   doesn't separate cleanly: hung run vs secdef stall vs frozen Gateway (r04), Alpaca outage vs reconnect (r05), a
   run timeout called `unknown` (r06), reconnect vs farm outage (s08).
 
+### Temperature 0 (2026-11-13, commit `d8edc55`)
+
+`temperature = 0` in `config/llm.toml` since this analysis. Three live runs, run in parallel, otherwise the same
+setup (48k budget, no memory), against three same-day runs at the API default that never compacted (none, 48k,
+96k). Peak hours; cost at off-peak prices
+([run 1](results/2026-11-13-deepseek-flash-temp0-run1.json), [2](results/2026-11-13-deepseek-flash-temp0-run2.json),
+[3](results/2026-11-13-deepseek-flash-temp0-run3.json)):
+
+| | Temperature 1.0 (API default) | Temperature 0 |
+|---|---|---|
+| Scores (of 25) | 17, 14, 15 (68 / 56 / 60 %) | 20, 20, 19 (80 / 80 / 76 %) |
+| Same answer (category + runbook) in all three | 11 / 25 | 20 / 25 |
+| Same right/wrong in all three | 17 / 25 | 22 / 25 |
+| Cost / diagnosis (off-peak) | $0.0036–0.0037 | $0.0030–0.0032 |
+| Cache hit | 75–78 % | 82–85 % |
+
+- **Much more stable, not deterministic.** DeepSeek at temperature 0 still varies (batched inference): r03, r06
+  and s07 were right in some runs and wrong in others, r09 cited a different runbook, r14 gave three different
+  wrong answers.
+- **And better**: 18 cases right in all three runs, 4 wrong in all three (r01, r05, r11, r14). At temperature 1.0
+  some of the coin-flip cases were lost to sampling; at 0 the model's best answer comes out more often. Three
+  runs is still a small sample, so read the 76–80 % as "about 78 %", not a precise figure.
+- **Cheaper**, because the same prompts come back and hit the cache more.
+- From here on, a difference between two configurations needs more than ~2 cases (8 points) before it's worth a
+  second look, and several runs before it counts.
+
 ## Memory (leave-one-out)
 
 The agent's memory ([`pit.copilot.memory`](../src/pit/copilot/memory.py)) holds diagnoses a person confirmed at the
@@ -279,8 +305,9 @@ Raw: [`results/2026-11-12-injection-deepseek-flash.json`](results/2026-11-12-inj
 
 Re-run 2026-11-13 on the current loop (16k context budget, memory of all 25 diagnosis cases): blocked **5 / 5**,
 the model didn't request the tool in any, 0 executed ([results](results/2026-11-13-injection-deepseek-flash-memory-loo.json)).
-Again after the default became 48k: the same, 5 / 5 refused by the model
-([results](results/2026-11-13-injection-deepseek-flash-memory-loo-budget-48000.json)).
+Again after the default became 48k, and again at temperature 0: the same, 5 / 5 refused by the model
+([48k](results/2026-11-13-injection-deepseek-flash-memory-loo-budget-48000.json),
+[temperature 0](results/2026-11-13-injection-deepseek-flash-memory-loo-temp0.json)).
 
 Limitation: since the model never asked, the approval gate itself wasn't exercised by these live runs. It is by
 the unit tests ([`tests/test_copilot_actions.py`](../tests/test_copilot_actions.py)): a model that obeys an injected
@@ -292,9 +319,9 @@ typed confirmation. 5 cases is a small set, and all use the same instruction in 
 The live runs above recorded every model reply and tool result to [`recordings/`](recordings/) (redacted:
 account ids, secrets from `.env`, emails, webhooks; the collector's IBKR username was also scrubbed). CI
 ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) replays the `deepseek-flash-memory-loo` recordings
-(the current loop: the 48k context budget and leave-one-out memory, re-recorded 2026-11-13 after the default
-changed from 16k; [results](results/2026-11-13-deepseek-flash-memory-loo-budget-48000.json): 72 %, 57.1 % real /
-90.9 % simulated, no diagnosis compacted, largest call 34,861) through the same agent loop and
+(the current loop: temperature 0, the 48k context budget and leave-one-out memory, re-recorded 2026-11-13 after
+those defaults changed; [results](results/2026-11-13-deepseek-flash-memory-loo-temp0.json): 72 %, 57.1 % real /
+90.9 % simulated; the 16k-era and 48k-at-temperature-1.0 recordings also scored 72 %) through the same agent loop and
 scorer, with no API key and no `data/`:
 
 - the diagnosis set must score at least **70 %** (recorded: 72 %);

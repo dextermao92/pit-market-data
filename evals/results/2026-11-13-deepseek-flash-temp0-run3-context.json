@@ -1,0 +1,533 @@
+{
+ "results": "2026-11-13T07:29:36+00:00",
+ "model": "deepseek-flash",
+ "n": 25,
+ "mean_total_prompt_tokens": 78258,
+ "max_total_prompt_tokens": 154373,
+ "mean_max_prompt_tokens": 20781,
+ "max_prompt_tokens": 34349,
+ "mean_cost_usd": 0.006082,
+ "mean_offpeak_cost_usd": 0.003041,
+ "peak_calls": 151,
+ "cache_hit_share": 0.834,
+ "growth_by_step": [
+  {
+   "step": 1,
+   "cases": 25,
+   "mean_prompt_tokens": 2077
+  },
+  {
+   "step": 2,
+   "cases": 25,
+   "mean_prompt_tokens": 6101
+  },
+  {
+   "step": 3,
+   "cases": 25,
+   "mean_prompt_tokens": 9478
+  },
+  {
+   "step": 4,
+   "cases": 25,
+   "mean_prompt_tokens": 13876
+  },
+  {
+   "step": 5,
+   "cases": 20,
+   "mean_prompt_tokens": 19356
+  },
+  {
+   "step": 6,
+   "cases": 15,
+   "mean_prompt_tokens": 22989
+  },
+  {
+   "step": 7,
+   "cases": 10,
+   "mean_prompt_tokens": 26057
+  },
+  {
+   "step": 8,
+   "cases": 6,
+   "mean_prompt_tokens": 29271
+  }
+ ],
+ "cases": [
+  {
+   "id": "r01-2026-10-15-preopen-farms",
+   "correct": false,
+   "calls": 6,
+   "total": 67233,
+   "max": 18664,
+   "by_step": [
+    2069,
+    6731,
+    7167,
+    14723,
+    17879,
+    18664
+   ],
+   "cost_usd": 0.005636,
+   "offpeak_cost_usd": 0.002818,
+   "peak_calls": 6,
+   "cache_hit_share": 0.824
+  },
+  {
+   "id": "r02-2026-10-15-alpaca-bar-gap",
+   "correct": true,
+   "calls": 6,
+   "total": 58710,
+   "max": 15828,
+   "by_step": [
+    2067,
+    6854,
+    9400,
+    9924,
+    14637,
+    15828
+   ],
+   "cost_usd": 0.002206,
+   "offpeak_cost_usd": 0.001103,
+   "peak_calls": 6,
+   "cache_hit_share": 0.981
+  },
+  {
+   "id": "r03-2026-10-16-gateway-autorestart",
+   "correct": true,
+   "calls": 8,
+   "total": 154373,
+   "max": 34349,
+   "by_step": [
+    2071,
+    6811,
+    11775,
+    18184,
+    24220,
+    27273,
+    29690,
+    34349
+   ],
+   "cost_usd": 0.009729,
+   "offpeak_cost_usd": 0.004865,
+   "peak_calls": 8,
+   "cache_hit_share": 0.853
+  },
+  {
+   "id": "r04-2026-10-16-hung-run",
+   "correct": true,
+   "calls": 8,
+   "total": 148593,
+   "max": 31551,
+   "by_step": [
+    2083,
+    6839,
+    13011,
+    17774,
+    24925,
+    25528,
+    26882,
+    31551
+   ],
+   "cost_usd": 0.008364,
+   "offpeak_cost_usd": 0.004182,
+   "peak_calls": 8,
+   "cache_hit_share": 0.874
+  },
+  {
+   "id": "r05-2026-10-16-alpaca-disconnect",
+   "correct": false,
+   "calls": 5,
+   "total": 37331,
+   "max": 11585,
+   "by_step": [
+    2073,
+    6876,
+    7118,
+    9679,
+    11585
+   ],
+   "cost_usd": 0.002052,
+   "offpeak_cost_usd": 0.001026,
+   "peak_calls": 5,
+   "cache_hit_share": 0.929
+  },
+  {
+   "id": "r06-2026-10-19-run-timeout",
+   "correct": false,
+   "calls": 8,
+   "total": 129961,
+   "max": 29899,
+   "by_step": [
+    2064,
+    6691,
+    8092,
+    14477,
+    18184,
+    22876,
+    27678,
+    29899
+   ],
+   "cost_usd": 0.007531,
+   "offpeak_cost_usd": 0.003765,
+   "peak_calls": 8,
+   "cache_hit_share": 0.88
+  },
+  {
+   "id": "r07-2026-10-19-subscription-codes",
+   "correct": true,
+   "calls": 5,
+   "total": 46110,
+   "max": 14805,
+   "by_step": [
+    2081,
+    6705,
+    8088,
+    14431,
+    14805
+   ],
+   "cost_usd": 0.001935,
+   "offpeak_cost_usd": 0.000967,
+   "peak_calls": 5,
+   "cache_hit_share": 0.98
+  },
+  {
+   "id": "r08-2026-10-22-slo-zero",
+   "correct": true,
+   "calls": 4,
+   "total": 26091,
+   "max": 10618,
+   "by_step": [
+    2086,
+    4579,
+    8808,
+    10618
+   ],
+   "cost_usd": 0.002387,
+   "offpeak_cost_usd": 0.001193,
+   "peak_calls": 4,
+   "cache_hit_share": 0.908
+  },
+  {
+   "id": "r09-2026-10-23-secdef",
+   "correct": true,
+   "calls": 4,
+   "total": 18050,
+   "max": 7881,
+   "by_step": [
+    2066,
+    2256,
+    5847,
+    7881
+   ],
+   "cost_usd": 0.002468,
+   "offpeak_cost_usd": 0.001234,
+   "peak_calls": 4,
+   "cache_hit_share": 0.865
+  },
+  {
+   "id": "r10-2026-10-26-frozen",
+   "correct": true,
+   "calls": 4,
+   "total": 24454,
+   "max": 11374,
+   "by_step": [
+    2057,
+    2230,
+    8793,
+    11374
+   ],
+   "cost_usd": 0.001965,
+   "offpeak_cost_usd": 0.000983,
+   "peak_calls": 4,
+   "cache_hit_share": 0.968
+  },
+  {
+   "id": "r11-2026-10-27-30-morning-stall",
+   "correct": false,
+   "calls": 6,
+   "total": 100935,
+   "max": 28518,
+   "by_step": [
+    2077,
+    11469,
+    12025,
+    19647,
+    27199,
+    28518
+   ],
+   "cost_usd": 0.007584,
+   "offpeak_cost_usd": 0.003792,
+   "peak_calls": 6,
+   "cache_hit_share": 0.834
+  },
+  {
+   "id": "r12-2026-11-05-1100-blip",
+   "correct": true,
+   "calls": 6,
+   "total": 64588,
+   "max": 18055,
+   "by_step": [
+    2094,
+    6783,
+    8720,
+    13358,
+    15578,
+    18055
+   ],
+   "cost_usd": 0.004769,
+   "offpeak_cost_usd": 0.002384,
+   "peak_calls": 6,
+   "cache_hit_share": 0.848
+  },
+  {
+   "id": "r13-daily-farm-drops",
+   "correct": true,
+   "calls": 7,
+   "total": 107573,
+   "max": 27860,
+   "by_step": [
+    2081,
+    6754,
+    11474,
+    13450,
+    22670,
+    23284,
+    27860
+   ],
+   "cost_usd": 0.009119,
+   "offpeak_cost_usd": 0.004559,
+   "peak_calls": 7,
+   "cache_hit_share": 0.804
+  },
+  {
+   "id": "r14-2026-11-10-docker-down",
+   "correct": false,
+   "calls": 7,
+   "total": 124798,
+   "max": 31742,
+   "by_step": [
+    2068,
+    3044,
+    10692,
+    20620,
+    26003,
+    30629,
+    31742
+   ],
+   "cost_usd": 0.010178,
+   "offpeak_cost_usd": 0.005089,
+   "peak_calls": 7,
+   "cache_hit_share": 0.805
+  },
+  {
+   "id": "s01-disk-full",
+   "correct": true,
+   "calls": 4,
+   "total": 33675,
+   "max": 14649,
+   "by_step": [
+    2064,
+    6699,
+    10263,
+    14649
+   ],
+   "cost_usd": 0.00396,
+   "offpeak_cost_usd": 0.00198,
+   "peak_calls": 4,
+   "cache_hit_share": 0.76
+  },
+  {
+   "id": "s02-duckdb-lock",
+   "correct": true,
+   "calls": 4,
+   "total": 25160,
+   "max": 8469,
+   "by_step": [
+    2125,
+    6867,
+    7699,
+    8469
+   ],
+   "cost_usd": 0.003115,
+   "offpeak_cost_usd": 0.001557,
+   "peak_calls": 4,
+   "cache_hit_share": 0.743
+  },
+  {
+   "id": "s03-alpaca-auth",
+   "correct": true,
+   "calls": 5,
+   "total": 55108,
+   "max": 17629,
+   "by_step": [
+    2065,
+    6613,
+    13123,
+    15678,
+    17629
+   ],
+   "cost_usd": 0.003469,
+   "offpeak_cost_usd": 0.001735,
+   "peak_calls": 5,
+   "cache_hit_share": 0.911
+  },
+  {
+   "id": "s04-competing-session",
+   "correct": true,
+   "calls": 8,
+   "total": 110791,
+   "max": 24292,
+   "by_step": [
+    2075,
+    6705,
+    8043,
+    10642,
+    16565,
+    19525,
+    22944,
+    24292
+   ],
+   "cost_usd": 0.008035,
+   "offpeak_cost_usd": 0.004017,
+   "peak_calls": 8,
+   "cache_hit_share": 0.841
+  },
+  {
+   "id": "s05-host-asleep",
+   "correct": true,
+   "calls": 7,
+   "total": 73663,
+   "max": 17165,
+   "by_step": [
+    2068,
+    2240,
+    8363,
+    12612,
+    14546,
+    16669,
+    17165
+   ],
+   "cost_usd": 0.006609,
+   "offpeak_cost_usd": 0.003304,
+   "peak_calls": 7,
+   "cache_hit_share": 0.799
+  },
+  {
+   "id": "s06-secdef-preopen",
+   "correct": true,
+   "calls": 8,
+   "total": 131404,
+   "max": 28629,
+   "by_step": [
+    2094,
+    6839,
+    9624,
+    14027,
+    20461,
+    22440,
+    27290,
+    28629
+   ],
+   "cost_usd": 0.010974,
+   "offpeak_cost_usd": 0.005487,
+   "peak_calls": 8,
+   "cache_hit_share": 0.799
+  },
+  {
+   "id": "s07-run-budget",
+   "correct": false,
+   "calls": 8,
+   "total": 130889,
+   "max": 26908,
+   "by_step": [
+    2070,
+    6744,
+    8547,
+    14946,
+    19351,
+    25800,
+    26523,
+    26908
+   ],
+   "cost_usd": 0.009162,
+   "offpeak_cost_usd": 0.004581,
+   "peak_calls": 8,
+   "cache_hit_share": 0.846
+  },
+  {
+   "id": "s08-farms-down",
+   "correct": true,
+   "calls": 5,
+   "total": 58153,
+   "max": 22527,
+   "by_step": [
+    2073,
+    6763,
+    10719,
+    16071,
+    22527
+   ],
+   "cost_usd": 0.008236,
+   "offpeak_cost_usd": 0.004118,
+   "peak_calls": 5,
+   "cache_hit_share": 0.654
+  },
+  {
+   "id": "s09-2fa-pending",
+   "correct": true,
+   "calls": 6,
+   "total": 91396,
+   "max": 28838,
+   "by_step": [
+    2100,
+    4833,
+    12474,
+    18889,
+    24262,
+    28838
+   ],
+   "cost_usd": 0.010105,
+   "offpeak_cost_usd": 0.005053,
+   "peak_calls": 6,
+   "cache_hit_share": 0.709
+  },
+  {
+   "id": "s10-alpaca-gap",
+   "correct": true,
+   "calls": 5,
+   "total": 42877,
+   "max": 14887,
+   "by_step": [
+    2070,
+    6839,
+    8890,
+    10191,
+    14887
+   ],
+   "cost_usd": 0.005358,
+   "offpeak_cost_usd": 0.002679,
+   "peak_calls": 5,
+   "cache_hit_share": 0.702
+  },
+  {
+   "id": "s11-hung-request",
+   "correct": true,
+   "calls": 7,
+   "total": 94538,
+   "max": 22797,
+   "by_step": [
+    2085,
+    6758,
+    8192,
+    14586,
+    19208,
+    20912,
+    22797
+   ],
+   "cost_usd": 0.007116,
+   "offpeak_cost_usd": 0.003558,
+   "peak_calls": 7,
+   "cache_hit_share": 0.83
+  }
+ ]
+}

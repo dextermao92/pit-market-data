@@ -86,13 +86,31 @@ Asked again after the fix, the query as of 22:00 ET 11-10 returned exactly the s
 ## Real revisions, for comparison (not simulated)
 
 The real data has the same mechanism at a much smaller scale. Of 1,057,200 staged 5-min bars to 2026-11-12, the
-vendor later revised 1,760 in at least one field, including the close of 75 and the volume of 1,670. Every changed close showed up at the next
-day's `eod` re-fetch, 26–32 hours after the bar. The median change in close was 0.023% and the largest 0.27%;
-55 of the 75 were on 2026-10-15.
+vendor later revised 1,760 in at least one field. The request is `adjustment=raw`, so none of these come from split
+or dividend adjustment. None come from after-hours trades either: every revised bar is a regular-hours bar.
 
-Example: NFLX, 12:55 ET bar on 2026-10-15, revised by the eod re-fetch at 17:30 ET on 10-16:
+**Changed close (75 bars), three different causes:**
 
-| `as_of` | close | volume |
+| Bars | What changed | Likely cause |
 |---|---|---|
-| 1 s before the re-fetch | 72.705 | 63,650 |
-| at the re-fetch | 72.9 | 373,339 |
+| 49 | The 12:55 ET bar on 2026-10-15, 49 of 50 symbols. Trade count up a median 3.0x and volume 3.3x; close moved a median 0.05%, at most 0.27% | The first fetch (13:15 ET) got an incomplete bar for the whole market, and 47 refetches that day served the same version. The next day's `eod` got the full bar, and the close moved because the last trade in the bar was a different one |
+| 23 | Close differs by less than 0.0001 with volume unchanged (6 on 10-15, 17 on 11-05), e.g. UNH 409.1655 → 409.16557 | The vendor changed how many decimals it returns, not the price |
+| 3 | KO 10-29 92.51 → 92.505 and XLU 11-05 43.72 → 43.71, volume unchanged; COST 11-11 1079.3201 → 1079.46, one trade (50 shares) removed | Individual trades corrected or cancelled after the fact |
+
+**Volume or trade count only, close unchanged:**
+
+- The 15:40 ET bar loses a few trades in 18 of the 19 live-collected sessions, for 49 of 50 symbols (XLB never):
+  821 bars. 98.9% of them lose at most 3 shares; one lost 90,168. The change appears at that day's `eod` refetch.
+  It looks like trades cancelled after the fact, but why always 15:40 is not known.
+- The 14:10 ET bar on 2026-10-15 gained about 50% volume for all 50 symbols: the same incomplete-bar pattern as
+  12:55, with no close change.
+
+Every changed close appeared at the next day's `eod` refetch, 26–32 hours after the bar. The same-day refetches
+did not catch them, so it is the 10-session `eod` refetch that makes these revisions visible at all.
+
+Example: NFLX, 12:55 ET bar on 2026-10-15, revised by the `eod` refetch at 17:30 ET on 10-16:
+
+| `as_of` | close | volume | trades |
+|---|---|---|---|
+| 1 s before the refetch | 72.705 | 63,650 | 858 |
+| at the refetch | 72.9 | 373,339 | 3,970 |

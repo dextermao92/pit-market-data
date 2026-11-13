@@ -278,8 +278,9 @@ get_bars(["NFLX"], start, end, as_of=datetime(2026, 10, 16, 21, 30, 47, tzinfo=U
 get_bars(["NFLX"], start, end, as_of=datetime(2026, 10, 16, 21, 31, tzinfo=UTC))      # close 72.9 (eod revision)
 ```
 
-Real data to 2026-11-12: of 1,057,200 bars, the vendor later revised 1,760, including the close of 75. Each
-revision showed up at the next day's `eod` re-fetch. The [drill](ops/drills/2026-11-13-bad-vendor-revision.md)
+Real data to 2026-11-12: of 1,057,200 bars, the vendor later revised 1,760, including the close of 75. Most of
+those 75 were one incomplete bar served for the whole market on 2026-10-15, then completed; the rest were decimal
+precision changes or individual trade corrections. Each changed close showed up at the next day's `eod` refetch. The [drill](ops/drills/2026-11-13-bad-vendor-revision.md)
 (simulated, `scripts/drill_bad_revision.py`) injects four kinds of bad revision into a copy of the data. Every
 kind was caught by at least one check. A uniform 0.4% shift was caught only by the cross-source rule 16.
 

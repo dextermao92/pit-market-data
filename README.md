@@ -334,10 +334,10 @@ these prompt sizes (36k at most) it is a guard, not a saving. Memory moved real 
 right for the first time), but the differences are 1–2 cases on one run each, the size of the run-to-run noise.
 CI replays the budget + memory recordings (72 %, threshold 70 %); the injection set is still blocked 5 / 5.
 
-A sweep of budgets (none, 12k, 16k, 24k, 32k; [details](evals/README.md#budget-sweep)) found no budget that saves
-money here: every one cost 6–21 % more per diagnosis than the run without a budget, and the cache hit share fell
-from 76 % to 55 % as compaction got more frequent. Accuracy moved within the noise: the no-budget configuration
-re-run the next day scored 68 % instead of 76 %, with 4 cases changing.
+A sweep of budgets (none, 12k, 16k, 24k, 32k, 48k, 96k; [details](evals/README.md#budget-sweep)) found no budget
+that saves money here: every one that compacted cost 6–21 % more per diagnosis than the run without a budget, and
+the cache hit share fell from 76 % to 55 % as compaction got more frequent. 48k and 96k never compacted and cost
+the same as no budget. Accuracy moved within the noise: four runs that never compacted scored 76, 68, 56 and 60 %.
 
 ## Milestones
 

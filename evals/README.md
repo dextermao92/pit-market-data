@@ -130,7 +130,7 @@ fixed rules (`pit.copilot.context`); the latest round stays whole. One live run 
 
 ### Budget sweep (2026-11-13)
 
-The same 25 cases at four more budgets, one live run each (`--context-budget N`, no memory), against the first run
+The same 25 cases at six more budgets, one live run each (`--context-budget N`, no memory), against the first run
 (11-12, no budget) as the benchmark. All 11-13 runs were in DeepSeek's peak hours; cost is recomputed from the
 logged tokens at off-peak prices. `uv run python scripts/budget_sweep.py <benchmark> <runs...>`
 ([data](results/2026-11-13-budget-sweep.json)).
@@ -143,6 +143,8 @@ logged tokens at off-peak prices. `uv run python scripts/budget_sweep.py <benchm
 | 11-13 | 16,000 | 68.0 % (57.1 / 81.8) | 20 | 14 | 6.28 | 56,398 (−19 %) | 16,123 | 59.0 % | $0.0045 | +21 % |
 | 11-13 | 24,000 | 68.0 % (50.0 / 90.9) | 6 | 1 | 5.68 | 63,488 (−9 %) | 23,564 | 67.5 % | $0.0042 | +13 % |
 | 11-13 | 32,000 | 68.0 % (57.1 / 81.8) | 2 | 0 | 5.96 | 76,069 (+9 %) | 31,243 | 75.2 % | $0.0040 | +6 % |
+| 11-13 | 48,000 | 56.0 % (50.0 / 63.6) | 0 | 0 | 6.04 | 77,510 (+11 %) | 31,124 | 78.0 % | $0.0037 | −1 % |
+| 11-13 | 96,000 | 60.0 % (50.0 / 72.7) | 0 | 0 | 5.56 | 66,649 (−5 %) | 28,658 | 75.4 % | $0.0036 | −5 % |
 
 - **No budget saved money.** Every budget cost 6–21 % more than the benchmark and 8–23 % more than the same-day
   run without one. Fewer tokens don't help when the tokens removed were cache hits: each compaction rewrites the
@@ -153,13 +155,18 @@ logged tokens at off-peak prices. `uv run python scripts/budget_sweep.py <benchm
   worst cache share; 16k compacts almost as often as 12k but saves less per compaction.
 - **Each budget does cap the context**: the largest call stays under the budget plus the latest round (11,469 at
   12k, 16,123 at 16k). That is the one thing a budget buys here.
-- **Accuracy differences are noise.** The benchmark configuration re-run on 11-13 scored 68 % instead of 76 %, with
-  4 cases changing (r03, r04, r10, r14). Every budget run is within 2 cases of that re-run. 11 cases were right in
-  all six runs; r01, r11 and s07 were wrong in all six.
+- **A ceiling above normal use costs nothing.** 48k and 96k never compacted (the largest call in any run is
+  39,637), so they ran exactly like no budget: cost −1 % and −5 %, cache share 78 % and 75 %.
+- **Accuracy differences are noise.** Four runs never compacted (the benchmark, the 11-13 re-run, 48k, 96k), so
+  they are the same configuration, and scored 76, 68, 56 and 60 %: a 5-case spread between identical setups.
+  48k lost four simulated cases that scored 91 % in most other runs, two of them with the right category and the
+  wrong runbook. Every compacting run (68–72 %) sits inside that spread. 9 cases were right in all eight runs;
+  r01, r11 and s07 were wrong in all eight. One run of 25 cases can't tell apart effects smaller than about
+  ±10 points.
 
 Conclusion: at this pipeline's prompt sizes (40k tokens at most) a context budget costs more than it saves. It is
-worth keeping as a ceiling well above normal use (only the rare long investigation would be compacted); a budget
-low enough to compact most diagnoses raises cost by 10–20 %.
+worth keeping as a ceiling well above normal use (48k or more: it costs nothing until a rare long investigation
+hits it); a budget low enough to compact most diagnoses raises cost by 10–20 %.
 
 ## Memory (leave-one-out)
 
@@ -218,8 +225,9 @@ Verdict: no evidence that memory hurts, weak evidence that it helps on real case
   explanation to a neighbouring label (r06 `unknown`, s07 `hung_request`) scores as wrong.
 - Costs are DeepSeek's off-peak prices of 2026-11-10 (`config/llm.toml`); peak hours cost double. The 11-13 runs
   were in peak hours and are compared at off-peak prices recomputed from their logged tokens.
-- **Context budget and memory: one run per configuration.** The differences between the four 11-13
-  configurations are 1–2 cases, the same size as the run-to-run noise; none of them is a measured effect yet.
+- **Context budget and memory: one run per configuration.** The differences between the 11-13 configurations
+  are 1–4 cases, inside the run-to-run noise (four runs of the same setup scored 56–76 %); none of them is a
+  measured effect yet.
 - **The memory is built from the eval's own labels.** Leave-one-out keeps a case's own answer out, but the notes
   are written in the same words as the other questions, and the sibling case of the same category is often a
   simulated copy of a real one. Real operator-confirmed notes would read differently.

@@ -13,6 +13,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 from pit.copilot import docs
+from pit.copilot.memory import format_recall, recall
 from pit.copilot.redact import redact
 from pit.health import _runs
 from pit.slo import compute, sessions

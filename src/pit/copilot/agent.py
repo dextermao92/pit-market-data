@@ -46,6 +46,10 @@ from pit.copilot.mcp_server import server
 from pit.copilot.memory import confirm_and_remember, has_notes
 
 MAX_STEPS = 8
+# MCP tools the agent isn't given. search_docs (retrieval) serves Claude Code; the agent lists the ops docs and reads
+# them whole by name (read_runbook), the setup every eval result was measured on. Giving it retrieval is an
+# experiment to score first, not a default.
+NOT_FOR_AGENT = {"search_docs"}
 MAX_TOOL_CHARS = 12_000  # one get_runs page can be large; the model sees the head and a note
 
 SUBMIT = {"type": "function", "function": {
@@ -147,7 +151,8 @@ async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose:
     async with (mcp_client or Client(server)) as mcp:
         with_memory = has_notes()
         tools = [t for t in to_openai_tools((await mcp.list_tools()).tools)
-                 if with_memory or t["function"]["name"] != "recall_similar"]
+                 if t["function"]["name"] not in NOT_FOR_AGENT
+                 and (with_memory or t["function"]["name"] != "recall_similar")]
         tools += [schema(a) for a in ACTIONS.values()] + [SUBMIT]
         docs_text = (await mcp.call_tool("read_runbook", {})).content[0].text
         docs = {line.strip() for line in docs_text.splitlines()[1:] if line.strip()}

@@ -71,6 +71,7 @@ def test_tool_then_submit(tmp_path, monkeypatch):
     kinds = [r["kind"] for r in trace_rows(tmp_path)]
     assert kinds == ["question", "llm", "tool", "llm", "tool", "final"]
     assert len(list((tmp_path / "llm_calls").glob("*.jsonl"))) == 1  # cost log written by pit.copilot.llm
+    assert "search_docs" not in client.tools[0] and "read_runbook" in client.tools[0]  # retrieval: Claude Code only
 
 
 def test_bad_runbook_is_rejected_and_retried(tmp_path, monkeypatch):

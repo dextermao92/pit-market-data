@@ -66,8 +66,9 @@ def chunk(name: str, text: str) -> list[dict]:
 
 
 def chunks() -> list[dict]:
-    return [c for p in sources() for c in chunk(str(p.relative_to(ROOT / "ops")).removesuffix(".md")
-                                               if p.parent != ROOT else p.stem, p.read_text())]
+    # as_posix: "runbooks/gateway" on Windows too; utf-8: Windows reads with the ANSI code page by default
+    return [c for p in sources() for c in chunk(p.relative_to(ROOT / "ops").with_suffix("").as_posix()
+                                               if p.parent != ROOT else p.stem, p.read_text(encoding="utf-8"))]
 
 
 @cache

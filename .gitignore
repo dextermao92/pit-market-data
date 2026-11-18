@@ -11,3 +11,4 @@ dbt/.user.yml
 sample_data/
 evals/fixtures/
 pit-drill-*/
+databricks/

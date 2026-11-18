@@ -38,7 +38,18 @@ and where.
 - a "phone number" that is part of a hash in `uv.lock`;
 - `sk-` inside words like `disk-full` and `task-`.
 
-## Needs a decision
+## Decisions (2026-11-18)
+
+| Item | Decision |
+|---|---|
+| 1. Personal email in 6 commits | History rebuilt: every commit authored with the GitHub noreply address |
+| 2. Overwritten commits still on GitHub | Rebuilt history goes to a fresh repository. See the open question below |
+| 3. AEDT time-zone hint | Accepted |
+| 4. `databricks/` not ignored | Added to `.gitignore` |
+| 5. No LICENSE | MIT ([`LICENSE`](../LICENSE)) |
+| 6. Default Postgres password | Accepted (local only) |
+
+## Findings as scanned (before the decisions)
 
 1. **A personal email address is in 6 commits' author and committer fields.** The commits are `3851be2`,
    `eb48e1c`, `ebbd0fe`, `c294c87`, `701738c` and `b7fc328`, made on the Mac between 2026-11-10 and 11-18.

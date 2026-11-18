@@ -476,3 +476,7 @@ rest is built. Stop after P5.
 - 5-min granularity only. No tick data, streaming, Kafka or Spark.
 - Local only; no cloud. No strategies, backtests, risk models or UI.
 - Personal project; not a production system.
+
+## License
+
+[MIT](LICENSE).

@@ -195,7 +195,8 @@ def test_hung_request_is_a_failed_check_so_healing_runs(monkeypatch):
 
 def test_watchdog_heals_gateway_once_per_stale_episode(tmp_path, monkeypatch):
     from datetime import datetime, timezone
-    import pit.health, pit.notify
+    import pit.health
+    import pit.notify
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setattr(pit.notify, "send", lambda *a, **k: None)
     heals = []

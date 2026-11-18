@@ -116,7 +116,7 @@ def check_docker() -> dict[str, Problem]:
 def service_problems(ps_json: str) -> dict[str, Problem]:
     """From `docker compose ps --all --format json` (one JSON object per line, or one array in older versions)."""
     text = ps_json.strip()
-    rows = json.loads(text) if text.startswith("[") else [json.loads(l) for l in text.splitlines() if l.strip()]
+    rows = json.loads(text) if text.startswith("[") else [json.loads(line) for line in text.splitlines() if line.strip()]
     state = {r.get("Service"): (r.get("State", ""), r.get("Health", ""), r.get("Status", "")) for r in rows}
     out = {}
     for svc in SERVICES:

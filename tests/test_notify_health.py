@@ -51,7 +51,6 @@ def test_yesterday_summary_flags_failures_and_gaps(tmp_path):
 
 
 def test_watchdog_flags_only_stale_datasets_in_their_window(tmp_path):
-    from datetime import timedelta
     from pit.health import stale_datasets
     at = lambda h, m: datetime(2026, 10, 16, h, m, tzinfo=timezone.utc)  # EDT: 13:30 UTC = 09:30 ET
     rec = lambda ds, start, end: {"run_id": ds, "dataset": ds, "status": "success", "started_at": start, "finished_at": end}

@@ -12,3 +12,4 @@ sample_data/
 evals/fixtures/
 pit-drill-*/
 databricks/
+scripts/export_dbx_sample.py

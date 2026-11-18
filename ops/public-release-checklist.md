@@ -1,13 +1,14 @@
 # Public release checklist
 
-**Status:** the repo is private and its history hasn't been rewritten. This page lists what was checked and what
-needs a decision before the repo goes public. It records no secret or personal value, only the kind of thing found
-and where.
+**Status:** released. All six decisions below are done; the rebuilt history went to a new, public repository (the old
+one was deleted). This page lists what was checked and what was decided. It records no secret or personal value, only
+the kind of thing found and where.
 
-**Scanned:** 2026-11-18, at `main` = `54eb769`.
+**Scanned:** 2026-11-18, first at `main` = `54eb769` (109 commits, 789 blobs, refs `main`, `copilot-evidence-check`
+and their `origin/` copies), then again after the rebuild (`main` only, 111 commits, 795 blobs). No tags or stashes.
 
-- Refs: `main`, `copilot-evidence-check` and their `origin/` copies. There are no tags or stashes.
-- 109 commits and 789 file versions (blobs).
+- After the rebuild every commit has the noreply author, and every `.env` value and `SCAN_EXTRA_TERMS` entry is
+  "not found". Collector usernames are no longer hard-coded in the scanner; it reads them from `.env`.
 - Tool: [`scripts/secret_scan.py`](../scripts/secret_scan.py). It prints key names, locations and masked values,
   never a value. Rerun it right before publishing:
 
@@ -43,7 +44,7 @@ and where.
 | Item | Decision |
 |---|---|
 | 1. Personal email in 6 commits | History rebuilt: every commit authored with the GitHub noreply address |
-| 2. Overwritten commits still on GitHub | Rebuilt history goes to a fresh repository. See the open question below |
+| 2. Overwritten commits still on GitHub | Old repository deleted; the rebuilt history went to a new one under the same name |
 | 3. AEDT time-zone hint | Accepted |
 | 4. `databricks/` not ignored | Added to `.gitignore` |
 | 5. No LICENSE | MIT ([`LICENSE`](../LICENSE)) |
@@ -86,7 +87,7 @@ and where.
 
 ## Before flipping to public
 
-- [ ] Decide items 1–6 above.
-- [ ] Rerun `scripts/secret_scan.py`; `.env` values found should still be "not found" for every key.
-- [ ] Check `git status` for untracked personal files.
-- [ ] Make it public by hand, on GitHub. Nothing in this repo or its automation changes visibility.
+- [x] Decide items 1–6 above.
+- [x] Rerun `scripts/secret_scan.py`; `.env` values found should still be "not found" for every key.
+- [x] Check `git status` for untracked personal files.
+- [x] Make it public by hand, on GitHub. Nothing in this repo or its automation changes visibility.

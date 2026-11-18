@@ -60,29 +60,7 @@ account with a read-only API), a free Alpaca account, and an always-on machine w
 
 ## Architecture
 
-```
- Alpaca REST API                                   IB Gateway (Docker, read-only API)
- 5-min and daily bars, corporate actions, assets   option chains, index levels
-          │                                                  │
-          └───────────────────────┬──────────────────────────┘
-                                  ▼   Airflow DAGs on a market-hours timetable
- raw/          one JSON file per fetch, named by ingested_at, never overwritten
-                                  │   parse, type, row rules (Polars)
-                                  ├──────────► quarantine/   rows that break an error rule, kept as evidence
-                                  ▼
- staged/       Parquet, 1:1 with raw, partitioned by ingest date; warning rows kept and flagged
-                                  │   dbt-duckdb, once a day after the close
-                                  ▼
- curated       current bars, corporate actions, SCD2 security master, option quotes; dbt tests
-                                  │
-                                  ▼
- query         pit.query: get_bars(symbols, start, end, as_of), get_chain(underlying, at)
-
- pipeline_runs/   one record per run: timings, row counts, quarantined, flagged, gaps, status, error
-        │
-        ├──► status cards, alerts, self-healing (Discord / email)
-        └──► Ops Copilot: agent loop + read-only MCP tools ──► diagnosis, runbook to follow
-```
+![Architecture: Alpaca and IB Gateway feed raw, staged, curated and query layers; Airflow schedules; pipeline_runs feeds monitoring and the Ops Copilot](docs/images/architecture.png)
 
 - **Raw** is the source of truth. Every vendor response is stored as received, one file per fetch, named by its
   `ingested_at` (UTC). A rerun re-parses its existing raw file; only an explicit refetch makes a new one.
@@ -239,20 +217,7 @@ uv run --env-file .env python -m pit.copilot.agent "Why were there no option sna
 
 ### How it works
 
-```
- CLI                                  HTTP: POST /ask                      Claude Code (.mcp.json)
- risky tool: a person types it        bearer token; risky tool denied           │
-        └──────────────────┬───────────────────┘                              ▼
-                           ▼                                         MCP server: the same
- agent loop (pit.copilot.agent): one LLM call per step, at most 8,    read-only tools
- temperature 0, 48k-token context budget, every call logged with tokens and cost
-        │                         │                               │
-        ▼                         ▼                               ▼
- read-only tools            risky tool                       submit_diagnosis, checked by code:
- get_runs, slo_status,      reconnect_market_data            known category and runbook; every date,
- read_runbook,              approval gate: only a person     time, error and code must appear in this
- recall_similar             at a terminal                    run's tool results, or it goes back
-```
+![Ops Copilot: entry points, agent loop, read-only tools, approval gate, evidence check, memory and evals](docs/images/copilot.png)
 
 - **No agent framework.** The loop is about 300 lines: call the model, run the requested tools, feed back the results,
   stop at `submit_diagnosis` or after 8 steps.

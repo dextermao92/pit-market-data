@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import polars as pl
 
@@ -96,3 +96,19 @@ def test_failure_card_once_per_streak_then_recovered(tmp_path, monkeypatch):
     notify.task_succeeded({"ti": ti, "run_id": "r4"})
     notify.task_succeeded({"ti": ti, "run_id": "r5"})
     assert sent == ["❌ 任务失败：期权快照", "✅ 已恢复：期权快照"]
+
+
+def test_coverage_counts_a_late_retry_for_its_own_slot_and_half_days(tmp_path):
+    def sched(slot_utc, started_utc, status="success"):
+        return {"run_id": f"scheduled__{slot_utc.isoformat()}", "dataset": "option_snapshots", "status": status,
+                "started_at": started_utc, "finished_at": started_utc + timedelta(minutes=3)}
+    t = lambda h, m: datetime(2026, 11, 27, h, m, tzinfo=timezone.utc)   # half day: 09:30-13:00 ET = 14:30-18:00 UTC
+    slots = [t(14, 30) + timedelta(minutes=5 * i) for i in range(42)]
+    rows = [sched(s, s) for s in slots if s != t(14, 35)]
+    rows += [sched(t(14, 35), t(14, 35), "failed"), sched(t(14, 35), t(14, 42))]   # 09:35 failed, retry ran at 09:42
+    d = tmp_path / "pipeline_runs/dataset=option_snapshots/ingest_date=2026-11-27"
+    d.mkdir(parents=True)
+    pl.DataFrame(rows, schema=RUN_SCHEMA).write_parquet(d / "runs.parquet")
+    by_name = {n: v for n, v, _ in day_summary(tmp_path, date(2026, 11, 27))[1]}
+    # by start time the retry looked like a second 09:40 run and 09:35 looked lost; and a half day is 42 slots, not 78
+    assert "正规时段覆盖 42/42" in by_name["❌ 期权快照"]   # red: the day still had a failed run

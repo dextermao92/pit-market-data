@@ -160,13 +160,30 @@ def _runs(data_dir: Path, day) -> pl.DataFrame:
     if not files:
         return pl.DataFrame()
     runs = pl.concat([pl.read_parquet(f) for f in files], how="diagonal")
-    return runs.with_columns(et=pl.col("started_at").dt.convert_time_zone(NY),
+    et = pl.col("started_at").dt.convert_time_zone(NY)
+    # the 5-min slot a run belongs to is in its Airflow run_id (scheduled__<slot>), not its start: a late retry
+    # counts for its own slot (the 2026-10-23 miscount). Manual runs, or a run_id that doesn't parse, have no slot:
+    # their start time stands in.
+    slot = pl.col("run_id").str.extract(r"^scheduled__(.+)$").str.to_datetime(time_zone="UTC", strict=False).dt.convert_time_zone(NY)
+    return runs.with_columns(et=et, slot=pl.coalesce(slot, et.dt.truncate("5m")),
                              run_s=(pl.col("finished_at") - pl.col("started_at")).dt.total_seconds()).filter(
         (pl.col("et").dt.date() == day) & ~pl.col("run_id").str.starts_with("backfill"))
 
 
 def _mins(et: pl.Expr) -> pl.Expr:
     return et.dt.hour().cast(pl.Int32) * 60 + et.dt.minute().cast(pl.Int32)
+
+
+def _rth(day) -> tuple[int, int]:
+    """Regular session open and close as ET minutes of the day, from the calendar (half days close at 13:00)."""
+    from pit.market_hours import calendar
+    cal = calendar()
+    return _minutes_et(cal.session_open(str(day))), _minutes_et(cal.session_close(str(day)))
+
+
+def _slots_covered(good: pl.DataFrame, first: int, last: int) -> int:
+    """Distinct 5-min slots from ET minute `first` to `last` (inclusive) with a successful run."""
+    return good.filter(_mins(pl.col("slot")).is_between(first, last))["slot"].n_unique()
 
 
 def day_summary(data_dir: Path, session) -> Check:
@@ -184,9 +201,11 @@ def day_summary(data_dir: Path, session) -> Check:
             head += f" · {good['rows'].sum():,} 行" + (f" · 隔离 {good['quarantined'].sum():,}" if good["quarantined"].sum() else "")
         detail = ""
         if ds == "option_snapshots" and good.height:
-            slots = good.filter(_mins(pl.col("et")).is_between(570, 959))["et"].dt.truncate("5m").n_unique()
-            detail = f"正规时段覆盖 {slots}/78 · 耗时中位 {good['run_s'].median():.0f}s / 最长 {good['run_s'].max():.0f}s"
-            lv = _worst(lv, "ok" if slots == 78 else "warn")
+            open_min, close_min = _rth(session)
+            due = (close_min - open_min) // 5
+            slots = _slots_covered(good, open_min, close_min - 5)
+            detail = f"正规时段覆盖 {slots}/{due} · 耗时中位 {good['run_s'].median():.0f}s / 最长 {good['run_s'].max():.0f}s"
+            lv = _worst(lv, "ok" if slots == due else "warn")
         if ds == "equity_bars" and good.height:
             last = good.sort("started_at")["missing_bars"][-1]
             detail = f"收盘时缺 {last} 根 bar"
@@ -234,13 +253,11 @@ def warmup(data_dir: Path, now: datetime) -> Check:
 
 def progress(data_dir: Path, now: datetime) -> Check:
     """Hourly in market hours: the session so far for the intraday datasets."""
-    from pit.market_hours import calendar
     et = now.astimezone(ZoneInfo(NY))
     runs = _runs(data_dir, et.date())
     if runs.is_empty():
         return "error", [("❌ 运行记录", "今天还没有任何运行记录", False)]
-    cal = calendar()
-    open_min, close_min = (_minutes_et(cal.session_open(str(et.date()))), _minutes_et(cal.session_close(str(et.date()))))
+    open_min, close_min = _rth(et.date())
     level, fields = "ok", []
     for ds in ("option_snapshots", "index_snapshots", "equity_bars"):
         r = runs.filter(pl.col("dataset") == ds).sort("started_at")
@@ -255,7 +272,7 @@ def progress(data_dir: Path, now: datetime) -> Check:
         if ds == "option_snapshots" and good.height:
             hi = min(et.hour * 60 + et.minute - 10, close_min - 5)  # slots that should have finished by now
             expected = max(0, (hi - open_min) // 5 + 1)
-            slots = good.filter(_mins(pl.col("et")).is_between(open_min, hi))["et"].dt.truncate("5m").n_unique()
+            slots = _slots_covered(good, open_min, hi)
             lines.append(f"正规时段覆盖 {slots}/{expected} · 耗时中位 {good['run_s'].median():.0f}s / 最长 {good['run_s'].max():.0f}s")
             lv = _worst(lv, "ok" if slots >= expected else "warn")
         if ds == "equity_bars" and good.height and last["missing_bars"]:

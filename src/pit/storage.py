@@ -19,7 +19,7 @@ def write_raw(data_dir: Path, source: str, dataset: str, payload: dict, ingested
             / f"{ingested_at:%Y%m%dT%H%M%S%fZ}.json")
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(payload, default=str))
+    tmp.write_text(json.dumps(payload, default=str), encoding="utf-8")
     tmp.replace(path)  # atomic: a crash never leaves a half-written file under the final name
     return path
 

@@ -30,7 +30,7 @@ SCHEMA = {
 
 
 def run(config_path: str, now: datetime | None = None) -> Path:
-    cfg = tomllib.loads(Path(config_path).read_text())["alpaca"]
+    cfg = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))["alpaca"]
     now = now or datetime.now(timezone.utc)
     t0 = time.monotonic()
     params = {"symbols": ",".join(cfg["symbols"]), "start": HISTORY_START,
@@ -66,7 +66,7 @@ def to_frame(payload: dict) -> pl.DataFrame:
 
 
 def stage_file(raw_path: Path) -> tuple[Path, pl.DataFrame, pl.DataFrame]:
-    staged, quarantined = check_corporate_actions(to_frame(json.loads(raw_path.read_text())))
+    staged, quarantined = check_corporate_actions(to_frame(json.loads(raw_path.read_text(encoding="utf-8"))))
     return write_staged(raw_path, staged, quarantined), staged, quarantined
 
 

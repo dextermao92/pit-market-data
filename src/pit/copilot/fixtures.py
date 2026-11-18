@@ -56,7 +56,7 @@ def build_base(src: Path, dst: Path = BASE) -> dict:
         shutil.copytree(src / sub, dst / sub)
     manifest = {"copied_at": datetime.now().astimezone().isoformat(timespec="seconds"), "source": str(src),
                 "files": {sub: len(list((dst / sub).rglob("*.parquet"))) for sub in COPIED}}
-    (dst / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    (dst / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
 
 
@@ -250,7 +250,7 @@ def build_real_case(case_id: str, through: date, src: Path = ROOT / "data", base
               for sub, col in (("pipeline_runs", "started_at"), ("staged/equity_bars", "bar_start"))}
     (root / "copy.json").write_text(json.dumps({
         "copied_at": datetime.now().astimezone().isoformat(timespec="seconds"), "source": str(Path(src).resolve()),
-        "days": [str(after + timedelta(days=1)), str(through)], "files": copied}, indent=2))
+        "days": [str(after + timedelta(days=1)), str(through)], "files": copied}, indent=2), encoding="utf-8")
     return root
 
 

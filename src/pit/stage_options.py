@@ -80,5 +80,5 @@ def to_frame(payload: dict) -> pl.DataFrame:
 
 
 def stage_file(raw_path: Path) -> tuple[Path, pl.DataFrame, pl.DataFrame]:
-    staged, quarantined = check_options(to_frame(json.loads(raw_path.read_text())))
+    staged, quarantined = check_options(to_frame(json.loads(raw_path.read_text(encoding="utf-8"))))
     return write_staged(raw_path, staged, quarantined), staged, quarantined

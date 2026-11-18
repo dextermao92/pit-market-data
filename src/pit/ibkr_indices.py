@@ -25,7 +25,7 @@ SCHEMA = {"ingested_at": TS, "symbol": pl.String, "exchange": pl.String, "price"
 
 
 def run(config_path: str) -> Path:
-    cfg = tomllib.loads(Path(config_path).read_text())
+    cfg = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))
     ingested_at, t0 = datetime.now(timezone.utc), time.monotonic()
     ib, errors = connect(cfg["ibkr"], client_offset=1)
     try:
@@ -66,7 +66,7 @@ def to_frame(payload: dict) -> pl.DataFrame:
 
 def stage_file(raw_path: Path) -> tuple[Path, pl.DataFrame, pl.DataFrame]:
     staged, quarantined = apply(
-        to_frame(json.loads(raw_path.read_text())),
+        to_frame(json.loads(raw_path.read_text(encoding="utf-8"))),
         errors={"required_fields": pl.col("symbol").is_null(), "duplicate_index": pl.col("symbol").is_duplicated()},
         # Indices only calculate in their sessions; outside them only the previous close is there.
         warns={"no_live_price": pl.col("price").is_null() & pl.col("last").is_null()},

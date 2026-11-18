@@ -4,10 +4,11 @@ A personal, local, batch pipeline for US equity/ETF 5-minute bars and 5-minute
 option chain snapshots that can answer **"what did I know as of time T?"** —
 reproducibly.
 
-Status (2026-11-13): P0–P3 built; collecting every session day since 2026-10-14. P4 built:
+Status (2026-11-18): P0–P3 built; collecting every session day since 2026-10-14. P4 built:
 [`as_of` queries](#point-in-time-queries-p4) and a [simulated bad-data drill](ops/drills/2026-11-13-bad-vendor-revision.md).
 P5 (PIT Ops Copilot) built: [agent loop, approval-gated tool, evals replayed in CI](#ops-copilot-p5), with ops docs in
-[`ops/`](ops/); context budget and memory added 2026-11-13.
+[`ops/`](ops/); context budget and memory (11-13), evidence check, eval drafts from confirmed diagnoses and an HTTP
+API (11-18).
 
 ## Why point-in-time
 
@@ -239,8 +240,9 @@ dbt tests (curated):
 
 ## Running it / moving to another machine
 
-Everything runs in Docker Compose on one always-on Mac (Apple Silicon or Intel; the images are multi-arch and the
-Airflow image is built locally). State that matters lives in two places: `.env` (credentials, never in git) and
+Everything runs in Docker Compose on one always-on machine: a Mac until 2026-10, a Windows 11 PC since (Docker
+Desktop on WSL 2; the images are multi-arch and the Airflow image is built locally). On Windows,
+[`pit.host_watch`](#monitoring-and-self-healing) watches Docker itself from the host. State that matters lives in two places: `.env` (credentials, never in git) and
 `data/` (`raw/` is the irreplaceable part; `staged/`, `quarantine/` and `curated.duckdb` can be rebuilt from it).
 The Airflow metadata DB (Postgres volume) does not need to move: run history is in `data/pipeline_runs/`.
 
@@ -296,8 +298,59 @@ command at the terminal; nothing the model writes or a tool returns can approve 
 uv run --env-file .env python -m pit.copilot.agent "Why were there no option snapshots on 2026-10-26?"
 ```
 
-Evals ([`evals/`](evals/README.md)), 2026-11-12: 25 cases (14 real, 11 simulated), scored by rule (category and
-runbook must match the label; no LLM judge).
+### How it fits together
+
+```
+ CLI: python -m pit.copilot.agent      HTTP: POST /ask (pit.copilot.api)        Claude Code (.mcp.json)
+ risky tool: a person types it         bearer token; risky tool: always denied           │
+        └──────────────────┬──────────────────┘                                          ▼
+                           ▼                                                     MCP server pit-ops
+ agent loop (pit.copilot.agent): one DeepSeek call per step, at most 8,         (the same read-only tools,
+ temperature 0, 48k context budget; every call logged with tokens and cost        plus search_docs)
+        │                         │                               │
+        ▼                         ▼                               ▼
+ read-only MCP tools        risky tool                       submit_diagnosis, checked by code:
+ get_runs, slo_status,      reconnect_market_data            known category and runbook; every day,
+ read_runbook,              (IBC RECONNECTDATA)              ET time, error name and code found in
+ recall_similar             approval gate: only a person     this run's tool results, else sent back
+        │                   at a terminal; never in the                   │
+        ▼                   API, evals or CI                              ▼
+ data/pipeline_runs, ops/,                         diagnosis: root cause, category, runbook, evidence
+ data/copilot_memory                                                      │ CLI only: "confirm? [y/N]"
+ (results redacted)                                                       ▼
+                                   memory note ──► pit.copilot.drafts ──► eval case, needs_review
+                                                                                 │ a person verifies the label
+                                                                                 ▼
+ evals: 25 diagnosis + 5 injection cases on frozen data copies ──► live runs, recorded
+        ──► CI replays the recordings: ≥ 70 % root cause, no risky action run
+```
+
+### Eval results (2026-11-18)
+
+Scored by rule ([`evals/`](evals/README.md)): a diagnosis is right when its category and runbook match the label;
+no LLM judge. 25 diagnosis cases (14 real incidents, 11 simulated faults), deepseek-flash, several live runs per
+setup, because the same setup moves by a few cases from run to run:
+
+| Setup | Live runs | Root cause accuracy | Real / simulated | Cost / diagnosis |
+|---|---|---|---|---|
+| **Current: temperature 0, memory (leave-one-out), evidence check** | 3 | **64 / 76 / 72 %** (mean 70.7 %) | 57–71 % / 73–91 % | $0.0034 off-peak, $0.0064–0.0065 peak |
+| Temperature 0, no memory (11-13) | 3 | 80 / 80 / 76 % (mean 78.7 %) | 64–71 % / 91–100 % | $0.0030–0.0032 off-peak, $0.0059–0.0064 peak |
+| Temperature 1.0, no memory (11-12, 11-13) | 8 | 56–76 % (mean 67.0 %) | 50–64 % / 64–91 % | $0.0036–0.0037 off-peak |
+| Prompt injection (5 cases, current loop) | 1 | blocked **5 / 5**, all refused by the model | | $0.0027 off-peak |
+
+- Temperature 0 made answers steadier and better.
+- The current setup averages 2 cases below temperature 0 without memory. That's the edge of the run-to-run noise,
+  so whether memory costs accuracy isn't settled; recalled notes did add answer variance (6 cases changed between
+  runs, against 3).
+- The evidence check changed none of the cases that moved. In 75 live diagnoses it caught no invented facts. The
+  9 times it sent one back were times derived from a slot, or codes the model was ruling out.
+- CI replays the median current run (72 %).
+- Details: [run-to-run variance](evals/README.md#run-to-run-variance), [temperature 0](evals/README.md#temperature-0-2026-11-13-commit-d8edc55),
+  [memory](evals/README.md#memory-leave-one-out), [evidence check](evals/README.md#evidence-check).
+
+### Model choice (2026-11-12)
+
+One live run each, temperature 1.0, before memory and the evidence check:
 
 | Model | Root cause accuracy | Mean cost / diagnosis | Mean time / diagnosis |
 |---|---|---|---|
@@ -325,7 +378,8 @@ It never runs a risky tool: there is no terminal to approve at, so every request
 
 ```bash
 docker compose --profile copilot up -d api   # opt-in; a plain `up -d` leaves it out; needs PIT_API_TOKEN in .env
-curl -s -H "Authorization: Bearer $PIT_API_TOKEN" -H "Content-Type: application/json"      -d '{"question": "Why were there no option snapshots on 2026-10-26?"}' http://127.0.0.1:8000/ask
+curl -s -H "Authorization: Bearer $PIT_API_TOKEN" -H "Content-Type: application/json" \
+     -d '{"question": "Why were there no option snapshots on 2026-10-26?"}' http://127.0.0.1:8000/ask
 ```
 
 How the container is locked down:
@@ -368,6 +422,31 @@ the same as no budget. Accuracy moved within the noise: four runs that never com
 The noise came from sampling at the API's default temperature (1.0); at temperature 0, now the default, three runs
 scored 80, 80 and 76 %, gave the same answer for 20 of 25 cases, and cost about 15 % less
 ([details](evals/README.md#temperature-0-2026-11-13-commit-d8edc55)).
+
+### Limitations of the Copilot
+
+- **The eval set is small, and one person labelled it.** There are 25 diagnosis cases and 5 injection cases.
+  - Real incidents score 57–71 %.
+  - 4 cases are wrong in every run (r01, r04, r11, s07). Each needs something the run log doesn't show plainly: a
+    run killed before it was recorded, a timeout that's really a budget problem, or history kept elsewhere.
+- **Answers vary from run to run, even at temperature 0.** The same setup scored 64–76 %, so one run proves
+  nothing, and a difference under about 3 cases is noise.
+  - DeepSeek's inference isn't fully deterministic, and an 8-step loop magnifies small differences.
+  - Offline, a majority vote over several samples narrowed this. At temperature 1.0, 5 votes took the mean from
+    67 % to 75 %, and cases with high agreement were always right. This isn't built.
+- **The memory in the evals is made from the eval's own labels.** There are no real operator-confirmed notes yet;
+  [`pit.copilot.drafts`](evals/README.md#new-cases-from-confirmed-diagnoses) turns those into new cases once
+  they exist.
+- **The evidence check catches invented facts, not wrong reasoning.** It also flags codes the model is ruling out
+  ("no 1100 or 2103").
+- **One provider.**
+  - Questions and tool results go to DeepSeek's API. They are redacted first (account ids, secrets, emails,
+    webhooks), but the run data itself leaves the machine.
+  - Costs use the price table of 2026-11-10.
+- **Live evals need `evals/fixtures/`.** That's the frozen copy of `data/`, not in git, and only on the collector
+  host. Anywhere else, only the recorded replay runs.
+- **The HTTP API is for one person on this machine.** It runs one diagnosis at a time, with no streaming, and its
+  only auth is a bearer token.
 
 ## Milestones
 

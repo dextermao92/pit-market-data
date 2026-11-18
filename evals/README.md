@@ -62,9 +62,13 @@ their own. A run that ends without a diagnosis is wrong. Cost and latency per di
 (`data/llm_calls/`), by the diagnosis's `run_id`.
 
 ```bash
-uv run --env-file .env python -m pit.copilot.eval --model deepseek-flash      # live; records to recordings/
-uv run python -m pit.copilot.eval --model deepseek-flash --replay              # no API, no data/
+uv run --env-file .env python -m pit.copilot.eval --model deepseek-flash --memory loo      # live; records to recordings/
+uv run python -m pit.copilot.eval --model deepseek-flash --memory loo --replay              # no API, no data/ (as CI)
 ```
+
+Only the `deepseek-flash-memory-loo` recordings follow the current loop. The others are kept as the raw record of
+the runs below and predate the [evidence check](#evidence-check). For example, a `--replay` without `--memory`
+diverges on s06 and s09, because their diagnoses would now be sent back.
 
 ## Results (2026-11-12, commit `eadf503`, thinking off, off-peak prices)
 

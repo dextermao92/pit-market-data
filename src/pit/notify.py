@@ -73,7 +73,7 @@ def alert_once(key: str, title: str, body: str = "", fields: list[Field] = (), l
     if marker.exists():
         return False
     marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(title)
+    marker.write_text(title, encoding="utf-8")
     send(title, body, fields, level)
     return True
 
@@ -90,7 +90,7 @@ def task_failed(context) -> None:
     if marker.exists():
         return
     marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(str(context.get("run_id")))
+    marker.write_text(str(context.get("run_id")), encoding="utf-8")
     send(f"❌ 任务失败：{TASK_ZH.get(ti.task_id, ti.task_id)}", f"`{ti.dag_id}.{ti.task_id}` 失败（重试也用完）；连续失败只提醒这一次，恢复时会再通知",
          [("🕒 运行", str(context.get("run_id")), True), ("🔁 尝试次数", str(ti.try_number), True),
           ("💥 错误", f"```{context.get('exception')!r}"[:1000] + "```", False)], level="error")
@@ -101,7 +101,7 @@ def task_succeeded(context) -> None:
     ti = context["ti"]
     marker = _failing_marker(ti)
     if marker.exists():
-        failed_run = marker.read_text()
+        failed_run = marker.read_text(encoding="utf-8")
         marker.unlink()
         send(f"✅ 已恢复：{TASK_ZH.get(ti.task_id, ti.task_id)}", f"`{ti.dag_id}.{ti.task_id}` 重新成功",
              [("🕒 本次成功", str(context.get("run_id")), False), ("🕘 上次失败", failed_run, False)], level="ok")

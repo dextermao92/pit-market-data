@@ -23,7 +23,7 @@ SCHEMA = {"ingested_at": TS, "asset_id": pl.String, "symbol": pl.String, "name":
 
 
 def run(config_path: str, now: datetime | None = None) -> Path:
-    symbols = tomllib.loads(Path(config_path).read_text())["alpaca"]["symbols"]
+    symbols = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))["alpaca"]["symbols"]
     now = now or datetime.now(timezone.utc)
     t0 = time.monotonic()
     headers = {"APCA-API-KEY-ID": os.environ["APCA_API_KEY_ID"], "APCA-API-SECRET-KEY": os.environ["APCA_API_SECRET_KEY"]}
@@ -50,7 +50,7 @@ def to_frame(payload: dict) -> pl.DataFrame:
 
 def stage_file(raw_path: Path) -> tuple[Path, pl.DataFrame, pl.DataFrame]:
     staged, quarantined = apply(
-        to_frame(json.loads(raw_path.read_text())),
+        to_frame(json.loads(raw_path.read_text(encoding="utf-8"))),
         errors={"required_fields": pl.any_horizontal(pl.col(c).is_null() for c in ("asset_id", "symbol"))},
         warns={"not_tradable": (pl.col("status") != "active") | ~pl.col("tradable")},
     )

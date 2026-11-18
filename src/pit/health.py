@@ -216,7 +216,7 @@ def day_summary(data_dir: Path, session) -> Check:
     fields.append(("💾 当日写入", f"{added / 1e6:,.0f} MB（raw + staged）", False))
     results = Path(os.environ.get("DBT_RESULTS_DIR", "dbt/target")) / "run_results.json"
     if results.exists():
-        rr = json.loads(results.read_text())
+        rr = json.loads(results.read_text(encoding="utf-8"))
         failed = [x["unique_id"].split(".")[-1] for x in rr["results"] if x["status"] in ("fail", "error")]
         at = datetime.fromisoformat(rr["metadata"]["generated_at"].replace("Z", "+00:00")).astimezone(ZoneInfo(NY))
         if at.date() < session:  # dbt didn't run (or crashed before writing results) for this session
@@ -225,7 +225,7 @@ def day_summary(data_dir: Path, session) -> Check:
         level = _worst(level, lv)
         fields.append((f"{LEVEL_MARK[lv]} dbt build", (f"{len(rr['results'])} 个节点全部通过" if not failed
                                                        else "失败：" + "、".join(failed)) + f" · 美东 {at:%m-%d %H:%M}", False))
-    alerts = sorted(p.read_text() for p in (data_dir / "cache" / "alerts" / str(session)).glob("*"))
+    alerts = sorted(p.read_text(encoding="utf-8") for p in (data_dir / "cache" / "alerts" / str(session)).glob("*"))
     fields.append(("🔔 当日告警", "\n".join(f"• {a}" for a in alerts) or "无", False))
     return level, fields
 
@@ -280,7 +280,7 @@ def progress(data_dir: Path, now: datetime) -> Check:
             lv = _worst(lv, "warn")
         level = _worst(level, lv)
         fields.append((f"{LEVEL_MARK[lv]} {DATASET_ZH[ds]}", "\n".join(lines), False))
-    alerts = sorted(p.read_text() for p in (data_dir / "cache" / "alerts" / str(et.date())).glob("*"))
+    alerts = sorted(p.read_text(encoding="utf-8") for p in (data_dir / "cache" / "alerts" / str(et.date())).glob("*"))
     fields.append(("🔔 今日告警", "\n".join(f"• {a}" for a in alerts) or "无", False))
     return level, fields
 
@@ -332,7 +332,7 @@ def watchdog(now: datetime | None = None, heal=None) -> list[str]:
             sent.append(ds)
     if {"option_snapshots", "index_snapshots"} & set(sent):
         heal = heal or (lambda: gateway_with_healing(
-            tomllib.loads(Path(os.environ.get("IBKR_CONFIG", "config/ibkr.toml")).read_text())["ibkr"]))
+            tomllib.loads(Path(os.environ.get("IBKR_CONFIG", "config/ibkr.toml")).read_text(encoding="utf-8"))["ibkr"]))
         level, fields = heal()
         send(f"{LEVEL_MARK[level]} 数据停滞后的 Gateway 检查", HEADLINE["gateway"][level], fields, level)
     return sent
@@ -357,7 +357,7 @@ def report(kind: str) -> tuple[str, str, str, list[Field]]:
     data_dir = Path(os.environ.get("DATA_DIR", "data"))
     now = datetime.now(timezone.utc)
     if kind == "gateway":
-        ibkr_cfg = tomllib.loads(Path(os.environ.get("IBKR_CONFIG", "config/ibkr.toml")).read_text())["ibkr"]
+        ibkr_cfg = tomllib.loads(Path(os.environ.get("IBKR_CONFIG", "config/ibkr.toml")).read_text(encoding="utf-8"))["ibkr"]
         checks, title = [gateway_with_healing(ibkr_cfg), check_alpaca()], "Gateway 检查（开盘前）"
     elif kind == "warmup":
         checks, title = [warmup(data_dir, now)], "开盘预热检查"

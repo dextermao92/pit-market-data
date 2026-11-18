@@ -31,7 +31,7 @@ class BudgetExceeded(RuntimeError):
 
 
 def load_config(path: Path = CONFIG) -> dict:
-    return tomllib.loads(Path(path).read_text())
+    return tomllib.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def is_peak(at: datetime, cfg: dict) -> bool:
@@ -177,4 +177,4 @@ if __name__ == "__main__":
         llm = LLM()
         resp = llm.chat([{"role": "user", "content": " ".join(sys.argv[1:])}], purpose="cli")
         print(resp.choices[0].message.content)
-        print((llm.log_dir / f"{datetime.now(timezone.utc):%Y-%m-%d}.jsonl").read_text().splitlines()[-1])
+        print((llm.log_dir / f"{datetime.now(timezone.utc):%Y-%m-%d}.jsonl").read_text(encoding="utf-8").splitlines()[-1])

@@ -81,7 +81,7 @@ def _recorded(dataset: str, run_id: str | None, collect) -> dict:
 
 def _stage(dataset: str, raw: Path) -> tuple[dict, dict, pl.DataFrame, pl.DataFrame]:
     staged_path, staged, quarantined = STAGERS[dataset](raw)
-    payload = json.loads(raw.read_text())
+    payload = json.loads(raw.read_text(encoding="utf-8"))
     rec = {"raw_path": str(raw), "staged_path": str(staged_path), "cycle_s": payload["duration_s"],
            "rows": staged.height, "quarantined": quarantined.height,
            "flagged": staged.filter(pl.col("flags").list.len() > 0).height}

@@ -54,7 +54,7 @@ def fetch_pages(client: httpx.Client, path: str, params: dict) -> list[dict]:
 def run(config_path: str, now: datetime | None = None, session: date | None = None) -> Path:
     """Completed bars of `session` (default: the current/last session) so far. A past session gives the
     whole day; ingested_at is always the real fetch time, also for refetches and backfills."""
-    cfg = tomllib.loads(Path(config_path).read_text())["alpaca"]
+    cfg = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))["alpaca"]
     now = now or datetime.now(timezone.utc)
     t0 = time.monotonic()
     cal = calendar()
@@ -83,7 +83,7 @@ def run(config_path: str, now: datetime | None = None, session: date | None = No
 
 def run_daily(config_path: str, sessions: list[date], now: datetime | None = None) -> Path:
     """Vendor daily bars for `sessions`; used to reconcile aggregated 5-min bars (dbt)."""
-    cfg = tomllib.loads(Path(config_path).read_text())["alpaca"]
+    cfg = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))["alpaca"]
     now = now or datetime.now(timezone.utc)
     t0 = time.monotonic()
     # A date-only end means "end of that day", which hits the free plan's 15-minute limit for today.
@@ -113,7 +113,7 @@ def to_frame(payload: dict, pages_key: str = "pages") -> pl.DataFrame:
 
 
 def stage_file(raw_path: Path) -> tuple[Path, pl.DataFrame, pl.DataFrame]:
-    payload = json.loads(raw_path.read_text())
+    payload = json.loads(raw_path.read_text(encoding="utf-8"))
     prev_close = to_frame(payload, "prev_pages").select("symbol", prev_close="close")  # absent in early raw files
     staged, quarantined = check_bars(to_frame(payload), prev_close, intraday=raw_path.parent.name == "equity_bars")
     return write_staged(raw_path, staged, quarantined), staged, quarantined

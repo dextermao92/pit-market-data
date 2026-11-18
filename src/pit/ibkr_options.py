@@ -151,11 +151,11 @@ def day_cached(name: str, today: date, fetch, refresh: bool = False):
     stalled ~5 min while quotes kept flowing, and took a whole run with it. Derived and safe to delete."""
     path = _cache_root() / str(today) / name
     if path.exists() and not refresh:
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
     data = fetch()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data))
+    tmp.write_text(json.dumps(data), encoding="utf-8")
     tmp.replace(path)
     return data
 
@@ -249,7 +249,7 @@ def warm_cache(config_path: str) -> dict:
     back. So: underlyings + expirations (a few small answers), contract lists only for expiries not yet cached, and
     a few of the oldest cached lists (newly listed strikes), `warm_pause_seconds` apart. The refresh stops at its
     first failure (each unanswered request waits RequestTimeout) and fails the task, while runs use the cache."""
-    cfg = tomllib.loads(Path(config_path).read_text())
+    cfg = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))
     ib_cfg = cfg["ibkr"]
     t0, today = time.monotonic(), datetime.now(ZoneInfo("America/New_York")).date()
     carried = carry_forward(today)
@@ -305,7 +305,7 @@ def carry_forward(today: date) -> int:
 
 
 def run(config_path: str) -> Path:
-    cfg = tomllib.loads(Path(config_path).read_text())
+    cfg = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))
     ingested_at, t0 = datetime.now(timezone.utc), time.monotonic()
     now_et = datetime.now(ZoneInfo("America/New_York"))
     ib, errors = connect(cfg["ibkr"])

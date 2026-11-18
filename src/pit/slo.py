@@ -32,7 +32,7 @@ def compute(data_dir: Path, session_rows: list, n_symbols: int) -> pl.DataFrame:
     con.executemany("insert into sessions values (?, ?, ?)", session_rows)
     con.execute("set variable data_dir = ?", [str(data_dir)])
     con.execute("set variable n_symbols = ?", [n_symbols])
-    rel = con.sql((ROOT / "ops" / "slo.sql").read_text())
+    rel = con.sql((ROOT / "ops" / "slo.sql").read_text(encoding="utf-8"))
     return pl.DataFrame(rel.fetchall(), schema=rel.columns, orient="row")
 
 
@@ -42,7 +42,7 @@ def main() -> None:
     ap.add_argument("--sessions", type=int, default=20)
     ap.add_argument("--data-dir", type=Path, default=Path("data"))
     a = ap.parse_args()
-    n_symbols = len(tomllib.loads((ROOT / "config" / "alpaca_bars.toml").read_text())["alpaca"]["symbols"])
+    n_symbols = len(tomllib.loads((ROOT / "config" / "alpaca_bars.toml").read_text(encoding="utf-8"))["alpaca"]["symbols"])
     with pl.Config(tbl_rows=-1, tbl_cols=-1, tbl_width_chars=160):
         print(compute(a.data_dir, sessions(a.end, a.sessions), n_symbols))
 

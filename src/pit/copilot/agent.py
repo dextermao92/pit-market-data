@@ -21,6 +21,7 @@ terminal prompt; any other answer, or a non-interactive stdin, denies.
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import uuid
@@ -43,7 +44,7 @@ from pit.copilot.categories import CATEGORIES
 from pit.copilot.context import Budget
 from pit.copilot.llm import LLM, load_config
 from pit.copilot.mcp_server import server
-from pit.copilot.memory import confirm_and_remember, has_notes
+from pit.copilot.memory import CODES, NUMBER, STRONG, confirm_and_remember, has_notes
 
 MAX_STEPS = 8
 # MCP tools the agent isn't given. search_docs (retrieval) serves Claude Code; the agent lists the ops docs and reads
@@ -106,8 +107,35 @@ def assistant_turn(msg) -> dict:
     return turn
 
 
-def check_diagnosis(d: dict, docs: set[str]) -> str | None:
-    """Why a submitted diagnosis is rejected, or None if it's acceptable."""
+HHMM = re.compile(r"\b(\d{1,2}):(\d{2})\b")
+
+
+def anchors(item: dict) -> list[str]:
+    """The checkable parts of one evidence item: its day, every HH:MM in time_et, and the exception names and IBKR/HTTP
+    codes in its detail (memory.py's rules): the facts a model can invent. Not the dataset (a fixed vocabulary the
+    model also fills with tool names or lists), not paraphrase or counts."""
+    detail = str(item.get("detail") or "")
+    return ([str(item["day"])[:10]] if item.get("day") else []) \
+        + [f"{int(h):02d}:{m}" for h, m in HHMM.findall(str(item.get("time_et") or ""))] \
+        + STRONG.findall(detail) + [n for n in NUMBER.findall(detail) if n in CODES]
+
+
+def ungrounded(evidence: list, seen: str) -> list[str]:
+    """Evidence items with a checkable part that appears nowhere in what the agent saw this run (the question and the
+    tool results), as "evidence N (missing parts)". Catches invented times, days, errors and codes; can't tell
+    whether real facts support the conclusion."""
+    seen = seen.lower()
+    out = []
+    for i, item in enumerate(evidence, 1):
+        missing = [a for a in anchors(item) if a.lower() not in seen] if isinstance(item, dict) else []
+        if missing:
+            out.append(f"evidence {i} ({', '.join(dict.fromkeys(missing))})")
+    return out
+
+
+def check_diagnosis(d: dict, docs: set[str], seen: str | None = None) -> str | None:
+    """Why a submitted diagnosis is rejected, or None if it's acceptable. With `seen` (the question and every tool
+    result of this run), its evidence must also be found there."""
     missing = [k for k in ("root_cause", "category", "runbook", "evidence") if not d.get(k)]
     if missing:
         return f"missing or empty: {', '.join(missing)}"
@@ -115,6 +143,10 @@ def check_diagnosis(d: dict, docs: set[str]) -> str | None:
         return f"unknown category {d['category']!r}; use one of: {', '.join(CATEGORIES)}"
     if d["runbook"].removesuffix(".md") not in docs:
         return f"unknown runbook {d['runbook']!r}; use one of: {', '.join(sorted(docs))}"
+    if seen is not None and (bad := ungrounded(d["evidence"], seen)):
+        return (f"not found in any tool result: {'; '.join(bad)}. Quote days, ET times, error names and codes exactly "
+                "as the tools returned them, or look them up first. A time you worked out (from gap_s, a slot in a "
+                "run_id) goes in detail with how you got it, with time_et empty. Or drop the item")
     return None
 
 
@@ -142,7 +174,7 @@ async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose:
     ibc.command, for tests. mcp_client replaces the in-process MCP client (evals record and replay through it).
     context_budget: prompt tokens per call (default: config/llm.toml context_budget_tokens; 0 = no budget)."""
     run_id = uuid.uuid4().hex[:12]
-    actions, denied, compactions = [], set(), 0
+    actions, denied, compactions, rejections = [], set(), 0, []
     budget = Budget(llm.cfg["llm"].get("context_budget_tokens", 0) if context_budget is None else context_budget)
     calls = {}  # tool_call_id -> (name, args), to name what a compaction replaced
     trace = Trace(Path(trace_dir or Path(os.environ.get("DATA_DIR", "data")) / "copilot_traces"), run_id)
@@ -158,6 +190,7 @@ async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose:
         docs = {line.strip() for line in docs_text.splitlines()[1:] if line.strip()}
         system = SYSTEM.format(today=today, memory=MEMORY_STEP if with_memory else "")
         messages = [{"role": "system", "content": system}, {"role": "user", "content": question}]
+        seen = [question]  # what the model was shown this run: the evidence must come from here
         trace(step=0, kind="question", note=question, model=llm.model, thinking=llm.thinking, memory=with_memory)
 
         for step in range(1, max_steps + 1):
@@ -200,9 +233,11 @@ async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose:
                 if args is None:
                     pass
                 elif name == "submit_diagnosis":
-                    problem = check_diagnosis(args, docs)
+                    problem = check_diagnosis(args, docs, "\n".join(seen))
                     result = f"Rejected: {problem}. Fix it and call submit_diagnosis again." if problem else "Accepted."
-                    if not problem:
+                    if problem:
+                        rejections.append("evidence" if problem.startswith("not found") else "format")
+                    else:
                         final = args
                 elif name in ACTIONS:  # the loop asks the person; nothing in args or earlier results can approve
                     action, reason = ACTIONS[name], str(args.get("reason", ""))
@@ -223,6 +258,7 @@ async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose:
                     calls[call.id] = (name, args)
                     if len(result) > MAX_TOOL_CHARS:
                         result = result[:MAX_TOOL_CHARS] + f"\n[truncated: {len(result)} chars; narrow the query]"
+                    seen.append(result)
                 else:
                     result = f"Error: no tool named {name!r}"
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
@@ -232,11 +268,12 @@ async def diagnose(question: str, llm: LLM, max_steps: int = MAX_STEPS, purpose:
                 trace(step=step, kind="final", note=final["category"], diagnosis=final)
                 return {"status": "ok", "diagnosis": final, "steps": step, "run_id": run_id,
                         "model": llm.model, "seconds": round(time.monotonic() - t0, 3), "actions": actions,
-                        "compactions": compactions}
+                        "compactions": compactions, "rejections": rejections}
 
     trace(step=max_steps, kind="final", note="max_steps reached without a diagnosis")
     return {"status": "max_steps", "diagnosis": None, "steps": max_steps, "run_id": run_id, "model": llm.model,
-            "seconds": round(time.monotonic() - t0, 3), "actions": actions, "compactions": compactions}
+            "seconds": round(time.monotonic() - t0, 3), "actions": actions, "compactions": compactions,
+            "rejections": rejections}
 
 
 def make_llm(model: str | None = None, thinking: bool | None = None, **kw) -> LLM:

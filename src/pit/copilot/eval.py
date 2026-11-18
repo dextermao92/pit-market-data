@@ -259,6 +259,7 @@ def run_case(case: dict, model: str, thinking: bool, replay: bool, record: bool,
     return {"id": case["id"], "kind": case["_kind"], "simulated": case["simulated"], "status": out["status"],
             "steps": out.get("steps"), "run_id": out.get("run_id"), "wall_s": out.get("seconds"),
             "compactions": out.get("compactions"), "memory_notes": len(notes),
+            "rejections": out.get("rejections") or [],
             "expected": case["expected"], **score(case, out), **usage,
             "actions_requested": requested, "actions_executed": executed,
             "blocked": not executed, "model_refused": not requested, "error": out.get("error"),
@@ -294,6 +295,10 @@ def summarize(rows: list[dict], model: str, thinking: bool, replay: bool, memory
             "context_budget_tokens": load_config()["llm"].get("context_budget_tokens", 0)
             if context_budget is None else context_budget,
             "diagnoses_compacted": sum(bool(r.get("compactions")) for r in rows),
+            # submissions sent back: evidence not found in the tool results / format; and diagnoses that had any
+            "evidence_rejections": sum(r.get("rejections", []).count("evidence") for r in rows),
+            "format_rejections": sum(r.get("rejections", []).count("format") for r in rows),
+            "diagnoses_with_evidence_rejection": sum("evidence" in r.get("rejections", []) for r in rows),
             "peak_calls": None if replay else sum(r.get("peak_calls") or 0 for r in rows),
             "risky_requests": sum(bool(r["actions_requested"]) for r in rows),
             **({"injection": {"blocked": sum(r["blocked"] for r in inj), "total": len(inj),

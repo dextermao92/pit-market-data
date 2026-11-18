@@ -37,10 +37,13 @@ class Scripted:
         return self.replies.pop(0)
 
 
+# Cites only what the question already says (the day), so tests of the loop's mechanics don't depend on which tools
+# ran; CITED quotes the runs write_runs makes, so it is only accepted after get_runs.
 GOOD = {"root_cause": "IB Gateway API connect timed out", "category": "gateway_frozen",
         "runbook": "runbooks/gateway",
-        "evidence": [{"day": "2026-10-26", "time_et": "09:10", "dataset": "option_snapshots",
-                      "detail": "TimeoutError()"}]}
+        "evidence": [{"day": "2026-10-26", "dataset": "option_snapshots", "detail": "option runs failed all morning"}]}
+CITED = GOOD | {"evidence": [{"day": "2026-10-26", "time_et": "09:10", "dataset": "option_snapshots",
+                              "detail": "TimeoutError()"}]}
 
 
 def run(client, tmp_path, monkeypatch, thinking=False, max_steps=8, error=None, **kw):
@@ -60,10 +63,10 @@ def trace_rows(tmp_path):
 
 def test_tool_then_submit(tmp_path, monkeypatch):
     client = Scripted(reply(call("get_runs", {"day": "2026-10-26", "status": "failed"})),
-                      reply(call("submit_diagnosis", GOOD, "c2")))
+                      reply(call("submit_diagnosis", CITED, "c2")))
     out = run(client, tmp_path, monkeypatch)
 
-    assert out["status"] == "ok" and out["steps"] == 2 and out["diagnosis"] == GOOD
+    assert out["status"] == "ok" and out["steps"] == 2 and out["diagnosis"] == CITED and out["rejections"] == []
     tool_msg = client.sent[1][-1]
     assert tool_msg["role"] == "tool" and tool_msg["tool_call_id"] == "c1"
     runs = json.loads(tool_msg["content"])
@@ -117,3 +120,27 @@ def test_thinking_mode_sends_reasoning_back(tmp_path, monkeypatch):
                                    (GOOD | {"runbook": "runbooks/gateway.md"}, True)])
 def test_check_diagnosis(d, ok):
     assert (check_diagnosis(d, {"runbooks/gateway", "slo"}) is None) == ok
+
+
+def test_evidence_not_in_any_tool_result_is_sent_back(tmp_path, monkeypatch):
+    # Cites 09:10 and TimeoutError before looking anything up: rejected, then accepted once get_runs has shown them.
+    client = Scripted(reply(call("submit_diagnosis", CITED, "c1")),
+                      reply(call("get_runs", {"day": "2026-10-26", "status": "failed"}, "c2")),
+                      reply(call("submit_diagnosis", CITED, "c3")))
+    out = run(client, tmp_path, monkeypatch)
+    assert out["status"] == "ok" and out["rejections"] == ["evidence"]
+    rejected = client.sent[1][-1]["content"]
+    assert rejected.startswith("Rejected: not found in any tool result: evidence 1 (09:10, TimeoutError)")
+
+
+@pytest.mark.parametrize("item, ok", [
+    ({"day": "2026-10-26", "time_et": "9:10", "detail": "TimeoutError()"}, True),     # 9:10 matches 09:10:00
+    ({"time_et": "09:10–09:20", "detail": "x"}, False),                                # 09:20 never shown
+    ({"detail": "IBKR 10197 on every run"}, False),                                    # a code nobody returned
+    ({"detail": "errno 28 no space left"}, False),
+    ({"dataset": "slo_status", "detail": "coverage 0 of 78"}, True),                   # no checkable part
+])
+def test_ungrounded_checks_days_times_errors_and_codes(item, ok):
+    from pit.copilot.agent import ungrounded
+    seen = "question about 2026-10-26\n{\"started_et\": \"09:10:00\", \"error\": \"TimeoutError()\"}"
+    assert (ungrounded([item], seen) == []) is ok

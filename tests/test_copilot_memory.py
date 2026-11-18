@@ -3,7 +3,7 @@
 import json
 
 import pytest
-from test_copilot_agent import GOOD, Scripted, call, reply, run, trace_rows
+from test_copilot_agent import CITED, GOOD, Scripted, call, reply, run, trace_rows
 
 from pit.copilot.memory import (
     BANNER,
@@ -44,7 +44,7 @@ def test_recall_text_is_framed_as_data_and_redacted(tmp_path):
     assert format_recall([]) == "No similar past diagnoses in memory."
 
 
-DONE = {"status": "ok", "diagnosis": GOOD}
+DONE = {"status": "ok", "diagnosis": CITED}  # a note keeps the cited error signature
 
 
 @pytest.mark.parametrize("isatty, answer, status", [

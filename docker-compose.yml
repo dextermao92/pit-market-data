@@ -78,11 +78,43 @@ services:
       - "127.0.0.1:8080:8080"
     restart: unless-stopped
 
+  # The Copilot's HTTP API (POST /ask, pit.copilot.api). Opt-in: `docker compose --profile copilot up -d api`; a plain
+  # `docker compose up -d` leaves it out. Bearer token PIT_API_TOKEN from .env (/ask is off without one). Its own
+  # network: no route to ib-gateway, and risky tools are off (PIT_COPILOT_NO_ACTIONS=1). Data is read-only except
+  # the LLM call log and the traces it writes.
+  api:
+    profiles: [copilot]
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      PIT_API_TOKEN: ${PIT_API_TOKEN:-}
+      PIT_COPILOT_NO_ACTIONS: "1"
+      DATA_DIR: /app/data
+    volumes:
+      - ./src:/app/src:ro
+      - ./config:/app/config:ro
+      - ./ops:/app/ops:ro
+      - ./README.md:/app/README.md:ro
+      - ./data:/app/data:ro
+      - ./data/llm_calls:/app/data/llm_calls
+      - ./data/copilot_traces:/app/data/copilot_traces
+    networks: [copilot]
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      retries: 3
+    restart: unless-stopped
+
 networks:
   default:
     ipam:
       config:
         - subnet: 172.30.0.0/24
+  copilot: {}
 
 volumes:
   pgdata:

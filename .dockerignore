@@ -1,0 +1,10 @@
+# Neither image copies the repo in (code is mounted), so keep the build context small: data/ is many GB.
+data/
+evals/fixtures/
+sample_data/
+.venv/
+.git/
+dbt/target/
+dbt/logs/
+databricks/
+**/__pycache__/

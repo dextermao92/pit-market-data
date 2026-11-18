@@ -1,4 +1,4 @@
-"""Pre-publication secret scan (ops/public-release-checklist.md): every blob reachable from any ref, every commit
+"""Pre-publication secret scan (docs/public-release-checklist.md): every blob reachable from any ref, every commit
 message and every author / committer, against the values in .env and patterns for keys, webhooks, IBKR account ids,
 emails, user paths, and the extra terms in .env's SCAN_EXTRA_TERMS (comma-separated, matched case-insensitively:
 e.g. old usernames that are no longer in .env). Prints key names, locations and masked matches, never a value.

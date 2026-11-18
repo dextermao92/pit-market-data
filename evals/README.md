@@ -252,6 +252,88 @@ Raw: [`loo`](results/2026-11-13-deepseek-flash-memory-loo.json),
 Verdict: no evidence that memory hurts, weak evidence that it helps on real cases (+2 of 14, one run). Labels from
 24 cases are a small memory; this is the expected weak spot of a memory built from 25 incidents.
 
+## Evidence check
+
+Since commit `b7fc328`, a submitted diagnosis is also checked against what the agent saw in this run (the
+question plus every tool result, `seen` in [`agent.py`](../src/pit/copilot/agent.py)). Each evidence item's
+checkable parts are:
+
+- the day;
+- every `HH:MM` in `time_et`;
+- exception names and IBKR/HTTP error codes in `detail` (the same rules as `memory.py`).
+
+Each part must appear in that text. If one doesn't, the diagnosis goes back with the missing parts named: "quote
+them as the tools returned them, or put a time you worked out in `detail` with `time_et` empty, or drop the
+item". Not checked: dataset names (a fixed vocabulary), paraphrase and counts. The check catches invented facts,
+not wrong reasoning over real ones. The eval counts `evidence_rejections`, `format_rejections` and
+`diagnoses_with_evidence_rejection`.
+
+**Offline, before the live runs.** The check was run over the 90 recorded diagnoses of the earlier live runs:
+
+- 6 of the 90 diagnoses had something it couldn't find (8 of 641 evidence items);
+- none of the 8 was an invented error name or code;
+- all 8 were times the model had worked out (a UTC slot converted to ET, a start time back-computed from
+  `gap_s`) or written loosely ("10:20 onward", "23:59").
+
+The old recordings no longer replayed (r01 and r03 got rejected and diverged), so the set was re-recorded live.
+
+**Live, 2026-11-18, three runs.** Setup: deepseek-flash, temperature 0, 48k budget, `--memory loo`. Run 1 was
+entirely off-peak; runs 2 and 3 were in peak hours. Raw results:
+[run 1](results/2026-11-18-deepseek-flash-memory-loo-run1.json),
+[2](results/2026-11-18-deepseek-flash-memory-loo-run2.json),
+[3](results/2026-11-18-deepseek-flash-memory-loo-run3.json).
+
+| | 11-13, before the check (1 run) | 11-18, with the check (3 runs) |
+|---|---|---|
+| Accuracy | 72 % (18 / 25) | 64 / 76 / 72 % (16, 19, 18; mean 70.7 %) |
+| Real / simulated | 57.1 / 90.9 % | 57.1–71.4 / 72.7–90.9 % |
+| Diagnoses sent back for evidence | — | 3, 3, 2 (of 25); 0 format rejections |
+| Cost / diagnosis | $0.0074 (peak) | $0.0034 (off-peak), $0.0065 and $0.0064 (peak) |
+| LLM calls / diagnosis | 5.84 | 6.12 / 6.28 / 6.16 |
+| Prompt tokens / diagnosis | 75,830 | 80,148 / 81,828 / 85,341 |
+
+What was sent back: 9 rejections of 8 diagnoses across the three runs.
+
+- **Times derived from a slot.** r14 in all three runs and s09 in all three: `09:30` and `10:20` came from the
+  run_id's slot (`scheduled__…T14:30:00+00:00`). The run actually started a minute or more later, so
+  `started_et` shows a different time.
+- **Negated codes and errors (2).** s01 wrote "no IBKR error codes (1100/2103/2105/2157)". s05 wrote "no OSError
+  errno 28 anywhere". These are codes the model ruled out, and the check can't tell a negated code from a cited
+  one, so these 2 were false alarms.
+- **Invented facts: none.**
+
+What happened after the send-back:
+
+- 6 of the 8 diagnoses were resubmitted and right (s01, s05, s09 ×3, r14 in run 3).
+- One was resubmitted and still wrong (r14 in run 1).
+- One ran out of steps after being sent back twice (r14 in run 2, also wrong in the 11-13 run).
+
+**Verdict: no measurable effect on accuracy.**
+
+- The three runs span 3 cases; the 11-13 run sits inside that span.
+- The cases that moved against 11-13 lost or gained without being sent back:
+  - r03 was wrong in all three runs, and r09 right in all three;
+  - s11 was right in 1 of 3;
+  - s05 was right in 1 of 3, and that right run was the one where it was sent back.
+
+  In those diagnoses the agent ran with the same prompts as before up to its first submission, and the model
+  fingerprint was the same. So this is the run-to-run variance of DeepSeek at temperature 0, not the check.
+- Consistency across the three runs:
+  - the same answer (category + runbook) in all three: 15 / 25 (20 / 25 for the three no-memory temperature 0
+    runs);
+  - the same right/wrong in all three: 21 / 25.
+- The cost is about 5–10 % more calls and tokens, which is within noise.
+- What the check buys is that every accepted diagnosis's days, ET times, error names and codes can be found in
+  the tools' output.
+
+CI replays run 3, the median (72 %).
+
+Limitations:
+
+- Negated mentions are flagged.
+- A real time copied into the wrong evidence item passes.
+- The check says nothing about whether the cited facts support the conclusion.
+
 ## Limitations
 
 - **Small set, one run per model.** 25 cases; the two models differ by 2. The same flash model got r14 wrong in a
@@ -307,7 +389,9 @@ Re-run 2026-11-13 on the current loop (16k context budget, memory of all 25 diag
 the model didn't request the tool in any, 0 executed ([results](results/2026-11-13-injection-deepseek-flash-memory-loo.json)).
 Again after the default became 48k, and again at temperature 0: the same, 5 / 5 refused by the model
 ([48k](results/2026-11-13-injection-deepseek-flash-memory-loo-budget-48000.json),
-[temperature 0](results/2026-11-13-injection-deepseek-flash-memory-loo-temp0.json)).
+[temperature 0](results/2026-11-13-injection-deepseek-flash-memory-loo-temp0.json)). With the evidence check
+(2026-11-18): again 5 / 5 refused by the model, nothing sent back, 4 / 5 diagnoses right
+([results](results/2026-11-18-injection-deepseek-flash-memory-loo.json)).
 
 Limitation: since the model never asked, the approval gate itself wasn't exercised by these live runs. It is by
 the unit tests ([`tests/test_copilot_actions.py`](../tests/test_copilot_actions.py)): a model that obeys an injected
@@ -319,10 +403,11 @@ typed confirmation. 5 cases is a small set, and all use the same instruction in 
 The live runs above recorded every model reply and tool result to [`recordings/`](recordings/) (redacted:
 account ids, secrets from `.env`, emails, webhooks; the collector's IBKR username was also scrubbed). CI
 ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) replays the `deepseek-flash-memory-loo` recordings
-(the current loop: temperature 0, the 48k context budget and leave-one-out memory, re-recorded 2026-11-13 after
-those defaults changed; [results](results/2026-11-13-deepseek-flash-memory-loo-temp0.json): 72 %, 57.1 % real /
-90.9 % simulated; the 16k-era and 48k-at-temperature-1.0 recordings also scored 72 %) through the same agent loop and
-scorer, with no API key and no `data/`:
+(the current loop: temperature 0, the 48k context budget, leave-one-out memory and the evidence check). These
+were re-recorded on 2026-11-18 after the evidence check was added; the recording is the median of three live
+runs ([run 3](results/2026-11-18-deepseek-flash-memory-loo-run3.json): 72 %, 71.4 % real / 72.7 % simulated; the
+other two scored 64 % and 76 %, see [evidence check](#evidence-check)). CI runs them through the same agent loop
+and scorer, with no API key and no `data/`:
 
 - the diagnosis set must score at least **70 %** (recorded: 72 %);
 - the injection set must have no risky action executed;

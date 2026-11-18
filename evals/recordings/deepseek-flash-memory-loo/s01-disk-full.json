@@ -2,10 +2,10 @@
  "case": "s01-disk-full",
  "model": "deepseek-flash",
  "thinking": false,
- "recorded_at": "2026-11-13T07:33:38+00:00",
+ "recorded_at": "2026-11-18T01:15:06+00:00",
  "llm": [
   {
-   "id": "b82208e8-408e-4a04-9315-61bd215208dc",
+   "id": "a512e690-cabd-435e-8954-c62af0775c25",
    "choices": [
     {
      "finish_reason": "tool_calls",
@@ -15,7 +15,7 @@
       "role": "assistant",
       "tool_calls": [
        {
-        "id": "call_00_frKqbX0e5I1IJKSNz9Hb6226",
+        "id": "call_00_WzId8YkTOdJ7Df3j5puB6154",
         "function": {
          "arguments": "{\"day\": \"2026-11-12\", \"limit\": 50}",
          "name": "get_runs"
@@ -24,7 +24,7 @@
         "index": 0
        },
        {
-        "id": "call_01_sZQSjSXw9ylPat1E5gcg5632",
+        "id": "call_01_yDzIRyUUsoWmbHNDrWEm4438",
         "function": {
          "arguments": "{}",
          "name": "read_runbook"
@@ -36,7 +36,7 @@
      }
     }
    ],
-   "created": 1794555211,
+   "created": 1794964499,
    "model": "deepseek-flash",
    "object": "chat.completion",
    "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
@@ -52,7 +52,7 @@
    }
   },
   {
-   "id": "6b422750-2f82-4690-8600-d022f2ba4e3d",
+   "id": "6577dca0-63b7-41e2-b056-f807ea90e003",
    "choices": [
     {
      "finish_reason": "tool_calls",
@@ -62,7 +62,7 @@
       "role": "assistant",
       "tool_calls": [
        {
-        "id": "call_00_u8O6PerbXbkmEhPCl3LW7470",
+        "id": "call_00_BLmqE86eeUaQwnfC73la2103",
         "function": {
          "arguments": "{\"name\": \"runbooks/disk-full\"}",
          "name": "read_runbook"
@@ -71,7 +71,7 @@
         "index": 0
        },
        {
-        "id": "call_01_tNLoVi2aDmZ0wpZ8vU8F3758",
+        "id": "call_01_dtggJZwcm7daVz9VvoUe8088",
         "function": {
          "arguments": "{\"day\": \"2026-11-12\", \"status\": \"success\", \"limit\": 15}",
          "name": "get_runs"
@@ -80,9 +80,9 @@
         "index": 1
        },
        {
-        "id": "call_02_JCrO66vcMbVkfOJAGbsB3861",
+        "id": "call_02_VU7DeD9fM0m3hc95h13I3096",
         "function": {
-         "arguments": "{\"query\": \"OSError(28, 'No space left on device')\"}",
+         "arguments": "{\"query\": \"OSError(28, 'No space left on device') all datasets failing\"}",
          "name": "recall_similar"
         },
         "type": "function",
@@ -92,33 +92,33 @@
      }
     }
    ],
-   "created": 1794555212,
+   "created": 1794964500,
    "model": "deepseek-flash",
    "object": "chat.completion",
    "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
    "usage": {
-    "completion_tokens": 180,
+    "completion_tokens": 183,
     "prompt_tokens": 6866,
-    "total_tokens": 7046,
+    "total_tokens": 7049,
     "prompt_tokens_details": {
-     "cached_tokens": 2304
+     "cached_tokens": 6656
     },
-    "prompt_cache_hit_tokens": 2304,
-    "prompt_cache_miss_tokens": 4562
+    "prompt_cache_hit_tokens": 6656,
+    "prompt_cache_miss_tokens": 210
    }
   },
   {
-   "id": "aa6a1174-d5ba-4d51-948e-26653c75d0d7",
+   "id": "f06e62f5-ccee-4f35-9c92-f9ce0c51ea43",
    "choices": [
     {
      "finish_reason": "tool_calls",
      "index": 0,
      "message": {
-      "content": "Last success was 13:00:00; failures begin right after. Let me pin down the first failure and check the SLO impact.",
+      "content": "Last success was 13:00:00; failures start right after. Let me pin down the first failure and check the SLO impact.",
       "role": "assistant",
       "tool_calls": [
        {
-        "id": "call_00_SA7SFAQPHBOZ2MTjiY2S0624",
+        "id": "call_00_bthGZlkuxP39IQE6XBQb2534",
         "function": {
          "arguments": "{\"day\": \"2026-11-12\", \"status\": \"failed\", \"dataset\": \"option_snapshots\", \"limit\": 50}",
          "name": "get_runs"
@@ -127,7 +127,7 @@
         "index": 0
        },
        {
-        "id": "call_01_Jjxl1snXFAZd6yfvQqXE0340",
+        "id": "call_01_mT2TGC6Eu3E2lnz576RW6354",
         "function": {
          "arguments": "{\"end\": \"2026-11-12\", \"sessions_back\": 5}",
          "name": "slo_status"
@@ -139,23 +139,23 @@
      }
     }
    ],
-   "created": 1794555214,
+   "created": 1794964501,
    "model": "deepseek-flash",
    "object": "chat.completion",
    "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
    "usage": {
     "completion_tokens": 174,
-    "prompt_tokens": 9873,
-    "total_tokens": 10047,
+    "prompt_tokens": 9876,
+    "total_tokens": 10050,
     "prompt_tokens_details": {
      "cached_tokens": 7040
     },
     "prompt_cache_hit_tokens": 7040,
-    "prompt_cache_miss_tokens": 2833
+    "prompt_cache_miss_tokens": 2836
    }
   },
   {
-   "id": "c3f549e4-83b1-43aa-a48a-dba49436cad5",
+   "id": "26bad6d3-e26d-4031-abbb-bd4d1d51171f",
    "choices": [
     {
      "finish_reason": "tool_calls",
@@ -165,9 +165,9 @@
       "role": "assistant",
       "tool_calls": [
        {
-        "id": "call_00_drhUnF1RKPdErxCFPos68366",
+        "id": "call_00_gwrLciUWFz8kZl1ckQdQ1838",
         "function": {
-         "arguments": "{\"root_cause\": \"The data volume is full: every task that writes to it fails immediately with OSError(28, 'No space left on device'). The Gateway and IBKR are not involved — the last runs before the failure were healthy with no IBKR error codes, and failures hit all datasets (option_snapshots, index_snapshots, equity_bars, daily_bars, corporate_actions, assets) at once, each dying in ~2 s, which is a write failure, not a collection problem.\", \"category\": \"disk_full\", \"runbook\": \"runbooks/disk-full\", \"evidence\": [{\"day\": \"2026-11-12\", \"time_et\": \"13:00:00\", \"dataset\": \"option_snapshots\", \"detail\": \"Last healthy run: success, 3817 rows, 3733 two-sided, ibkr_error_codes [] (index_snapshots and equity_bars at 13:00:00 also succeeded, 1950 bars, missing_bars 0).\"}, {\"day\": \"2026-11-12\", \"time_et\": \"13:05:00\", \"dataset\": \"option_snapshots\", \"detail\": \"First failure: run scheduled__2026-11-12T18:05:00+00:00 failed in 2 s with OSError(28, 'No space left on device').\"}, {\"day\": \"2026-11-12\", \"time_et\": \"13:05:00-17:31:14\", \"dataset\": \"option_snapshots\", \"detail\": \"All 35 option_snapshots runs from 13:05:00 to 15:55:00 failed with OSError(28); 124 of 257 runs failed today, 0 failed among the 133 successes (all before 13:05).\"}, {\"day\": \"2026-11-12\", \"time_et\": \"15:55:00\", \"dataset\": \"index_snapshots\", \"detail\": \"index_snapshots and equity_bars also fail with OSError(28) at the same slot, confirming the failure is not dataset-specific.\"}, {\"day\": \"2026-11-12\", \"time_et\": \"17:30:01\", \"dataset\": \"daily_bars\", \"detail\": \"daily_bars, corporate_actions and assets all failed with OSError(28) in 2 s; the 17:30:01-17:31:14 equity_bars backfill runs for 2026-10-29 through 2026-11-10 also failed with OSError(28).\"}, {\"day\": \"2026-11-12\", \"dataset\": \"option_snapshots\", \"detail\": \"SLO window: SLI1 option coverage 91.03% (objective 99%) and SLI2 on-time 90.26% (objective 95%) both missed; session 2026-11-12 alone has 43/78 option slots ok (55.13%). SLI3 equity bars 100% (bars are read, not written, so unaffected).\"}, {\"day\": \"2026-11-12\", \"dataset\": \"option_snapshots\", \"detail\": \"Runbook runbooks/disk-full: OSError Errno 28 means the volume is actually full; free space in order old contract caches (keep the latest day), old alert markers, Airflow logs >30 days, unused Docker images, curated.duckdb; never delete raw/. Verify df -h back above 20 GB free.\"}], \"confidence\": \"high\"}",
+         "arguments": "{\"root_cause\": \"The data volume is full: every collector task fails immediately (2 s) with OSError(28, 'No space left on device') when writing raw output. The IB Gateway is healthy — the last runs before the failure succeeded with no IBKR error codes — so this is a host disk-space problem, not a market-data or connectivity problem.\", \"category\": \"disk_full\", \"runbook\": \"runbooks/disk-full\", \"evidence\": [{\"day\": \"2026-11-12\", \"time_et\": \"13:00:00\", \"dataset\": \"option_snapshots\", \"detail\": \"Last good run: success, 3817 rows, 284 s, ibkr_error_codes []. index_snapshots (6 rows) and equity_bars (1950 rows, missing_bars 0) at 13:00:00 also succeeded — Gateway and vendors were fine up to this point.\"}, {\"day\": \"2026-11-12\", \"time_et\": \"13:05:00\", \"dataset\": \"option_snapshots\", \"detail\": \"First failure: run scheduled__2026-11-12T18:05:00+00:00 failed after 2 s with \\\"OSError(28, 'No space left on device')\\\". Every option_snapshots slot from 13:05:00 through 15:55:00 failed the same way (35/35 failed).\"}, {\"day\": \"2026-11-12\", \"time_et\": \"15:20:01\", \"dataset\": \"index_snapshots\", \"detail\": \"index_snapshots and equity_bars also failing with OSError(28) (e.g. 15:20:01, 15:25:00, 15:30:00, 15:55:00) — all datasets affected, matching the operator's report.\"}, {\"day\": \"2026-11-12\", \"time_et\": \"17:30:01\", \"dataset\": \"daily_bars\", \"detail\": \"End-of-day tasks also fail with OSError(28): daily_bars, corporate_actions and assets at 17:30:01, plus equity_bars backfill runs for 2026-10-29 through 2026-11-10 at 17:30:01–17:31:14.\"}, {\"day\": \"2026-11-12\", \"detail\": \"Day totals: 257 runs, 124 failed, all with OSError(28, 'No space left on device').\"}, {\"day\": \"2026-11-12\", \"detail\": \"SLO window (5 sessions): SLI1 option coverage 91.03% vs 99% objective (NOT met), SLI2 on-time 90.26% vs 95% (NOT met); 2026-11-12 alone has option coverage 55.13% (43/78 slots). SLI3 equity bar completeness 100% (met).\"}, {\"day\": \"2026-11-12\", \"detail\": \"recall_similar returned no similar past diagnoses, so there is no prior confirmed incident to compare against; the runbook's own symptom list matches exactly (\\\"tasks fail with OSError: [Errno 28] No space left on device\\\").\"}], \"confidence\": \"high\"}",
          "name": "submit_diagnosis"
         },
         "type": "function",
@@ -177,19 +177,19 @@
      }
     }
    ],
-   "created": 1794555216,
+   "created": 1794964504,
    "model": "deepseek-flash",
    "object": "chat.completion",
    "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
    "usage": {
-    "completion_tokens": 860,
-    "prompt_tokens": 14261,
-    "total_tokens": 15121,
+    "completion_tokens": 808,
+    "prompt_tokens": 14264,
+    "total_tokens": 15072,
     "prompt_tokens_details": {
      "cached_tokens": 9984
     },
     "prompt_cache_hit_tokens": 9984,
-    "prompt_cache_miss_tokens": 4277
+    "prompt_cache_miss_tokens": 4280
    }
   }
  ],
@@ -231,7 +231,7 @@
   {
    "name": "recall_similar",
    "args": {
-    "query": "OSError(28, 'No space left on device')"
+    "query": "OSError(28, 'No space left on device') all datasets failing"
    },
    "text": "No similar past diagnoses in memory."
   },

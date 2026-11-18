@@ -2,10 +2,10 @@
  "case": "r05-2026-10-16-alpaca-disconnect",
  "model": "deepseek-flash",
  "thinking": false,
- "recorded_at": "2026-11-13T07:31:12+00:00",
+ "recorded_at": "2026-11-18T01:12:31+00:00",
  "llm": [
   {
-   "id": "3ca320e2-8418-417a-8420-74cbabb98d8a",
+   "id": "b745bd3d-4e0b-4d6d-baa5-b64b4c27bba4",
    "choices": [
     {
      "finish_reason": "tool_calls",
@@ -15,7 +15,7 @@
       "role": "assistant",
       "tool_calls": [
        {
-        "id": "call_00_NUM3vt3kI13eH4SwmMqD1146",
+        "id": "call_00_nlNrkRqz46foecfEONNo8357",
         "function": {
          "arguments": "{\"day\": \"2026-10-16\", \"dataset\": \"equity_bars\"}",
          "name": "get_runs"
@@ -24,7 +24,7 @@
         "index": 0
        },
        {
-        "id": "call_01_nay2rmrQp2Vofo58ZDnb1980",
+        "id": "call_01_PyXAMazf6KzCyQ2imHcD5722",
         "function": {
          "arguments": "{}",
          "name": "read_runbook"
@@ -36,7 +36,7 @@
      }
     }
    ],
-   "created": 1794555064,
+   "created": 1794964344,
    "model": "deepseek-flash",
    "object": "chat.completion",
    "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
@@ -52,7 +52,7 @@
    }
   },
   {
-   "id": "b20437c7-68fc-467f-9e39-28833de9ec37",
+   "id": "9a7311e1-3d1f-44b5-919f-66c2d3bfc28b",
    "choices": [
     {
      "finish_reason": "tool_calls",
@@ -62,7 +62,7 @@
       "role": "assistant",
       "tool_calls": [
        {
-        "id": "call_00_4i2CgYIGePX6yYcCZuXj3984",
+        "id": "call_00_pdXCKfZTP5Qr14eXL5A85852",
         "function": {
          "arguments": "{\"day\": \"2026-10-16\", \"dataset\": \"equity_bars\", \"status\": \"failed\"}",
          "name": "get_runs"
@@ -74,7 +74,7 @@
      }
     }
    ],
-   "created": 1794555066,
+   "created": 1794964345,
    "model": "deepseek-flash",
    "object": "chat.completion",
    "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
@@ -90,7 +90,7 @@
    }
   },
   {
-   "id": "3bde6082-91c6-4d11-bdaf-3a56b63c38ef",
+   "id": "39b94200-b299-445f-8a1c-786cc2b6b1cb",
    "choices": [
     {
      "finish_reason": "tool_calls",
@@ -100,7 +100,7 @@
       "role": "assistant",
       "tool_calls": [
        {
-        "id": "call_00_8ZP488GLOFNkcyaGzWqW7348",
+        "id": "call_00_zjj1Q6czueBjgxQJliyn2754",
         "function": {
          "arguments": "{\"query\": \"equity_bars RemoteProtocolError('Server disconnected without sending a response.') Alpaca\"}",
          "name": "recall_similar"
@@ -109,7 +109,7 @@
         "index": 0
        },
        {
-        "id": "call_01_rrmIVVCWQkeUHSMzVd3j2741",
+        "id": "call_01_Rg81JZNndxPj7wlkTHRB2378",
         "function": {
          "arguments": "{\"day\": \"2026-10-16\", \"dataset\": \"equity_bars\", \"limit\": 50}",
          "name": "get_runs"
@@ -121,7 +121,7 @@
      }
     }
    ],
-   "created": 1794555067,
+   "created": 1794964347,
    "model": "deepseek-flash",
    "object": "chat.completion",
    "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
@@ -137,7 +137,7 @@
    }
   },
   {
-   "id": "d8dbacc3-b17a-4b61-9bfe-d6dc6421375a",
+   "id": "d02d6fc6-e8ed-4536-98d9-0603054d3fcf",
    "choices": [
     {
      "finish_reason": "tool_calls",
@@ -147,7 +147,7 @@
       "role": "assistant",
       "tool_calls": [
        {
-        "id": "call_00_zQHoak2NWaeXDVOPzzgC5369",
+        "id": "call_00_3gWwZOZeyucglhLDuFZm5097",
         "function": {
          "arguments": "{\"name\": \"runbooks/stale-snapshots\"}",
          "name": "read_runbook"
@@ -156,7 +156,7 @@
         "index": 0
        },
        {
-        "id": "call_01_26nohRiHT1dDjmv11oo36023",
+        "id": "call_01_Jyf6U1WF5zWAp9kM0fZT2802",
         "function": {
          "arguments": "{\"end\": \"2026-10-16\", \"sessions_back\": 5}",
          "name": "slo_status"
@@ -168,7 +168,7 @@
      }
     }
    ],
-   "created": 1794555069,
+   "created": 1794964348,
    "model": "deepseek-flash",
    "object": "chat.completion",
    "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
@@ -177,14 +177,14 @@
     "prompt_tokens": 12535,
     "total_tokens": 12631,
     "prompt_tokens_details": {
-     "cached_tokens": 7296
+     "cached_tokens": 12288
     },
-    "prompt_cache_hit_tokens": 7296,
-    "prompt_cache_miss_tokens": 5239
+    "prompt_cache_hit_tokens": 12288,
+    "prompt_cache_miss_tokens": 247
    }
   },
   {
-   "id": "be24fad2-a36f-491c-bfb2-6ad22c31d61f",
+   "id": "cb4b4ff9-0841-4114-9d2c-0058fd078d31",
    "choices": [
     {
      "finish_reason": "tool_calls",
@@ -194,9 +194,9 @@
       "role": "assistant",
       "tool_calls": [
        {
-        "id": "call_00_hR49pArTU14mBn16FsZ19957",
+        "id": "call_00_SL6XLQ8N3b0ZiYGhZWkP4838",
         "function": {
-         "arguments": "{\"root_cause\": \"A single equity_bars slot (scheduled 13:55 UTC, started 10:09:43 ET) failed after 18 s with Alpaca's RemoteProtocolError('Server disconnected without sending a response.') — a transient vendor API disconnect. The next slot succeeded and the 17:30 ET eod refetch covered the last 10 sessions, so no bars were lost and no action is needed.\", \"category\": \"vendor_api_error\", \"runbook\": \"runbooks/stale-snapshots\", \"evidence\": [{\"day\": \"2026-10-16\", \"time_et\": \"10:09:43\", \"dataset\": \"equity_bars\", \"detail\": \"Only failed run of the day: run_id scheduled__2026-10-16T13:55:00+00:00, duration 18 s, error RemoteProtocolError('Server disconnected without sending a response.'), gap_s 1182 (previous slot ~09:50 ET).\"}, {\"day\": \"2026-10-16\", \"time_et\": \"14:00:00\", \"dataset\": \"equity_bars\", \"detail\": \"Next recorded slot succeeded (rows 2550, missing_bars 0); all later intraday slots through 16:25:01 succeeded with missing_bars 0 — the failure did not repeat.\"}, {\"day\": \"2026-10-16\", \"time_et\": \"17:30:53\", \"dataset\": \"equity_bars\", \"detail\": \"eod refetch run scheduled__2026-10-16T21:30:00+00:00__2026-10-16 succeeded, rows 3900, missing_bars 0; the 17:30 batch also refetched 2026-10-05..2026-10-15, all 3900 rows, missing_bars 0.\"}, {\"day\": \"2026-10-16\", \"dataset\": \"equity_bars\", \"detail\": \"slo_status: 2026-10-16 bars_present 3900 / bars_expected 3900 = 100% (objective 99.5%), SLI3 met; option coverage 78/78 that session.\"}, {\"day\": \"2026-10-16\", \"dataset\": \"equity_bars\", \"detail\": \"Runbook runbooks/stale-snapshots, 'Only equity_bars stale' row: Alpaca API down/keys/lag; Recover: nothing to backfill by hand for the last 10 sessions, eod refetches them.\"}], \"confidence\": \"high\"}",
+         "arguments": "{\"root_cause\": \"A single equity_bars slot (scheduled 13:55 UTC, started 10:09:43 ET) failed after 18 s with Alpaca's RemoteProtocolError('Server disconnected without sending a response.') — a transient vendor-side disconnect. The next slots succeeded and the 17:30 ET eod refetch returned 3900/3900 bars with missing_bars 0, so no data was lost and no action is needed.\", \"category\": \"vendor_api_error\", \"runbook\": \"runbooks/stale-snapshots\", \"evidence\": [{\"day\": \"2026-10-16\", \"time_et\": \"10:09:43\", \"dataset\": \"equity_bars\", \"detail\": \"Only failed run of the day: run_id scheduled__2026-10-16T13:55:00+00:00, duration 18 s, error RemoteProtocolError('Server disconnected without sending a response.'), gap_s 1182\"}, {\"day\": \"2026-10-16\", \"time_et\": \"17:30:53\", \"dataset\": \"equity_bars\", \"detail\": \"eod refetch run scheduled__2026-10-16T21:30:00+00:00__2026-10-16 succeeded, rows 3900, missing_bars 0 (also 3900/0 for 10-05..10-15)\"}, {\"day\": \"2026-10-16\", \"time_et\": \"14:00:00\", \"dataset\": \"equity_bars\", \"detail\": \"Intraday slots after the failure succeeded (e.g. 14:00 rows 2550, 16:25 rows 3900, missing_bars 0 throughout)\"}, {\"day\": \"2026-10-16\", \"dataset\": \"equity_bars\", \"detail\": \"slo_status: 2026-10-16 bars_present 3900 / bars_expected 3900 = 100% (objective 99.5%), met\"}, {\"day\": \"2026-10-16\", \"dataset\": \"equity_bars\", \"detail\": \"Runbook runbooks/stale-snapshots: 'Only equity_bars stale -> Alpaca: API down, keys, or the free plan's 15-min lag'; Recover: 'Equity bars: nothing to backfill by hand for the last 10 sessions; eod refetches them'\"}], \"confidence\": \"high\"}",
          "name": "submit_diagnosis"
         },
         "type": "function",
@@ -206,19 +206,19 @@
      }
     }
    ],
-   "created": 1794555071,
+   "created": 1794964350,
    "model": "deepseek-flash",
    "object": "chat.completion",
    "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
    "usage": {
-    "completion_tokens": 642,
+    "completion_tokens": 614,
     "prompt_tokens": 14483,
-    "total_tokens": 15125,
+    "total_tokens": 15097,
     "prompt_tokens_details": {
-     "cached_tokens": 12544
+     "cached_tokens": 14336
     },
-    "prompt_cache_hit_tokens": 12544,
-    "prompt_cache_miss_tokens": 1939
+    "prompt_cache_hit_tokens": 14336,
+    "prompt_cache_miss_tokens": 147
    }
   }
  ],

@@ -7,7 +7,7 @@ import polars as pl
 import pytest
 
 from pit.copilot import fixtures
-from pit.copilot.cases import load_cases, problems
+from pit.copilot.cases import load_cases, problems, verified
 from pit.copilot.fixtures import apply_faults, build_base, build_case
 from test_mcp_server import write_runs
 
@@ -104,7 +104,8 @@ def test_recordings_cover_every_case_and_hold_no_account_data():
     import re
     from pit.copilot.eval import RECORDINGS
     for ci_dir in ("deepseek-flash", "deepseek-flash-memory-loo"):  # what .github/workflows/ci.yml replays
-        assert {c["id"] for c in load_cases()} <= {p.stem for p in (RECORDINGS / ci_dir).glob("*.json")}, ci_dir
+        scored = {c["id"] for c in load_cases() if verified(c)}  # needs_review drafts aren't replayed until verified
+        assert scored <= {p.stem for p in (RECORDINGS / ci_dir).glob("*.json")}, ci_dir
     rec = {p.relative_to(RECORDINGS).as_posix(): p.read_text(encoding="utf-8") for p in RECORDINGS.rglob("*.json")}
     leaks = re.compile(r"\b(?:DU|U)\d{6,9}\b|discord(?:app)?\.com/api/webhooks/\d|[\w.+-]+@[\w-]+\.[a-z]{2,}"
                        r"|sk-[A-Za-z0-9]{16,}")

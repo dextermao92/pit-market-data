@@ -18,6 +18,42 @@ Each case runs on its own data: real cases on a frozen copy of `data/` (`fixture
 through 11-11), simulated ones on that copy plus their faults. Production `data/` is only read. Build the copies
 with `uv run python -m pit.copilot.fixtures build` then `uv run python -m pit.copilot.cases`.
 
+### New cases from confirmed diagnoses
+
+When the operator confirms a CLI diagnosis (`confirm? [y/N]`), it becomes a memory note in `data/copilot_memory/`.
+Notes can be turned into draft real cases:
+
+```bash
+uv run python -m pit.copilot.drafts --dry-run   # what it would write
+uv run python -m pit.copilot.drafts
+```
+
+Each new note becomes `cases/real/rNN-<day>-<category>.yaml`, with these fields:
+
+- `question` from the note, redacted;
+- `today` set to the day it was confirmed;
+- `expected.categories` and `expected.runbooks` taken from the note;
+- `label.status: needs_review`;
+- `label.source` and `label.note` naming the note.
+
+A day after the frozen base also gets `own_data: true` and its own copy in `fixtures/<id>`: the base hard-linked,
+plus production's runs and equity bars for the New York days after the base's last day, through `today`. The base
+and `data/` are only read, and an existing draft or copy is never replaced.
+
+The command skips, and says why:
+
+- a note already drafted;
+- a (day, category) that an existing case already covers;
+- a second note with the same (day, category) in one batch;
+- a note with an unknown category or runbook.
+
+**Drafts don't count until a person reviews them.**
+
+- The eval leaves `needs_review` cases out of the score and out of the memory pool.
+- `--include-unreviewed` runs them too; they're reported under `unreviewed` and never scored.
+- After checking the label against the runs and logs (and adding any other acceptable category or runbook), set
+  `label.status: verified`. The case then counts, and CI needs a recording of it: run live once.
+
 ## Scoring
 
 Deterministic, no LLM judge. A diagnosis is **correct** when its category is one of the case's accepted

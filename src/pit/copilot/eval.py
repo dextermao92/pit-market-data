@@ -19,6 +19,9 @@ plays them back with no API call and no production data: what CI runs.
 being run (leave-one-out); --memory loo-category also leaves out every case sharing a category with it, so no
 near-duplicate of the answer is in memory either. Recordings then go to evals/recordings/<model>-memory-<mode>/.
 
+Cases whose label.status is needs_review (drafts, e.g. from pit.copilot.drafts) are left out until a person verifies
+them; --include-unreviewed runs them too, reported under "unreviewed" and never in the score or in memory.
+
   uv run --env-file .env python -m pit.copilot.eval --model deepseek-flash          live, records
   uv run python -m pit.copilot.eval --model deepseek-flash --replay --min-accuracy 0.8
   options: --kinds real,simulated  --cases r01-...,s02-...  --memory off|loo|loo-category  --no-record  --out x.json
@@ -40,7 +43,7 @@ import anyio
 from mcp import Client
 
 from pit.copilot.agent import diagnose, make_llm
-from pit.copilot.cases import INJECTION, KINDS, data_dir, load_cases
+from pit.copilot.cases import INJECTION, KINDS, data_dir, load_cases, verified
 from pit.copilot.fixtures import ROOT
 from pit.copilot.llm import load_config, read_logs
 from pit.copilot.mcp_server import server
@@ -329,13 +332,21 @@ def main(argv=None) -> int:
     p.add_argument("--context-budget", type=int, default=None,
                    help="prompt tokens per call, overriding config/llm.toml (0 = no budget)")
     p.add_argument("--min-accuracy", type=float, default=None, help="exit 1 if accuracy (0-1) is below this")
+    p.add_argument("--include-unreviewed", action="store_true",
+                   help="also run needs_review cases; reported apart, never in the score")
     p.add_argument("--out", type=Path, help="results JSON (default: evals/results/<date>-<model>.json, live only)")
     a = p.parse_args(argv)
 
     cfg = load_config()["llm"]
     model, thinking = a.model or cfg["model"], cfg["thinking"] if a.thinking is None else a.thinking
     cases = load_cases(kinds=tuple(a.kinds.split(",")))
-    pool = load_cases(kinds=KINDS)  # what memory is made of: the diagnosis cases' labels, never injection cases
+    # what memory is made of: the diagnosis cases' verified labels, never injection cases or unchecked drafts
+    pool = [c for c in load_cases(kinds=KINDS) if verified(c)]
+    drafts = [c["id"] for c in cases if not verified(c)]
+    if drafts and not a.include_unreviewed:  # needs_review: not scored until a person checks the label
+        cases = [c for c in cases if verified(c)]
+        print(f"left out {len(drafts)} needs_review case(s): {', '.join(drafts)} (--include-unreviewed runs them, "
+              "unscored)", file=sys.stderr)
     if a.cases:
         want = set(a.cases.split(","))
         cases = [c for c in cases if c["id"] in want]
@@ -356,14 +367,20 @@ def main(argv=None) -> int:
     rows = []
     for i, case in enumerate(cases, 1):
         r = run_case(case, model, thinking, a.replay, not a.no_record, log_dir, a.memory, pool, a.context_budget)
+        r["unreviewed"] = not verified(case)
         rows.append(r)
         cost = "" if a.replay else f"  ${r.get('cost_usd') or 0:.4f}"
         print(f"[{i:>2}/{len(cases)}] {'PASS' if r['correct'] else 'FAIL'} {case['id']:<38} "
-              f"got {r['category']}/{r['runbook']}  want {case['expected']['categories'][0]}{cost}  {r['wall_s']}s"
+              + ("(unreviewed, unscored) " if r["unreviewed"] else "")
+              + f"got {r['category']}/{r['runbook']}  want {case['expected']['categories'][0]}{cost}  {r['wall_s']}s"
               + (f"  risky: {'refused' if r['model_refused'] else 'asked, denied'}"
                  f"{'' if r['blocked'] else ' EXECUTED'}" if case["_kind"] == INJECTION else "")
               + (f"  {r['error']}" if r["error"] else ""), flush=True)
-    summary = summarize(rows, model, thinking, a.replay, a.memory, a.context_budget)
+    scored, unreviewed = [r for r in rows if not r["unreviewed"]], [r for r in rows if r["unreviewed"]]
+    summary = summarize(scored, model, thinking, a.replay, a.memory, a.context_budget)
+    if unreviewed:
+        summary["unreviewed"] = {"n": len(unreviewed), "correct": sum(r["correct"] for r in unreviewed),
+                                 "ids": [r["id"] for r in unreviewed]}
     print(json.dumps(summary, indent=2))
     out = a.out or (None if a.replay else default_out(model, a.kinds, a.memory, budget=a.context_budget))
     if out:

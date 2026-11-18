@@ -3,18 +3,23 @@
 Each case: id, simulated, today (the agent's "today"), question, expected.categories (any one counts as correct; the
 first is the primary label), expected.runbooks (the ops docs that are a correct pointer), label.status (verified or
 needs_review) and label.source (how the label was checked). Simulated cases also carry `sim`, the faults injected
-into a copy of the data (pit.copilot.fixtures).
+into a copy of the data (pit.copilot.fixtures). A real case with `own_data: true` (a day after the frozen base, drafted
+by pit.copilot.drafts) reads its own copy: the base plus production's data for the missing days.
+
+needs_review cases are drafts: the eval leaves them out of the score (and out of the memory pool) until a person
+checks the label and sets label.status to verified.
 
   uv run python -m pit.copilot.cases            validate every case and build the simulated cases' data dirs
 """
 
 import sys
+from datetime import date
 from pathlib import Path
 
 import yaml
 
 from pit.copilot.categories import CATEGORIES
-from pit.copilot.fixtures import BASE, FIXTURES, ROOT, build_case
+from pit.copilot.fixtures import BASE, FIXTURES, ROOT, build_case, build_real_case
 
 CASES = ROOT / "evals" / "cases"
 DOCS = {p.relative_to(ROOT / "ops").with_suffix("").as_posix() for p in (ROOT / "ops").rglob("*.md")}
@@ -30,6 +35,10 @@ def load_cases(root: Path = CASES, kinds=(*KINDS, INJECTION)) -> list[dict]:
             case["today"] = str(case["today"])
             cases.append(case | {"_file": f.relative_to(root).as_posix(), "_kind": kind})
     return cases
+
+
+def verified(case: dict) -> bool:
+    return case.get("label", {}).get("status") == "verified"
 
 
 def problems(case: dict, docs: set[str] = DOCS) -> list[str]:
@@ -52,7 +61,11 @@ def data_dir(case: dict, base: Path = BASE, fixtures: Path = FIXTURES) -> Path:
     """Where this case's tools read from: the frozen base, or the simulated case's own copy (built if missing, and
     rebuilt if its copy of the ops docs is older than ops/: an edited runbook must reach the eval, and recordings)."""
     if not case.get("simulated"):
-        return base
+        if not case.get("own_data"):
+            return base
+        root = fixtures / case["id"]
+        return root if root.exists() else (build_real_case(case["id"], date.fromisoformat(case["today"]),
+                                                           base=base, fixtures=fixtures) or base)
     root = fixtures / case["id"]
     copies = list((root / "ops").rglob("*.md")) if root.exists() else []
     stale = copies and max(p.stat().st_mtime for p in (ROOT / "ops").rglob("*.md")) > min(

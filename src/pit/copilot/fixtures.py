@@ -20,6 +20,10 @@ Fault spec (a simulated case's `sim`):
   gap_s is recomputed for the cloned day afterwards.
   ops_patch: [{doc: runbooks/gateway, append: "..."}]   a copy of ops/ with text planted (injection cases); the
                                                        case's tools read it through PIT_OPS_DIR
+
+A real case about a day after the base was frozen (`own_data: true`, drafted from a confirmed diagnosis by
+pit.copilot.drafts) gets its own directory too: the base hard-linked, plus production's runs and bars for the
+missing days, copied once (build_real_case).
 """
 
 import argparse
@@ -184,6 +188,69 @@ def build_case(case_id: str, sim: dict, base: Path = BASE, fixtures: Path = FIXT
         for patch in sim["ops_patch"]:
             doc = root / "ops" / f"{patch['doc']}.md"
             doc.write_text(doc.read_text(encoding="utf-8") + patch["append"], encoding="utf-8")
+    return root
+
+
+def _et_day(col: str) -> pl.Expr:
+    return pl.col(col).dt.convert_time_zone("America/New_York").dt.date()
+
+
+def last_day(root: Path) -> date | None:
+    """The latest New York day with runs under root (the last two UTC partitions are enough to find it)."""
+    parts = sorted({p.name for p in root.glob("pipeline_runs/dataset=*/ingest_date=*")})[-2:]
+    files = [f for part in parts for f in glob.glob(str(root / "pipeline_runs" / "dataset=*" / part / "*.parquet"))]
+    if not files:
+        return None
+    return pl.concat([pl.read_parquet(f, columns=["started_at"]) for f in files], how="diagonal_relaxed").select(
+        _et_day("started_at").max()).item()
+
+
+def _copy_days(src: Path, dst: Path, sub: str, col: str, after: date, through: date) -> int:
+    """Copy src/sub's rows whose ET day of `col` is in (after, through] to dst/sub, file by file: a file entirely
+    inside the range is copied as is, one that straddles it is written filtered. Never writes over an existing
+    file (the hard-linked base). Returns the number of files written."""
+    n = 0
+    for part in sorted((src / sub).glob("**/ingest_date=*")):
+        d = date.fromisoformat(part.name.split("=")[1])  # UTC date: an ET day spans this one and the next
+        if not (after <= d <= through + timedelta(days=1)):
+            continue
+        for f in sorted(part.glob("*.parquet")):
+            target = dst / f.relative_to(src)
+            if target.exists():
+                continue
+            df = pl.read_parquet(f)
+            keep = df.filter((_et_day(col) > after) & (_et_day(col) <= through))
+            if keep.is_empty():
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if keep.height == df.height:
+                shutil.copy2(f, target)
+            else:
+                keep.write_parquet(target)
+            n += 1
+    return n
+
+
+def build_real_case(case_id: str, through: date, src: Path = ROOT / "data", base: Path = BASE,
+                    fixtures: Path = FIXTURES) -> Path | None:
+    """A real case about a day the frozen base doesn't have: the base hard-linked, plus production's runs and staged
+    equity bars for the New York days after the base's last day, through `through` (the case's "today"). None if
+    the base already covers it. Production and the base are only read; an existing case copy is never replaced."""
+    if not base.exists():
+        raise FileNotFoundError(f"{base} missing: run `uv run python -m pit.copilot.fixtures build` first")
+    after = last_day(base)
+    if after is not None and through <= after:
+        return None
+    root = fixtures / case_id
+    if root.exists():
+        raise FileExistsError(f"{root} exists; delete it first to copy the data again")
+    after = after or date.min
+    _link_tree(base, root)
+    copied = {sub: _copy_days(src, root, sub, col, after, through)
+              for sub, col in (("pipeline_runs", "started_at"), ("staged/equity_bars", "bar_start"))}
+    (root / "copy.json").write_text(json.dumps({
+        "copied_at": datetime.now().astimezone().isoformat(timespec="seconds"), "source": str(Path(src).resolve()),
+        "days": [str(after + timedelta(days=1)), str(through)], "files": copied}, indent=2))
     return root
 
 

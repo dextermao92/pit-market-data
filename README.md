@@ -31,8 +31,8 @@ rather than toy ones.
 
 - **Point-in-time storage and queries**: immutable raw files, a staged layer rebuilt from them, and `get_bars(...,
   as_of)` / `get_chain(...)` that never see the future.
-- **About 3,300 SPX option contracts per 5-minute snapshot**, plus SPXW, XSP, ETFs and single stocks on slower
-  schedules, with IV and greeks; 5-min bars and daily bars for 50 US stocks and ETFs.
+- **About 3,300 SPX and SPXW option contracts every 5 minutes**, plus XSP, ETFs and single stocks every 15 minutes,
+  with IV and greeks; 5-min bars and daily bars for 50 US stocks and ETFs.
 - **16 data-quality rules**: row rules with a quarantine, partition checks, and dbt tests that cross-check the two
   vendors against each other.
 - **Monitoring and self-healing**: daily status cards, alerts, a watchdog independent of the collectors, automatic
@@ -54,8 +54,9 @@ DATA_DIR=sample_data uv run dbt build --project-dir dbt --profiles-dir dbt
 uv run python -m pit.copilot.eval --model deepseek-flash --memory loo --replay
 ```
 
-**Run the collector** with your own accounts: an IBKR account with an OPRA subscription (the Gateway logs into a paper
-account with a read-only API), a free Alpaca account, and an always-on machine with Docker. Fill in `.env` from
+**Run the collector** with your own accounts: an IBKR account with an OPRA subscription (the Gateway's API is
+read-only; a paper account works, and this deployment logs in as a separate IBKR user made for the collector), a free
+Alpaca account, and an always-on machine with Docker. Fill in `.env` from
 `.env.example`, choose symbols and chains in `config/`, then `docker compose up -d --build`.
 
 ## Architecture
@@ -202,7 +203,7 @@ is dead, or Windows is waiting to restart for an update.
 | Hand-written SCD2 security master on Alpaca's `asset_id`, validity from `ingested_at` | `asset_id` survives renames; dbt snapshots stamp run time, which is wrong on a backfill or replay |
 | Atomic writes: temp file, then rename | A crash mid-write leaves the old file intact; rerunning is always safe |
 | Snapshots ask IBKR only for quotes; contract lists come from a daily cache | A stalled contract-definition server can't hang a run |
-| Gateway on a paper account with a read-only API | The pipeline can't place an order or touch the live account |
+| Gateway's API read-only, logged in as a separate IBKR user | The pipeline can't place an order: the Gateway's API is read-only (`READ_ONLY_API`) and the client connects `readonly=True`. A user of its own keeps the trader's own logins from kicking the collector off (one session per user), and market-data subscriptions are per user |
 | Hand-written rules, not Great Expectations | A dozen rules don't justify the framework |
 
 ## Ops Copilot

@@ -70,7 +70,7 @@ uv run ruff check src tests dags scripts plugins
 | | Why | Notes |
 |---|---|---|
 | An always-on machine with Docker | Airflow, Postgres and IB Gateway run in Docker Compose | Tested on macOS and on Windows 11 (Docker Desktop on WSL 2). The images are multi-arch |
-| IBKR account with an OPRA subscription | Option quotes, IV and greeks | Log the Gateway into a **paper** account with market-data sharing turned on. The compose file sets the API to read-only |
+| IBKR account with an OPRA subscription | Option quotes, IV and greeks | Either a **paper** account with market-data sharing turned on (simplest; but your own live logins then compete for the data, IBKR code 10197), or, as this deployment does, a **separate user** on the account with its own market-data subscriptions (they are per user). Either way the compose file sets the API to read-only |
 | A second IBKR username for the collector (recommended) | Two sessions on one username kick each other off | Without one, logging into TWS or the mobile app on the same user disconnects the Gateway |
 | Alpaca account (free) | 5-min and daily bars, corporate actions, asset attributes | Paper keys are enough: same market data, no access to money |
 | Discord webhook or SMTP account | Status cards and alerts | Optional, but monitoring is silent without one |

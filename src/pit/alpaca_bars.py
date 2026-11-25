@@ -40,10 +40,26 @@ def client() -> httpx.Client:
         "APCA-API-KEY-ID": os.environ["APCA_API_KEY_ID"], "APCA-API-SECRET-KEY": os.environ["APCA_API_SECRET_KEY"]})
 
 
-def fetch_pages(client: httpx.Client, path: str, params: dict) -> list[dict]:
-    pages, token = [], None
+_last_request = 0.0  # monotonic time of this process's last request, for pacing
+
+
+def fetch_pages(client: httpx.Client, path: str, params: dict, min_interval: float = 0.0,
+                max_rate_limited: int = 5) -> list[dict]:
+    """Every page of a paged request. min_interval paces requests process-wide (seconds between two); a 429
+    waits until the vendor's rate-limit reset (or a minute) and retries the same page, up to max_rate_limited."""
+    global _last_request
+    pages, token, limited = [], None, 0
     while True:
+        wait = _last_request + min_interval - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        _last_request = time.monotonic()
         r = client.get(path, params=params | ({"page_token": token} if token else {}))
+        if r.status_code == 429 and limited < max_rate_limited:
+            limited += 1
+            reset = r.headers.get("x-ratelimit-reset")
+            time.sleep(min(60.0, max(1.0, float(reset) - time.time())) if reset else 60.0)
+            continue
         r.raise_for_status()
         pages.append(r.json())
         token = pages[-1].get("next_page_token")
@@ -81,16 +97,20 @@ def run(config_path: str, now: datetime | None = None, session: date | None = No
     return write_raw(Path(os.environ.get("DATA_DIR", "data")), "alpaca", "equity_bars", payload, now)
 
 
-def run_daily(config_path: str, sessions: list[date], now: datetime | None = None) -> Path:
-    """Vendor daily bars for `sessions`; used to reconcile aggregated 5-min bars (dbt)."""
-    cfg = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))["alpaca"]
+def run_daily(config_path: str, sessions: list[date], now: datetime | None = None,
+              symbols: list[str] | None = None) -> Path:
+    """Vendor daily bars for `sessions`: the configured symbols (used to reconcile aggregated 5-min bars in dbt),
+    or `symbols` for whole-market fetches (pit.universe), paced by [universe] requests_per_minute."""
+    raw_cfg = tomllib.loads(Path(config_path).read_text(encoding="utf-8"))
+    cfg = raw_cfg["alpaca"] | ({"symbols": symbols} if symbols is not None else {})
+    pace = 60 / raw_cfg["universe"]["requests_per_minute"] if symbols is not None and "universe" in raw_cfg else 0.0
     now = now or datetime.now(timezone.utc)
     t0 = time.monotonic()
     # A date-only end means "end of that day", which hits the free plan's 15-minute limit for today.
     end = calendar().session_close(pd.Timestamp(max(sessions))).isoformat()
     params = _params(cfg, "1Day", str(min(sessions)), end)
     with client() as c:
-        pages = fetch_pages(c, "/v2/stocks/bars", params)
+        pages = fetch_pages(c, "/v2/stocks/bars", params, min_interval=pace)
     payload = {"ingested_at": now.isoformat(), "duration_s": round(time.monotonic() - t0, 1),
                "request": params, "pages": pages}
     return write_raw(Path(os.environ.get("DATA_DIR", "data")), "alpaca", "daily_bars", payload, now)

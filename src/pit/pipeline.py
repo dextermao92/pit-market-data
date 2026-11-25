@@ -2,6 +2,7 @@
 
 Re-stage everything from raw (e.g. after a rule change): python -m pit.pipeline restage data
 Backfill equity bars: python -m pit.pipeline backfill config/alpaca_bars.toml 2025-10-15 2026-10-14
+Whole-market daily bars (discovery + backfill): see pit.universe.
 """
 
 import json
@@ -150,13 +151,16 @@ def collect_equity_bars(config_path: str, run_id: str | None = None, session=Non
     return _recorded("equity_bars", run_id, collect)
 
 
-def collect_daily_bars(config_path: str, sessions: list, run_id: str | None = None) -> dict:
-    return _recorded("daily_bars", run_id, lambda: _stage("daily_bars", alpaca_bars.run_daily(config_path, sessions))[0])
+def collect_daily_bars(config_path: str, sessions: list, run_id: str | None = None,
+                       symbols: list[str] | None = None) -> dict:
+    """The configured symbols, or `symbols` (one batch of a whole-market fetch, see pit.universe)."""
+    return _recorded("daily_bars", run_id,
+                     lambda: _stage("daily_bars", alpaca_bars.run_daily(config_path, sessions, symbols=symbols))[0])
 
 
-def collect_corporate_actions(config_path: str, run_id: str | None = None) -> dict:
+def collect_corporate_actions(config_path: str, run_id: str | None = None, full: bool = False) -> dict:
     return _recorded("corporate_actions", run_id,
-                     lambda: _stage("corporate_actions", corporate_actions.run(config_path))[0])
+                     lambda: _stage("corporate_actions", corporate_actions.run(config_path, full=full))[0])
 
 
 def collect_assets(config_path: str, run_id: str | None = None) -> dict:

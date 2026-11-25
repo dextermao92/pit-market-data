@@ -1,6 +1,8 @@
-"""Alpaca asset attributes per configured symbol, snapshotted daily: the source of the SCD2 security master.
+"""Alpaca asset attributes for the whole US equity market, snapshotted daily: the source of the SCD2 security master.
 
-Uses the trading API host (read-only GET of /v2/assets). Keyed by Alpaca's asset id, which survives renames.
+Uses the trading API host (read-only GET of /v2/assets, active and inactive: two requests). Raw keeps every field
+as received; staged keeps the columns below. Keyed by Alpaca's asset id, which survives renames. The inactive list
+is mostly OTC names and misses most delisted stocks (2026-11-25 probe), so it is not a delisting list.
 """
 
 import json
@@ -27,17 +29,16 @@ def run(config_path: str, now: datetime | None = None) -> Path:
     now = now or datetime.now(timezone.utc)
     t0 = time.monotonic()
     headers = {"APCA-API-KEY-ID": os.environ["APCA_API_KEY_ID"], "APCA-API-SECRET-KEY": os.environ["APCA_API_SECRET_KEY"]}
-    assets, missing = [], []
-    with httpx.Client(base_url=TRADING_API, headers=headers, timeout=30) as c:
-        for s in symbols:
-            r = c.get(f"/v2/assets/{s}")
-            if r.status_code == 404:
-                missing.append(s)  # delisted or renamed away: recorded, not fatal
-                continue
+    assets = []
+    with httpx.Client(base_url=TRADING_API, headers=headers, timeout=120) as c:
+        for status in ("active", "inactive"):
+            r = c.get("/v2/assets", params={"status": status, "asset_class": "us_equity"})
             r.raise_for_status()
-            assets.append(r.json())
+            assets.extend(r.json())
+    listed = {a.get("symbol") for a in assets}
+    missing = [s for s in symbols if s not in listed]  # configured symbols delisted or renamed away: recorded, not fatal
     payload = {"ingested_at": now.isoformat(), "duration_s": round(time.monotonic() - t0, 1),
-               "assets": assets, "missing": missing}
+               "scope": "all", "assets": assets, "missing": missing}
     return write_raw(Path(os.environ.get("DATA_DIR", "data")), "alpaca", "assets", payload, now)
 
 

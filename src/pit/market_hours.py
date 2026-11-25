@@ -38,3 +38,24 @@ def recent_sessions(now: datetime, n: int) -> list:
     if cal.session_close(last) > pd.Timestamp(now):
         last = cal.previous_session(last)
     return [s.date() for s in cal.sessions_window(last, -n)]
+
+
+# Heavy jobs whose data can be fetched again later (history backfills, discovery) stay out of the collection
+# window: from the first pre-open check (08:00 ET) to the last 5-minute bar run (close + 30 min). Option snapshots
+# can't be backfilled, so they get the machine and the network to themselves.
+BLACKOUT_BEFORE_OPEN = timedelta(minutes=90)
+BLACKOUT_AFTER_CLOSE = timedelta(minutes=30)
+
+
+def collection_window(now: datetime) -> tuple[datetime, datetime]:
+    """(start, end) of the current or next session's collection window, tz-aware UTC. Weekends and holidays
+    have none, so on a Saturday this is Monday's (or the next session's)."""
+    cal = calendar()
+    session = cal.date_to_session(pd.Timestamp(now).tz_convert("America/New_York").date(), "next")
+    for _ in range(2):  # today's window may already be over
+        start = cal.session_open(session).to_pydatetime() - BLACKOUT_BEFORE_OPEN
+        end = cal.session_close(session).to_pydatetime() + BLACKOUT_AFTER_CLOSE
+        if now < end:
+            return start, end
+        session = cal.next_session(session)
+    raise AssertionError("unreachable")

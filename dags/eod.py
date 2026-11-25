@@ -4,7 +4,8 @@ from airflow.sdk import dag, task
 from pit.market_hours import recent_sessions
 from pit.health import report
 from pit.notify import CALLBACKS, send
-from pit.pipeline import collect_assets, collect_corporate_actions, collect_daily_bars, collect_equity_bars
+from pit.pipeline import collect_assets, collect_corporate_actions, collect_equity_bars
+from pit.universe import collect_recent_daily_bars
 
 CONFIG = "/opt/airflow/config/alpaca_bars.toml"
 REFETCH_SESSIONS = 10  # vendor revisions to recent bars show up as new versions
@@ -20,16 +21,19 @@ REFETCH_SESSIONS = 10  # vendor revisions to recent bars show up as new versions
 def eod():
     @task(retries=2)
     def corporate_actions(**context) -> str:
-        return collect_corporate_actions(CONFIG, run_id=context["run_id"])["staged_path"]
+        # Whole market: the last 30 days and the year ahead daily, the whole history on Fridays (late revisions).
+        full = pendulum.now("America/New_York").isoweekday() == 5
+        return collect_corporate_actions(CONFIG, run_id=context["run_id"], full=full)["staged_path"]
 
     @task(retries=2)
     def assets(**context) -> str:
         return collect_assets(CONFIG, run_id=context["run_id"])["staged_path"]
 
-    @task(retries=2)
-    def daily_bars(**context) -> str:
+    @task(retries=2, trigger_rule="all_done")  # a failed asset snapshot falls back to the previous one
+    def daily_bars(**context) -> list[str]:
+        # Whole market (active non-OTC assets + configured symbols), from the asset snapshot just taken.
         sessions = recent_sessions(pendulum.now("UTC"), REFETCH_SESSIONS)
-        return collect_daily_bars(CONFIG, sessions, run_id=context["run_id"])["staged_path"]
+        return [r["staged_path"] for r in collect_recent_daily_bars(CONFIG, sessions, run_id=context["run_id"])]
 
     @task(retries=2)
     def refetch_recent_bars(**context) -> list[str]:
@@ -47,7 +51,10 @@ def eod():
         send(title, body, fields, level)  # sent whatever happened upstream; failures show up in it
         return level
 
-    [corporate_actions(), assets(), daily_bars(), refetch_recent_bars()] >> dbt_build() >> close_summary()
+    snapshot = assets()
+    bars = daily_bars()
+    snapshot >> bars
+    [corporate_actions(), snapshot, bars, refetch_recent_bars()] >> dbt_build() >> close_summary()
 
 
 eod()

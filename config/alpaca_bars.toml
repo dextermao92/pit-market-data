@@ -29,3 +29,12 @@ symbols = [
     # other
     "BRK.B",
 ]
+
+# Whole-market daily data (Stage 2 P1a, pit.universe): symbol discovery, daily-bar backfill, the eod refetch
+# and the corporate-action fetches. Design: docs/stage2/p1-universe-design.md.
+[universe]
+requests_per_minute = 150         # under the free plan's 200, leaving headroom for the 5-min bar DAG
+max_symbol_letters = 4            # discovery tries every 1..4 letter symbol (475,254), plus listed and action symbols
+probe_batch = 1000                # symbols per request (discovery and backfill; 1,000 tested 2026-11-25)
+backfill_bars_per_batch = 300000  # daily bars per backfill raw file: ~30 pages, ~30 MB of JSON
+recent_batch = 1000               # symbols per eod refetch request (10 sessions: ~1-2 pages)

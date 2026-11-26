@@ -166,14 +166,56 @@ recording its source:
 4. **SEC filer data** for names still on EDGAR: `company_tickers_exchange.json` (current ticker → CIK), then the
    CIK's SIC code: 6770 blank checks → `spac`, 6726 investment offices → `fund`, a 20-F/40-F filer → `adr`
    candidate.
-5. **SEC fail-to-deliver files** (semi-monthly since 2004, symbol + CUSIP + description): to probe. If the
-   coverage is as broad as expected, they give a period name and CUSIP for most delisted securities, which
-   would settle both type and reuse (a CUSIP change across a gap) for the years where actions are missing.
+5. **SEC fail-to-deliver files** (semi-monthly, symbol + CUSIP + description): the period name and CUSIP of
+   most securities, delisted ones included (probe below), which settles type and reuse (a CUSIP change across a
+   gap) for the years where actions are missing.
 6. Else `unknown`.
 
 Every source is a new raw dataset (fetched once, then on a schedule), staged, and joined by symbol and date.
-SEC requests need a User-Agent with a contact address (see open questions). The type report gives, per year,
-the eligible securities by type and source, and the `unknown` share.
+The type report gives, per year, the eligible securities by type and source, and the `unknown` share.
+
+#### 2a. SEC probe (2026-11-26)
+
+| Source | What came back | Coverage |
+|---|---|---|
+| Fail-to-deliver (`cnsfailsYYYYMM{a,b}.zip`) | 414 half-month files, 2009-07 to 2026-10 (SEC lists none for 2019-10a and 2023-08b), 0.9–1.7 MB zipped each, under four different paths; pipe-delimited `SETTLEMENT DATE\|CUSIP\|SYMBOL\|QUANTITY (FAILS)\|DESCRIPTION\|PRICE`, Latin-1, a trailer line | Q1 2016 alone: 4,311 of 4,738 eligible names (91%); 1,204 of the 1,312 eligible names missing from today's Alpaca assets (92%), with names such as `RUBY TUESDAY INC (GA)`, `ORBITAL ATK INC` |
+| Fund series and classes, one CSV a year | 2010–2026, 7–8 MB and ~40k classes a year; the 2016 file has snake-case headers and writes nulls as `[NULL]`, the others have title-case headers; the ticker is optional | 704 of Q1 2016's eligible names are fund tickers (ETFs); ETFs without a ticker in the file still say `ETF` in their fail-to-deliver description |
+| `company_tickers_exchange.json` | `{"fields": ["cik", "name", "ticker", "exchange"], "data": [...]}`, 10,400 rows, current only | Today's listings only |
+
+#### 2b. SEC fetch plan (build step 2b)
+
+**One client** (`pit.sec`): the User-Agent comes from `SEC_USER_AGENT` in `.env` and nothing is sent without
+it; at most 5 requests a second (SEC allows 10); 429/503 retried with backoff; redirects followed. The
+User-Agent is never written to raw, staged, logs or notifications.
+
+**Raw is the file as received.** These are files (zip, CSV, JSON), not API pages, so raw keeps the bytes under
+the usual layout, named by fetch time plus the SEC file name:
+`raw/source=sec/ingest_date=D/<dataset>/<ingested_at>__<sec file name>`. Wrapping a 1.2 MB zip as JSON text
+would make it about 5 MB and no longer what SEC served. Staging reads these files; `restage` learns the
+extension.
+
+| Dataset | What | First fetch | Then | Staged (one row per) |
+|---|---|---|---|---|
+| `sec_ftd` | Fail-to-deliver half-months, from 2016-01a | 258 files, ~310 MB, ~1 min of requests at 5/s | New periods as SEC posts them (about a month late), checked by `universe_refresh` and by a weekly check | (period, symbol, CUSIP, description): first and last settlement date, days listed, last price; about 4M rows, ~50 MB |
+| `sec_fund_classes` | Fund series/class CSV, 2016–2026 | 11 files, ~90 MB | The new year's file (published around June), checked quarterly | (year, class id): CIK, entity, org type, series, class name, ticker |
+| `sec_tickers` | `company_tickers_exchange.json` | 1 request | Weekly, Fridays in `eod` with the full corporate actions | (cik, ticker): name, exchange |
+
+- The file list for fail-to-deliver and fund files comes from SEC's pages, not from a URL pattern (four
+  paths; the 2016 fund file has no year in its name, so the year comes from the link text, checked against the
+  header format). A period is fetched once; one already in raw is skipped, so a run resumes after a failure.
+- Staging handles both fund header formats and `[NULL]`, Latin-1 fail-to-deliver text, the trailer line, blank
+  symbols (quarantined), and keeps the description exactly as given (trailing spaces trimmed).
+- Rules: `error` on a missing symbol or CUSIP; `warn` on a CUSIP whose check digit is wrong.
+- **When**: the first fetch by hand after the US close (`python -m pit.sec backfill`), like the first universe
+  refresh; afterwards inside `universe_refresh` (quarterly) and `eod` (weekly tickers), all outside the
+  collection window. These requests do not touch Alpaca's rate limit or the IB Gateway.
+- **Not now**: per-company filings (`data.sec.gov/submissions`, SIC codes). They cover only companies still on
+  EDGAR under today's ticker, which Nasdaq Trader and the Alpaca names already describe; revisited if the type
+  report shows a gap SIC would close. Fail-to-deliver before 2016 (156 more files) is not needed for bars that
+  start in 2016.
+
+Tests: header variants and `[NULL]`, the fail-to-deliver trailer and Latin-1, link parsing (four paths, the
+2016 name), refusing to run without `SEC_USER_AGENT`, skipping periods already fetched, and a 429 retry.
 
 ### 3. Corporate actions per security
 
@@ -216,7 +258,8 @@ traded close (P1 decision 4).
 
 - `pit.identity` and the type join run in `eod` after `daily_bars`, before `dbt_build` (about a minute).
 - Type sources: the Nasdaq Trader directories daily in `eod`; the SEC files weekly (Friday, with the full
-  corporate actions); the SEC annual fund files and fail-to-deliver history once, then on their release.
+  corporate actions); the SEC fail-to-deliver and fund files once by hand, then new periods in `universe_refresh`
+  (section 2b).
 - A new symbol seen by `eod` (a rename) gets its full history at the next quarterly refresh; until then the
   name-change link (section 1.4) joins it to its predecessor.
 
@@ -246,8 +289,8 @@ vs not; ties and cuts by rule; and the P2 sizing (securities ever eligible, smal
 
 1. **Stage all action types**; `pit.identity` (sections 1 and 3) with the known-case tests; identity report on
    production data, reviewed before going further.
-2. **Type sources** (acquire): SEC fund class files, Nasdaq Trader directories, SEC tickers + SIC; probe the
-   fail-to-deliver files and decide on them from the probe.
+2. **Type sources** (acquire): (a) Nasdaq Trader directories, daily in `eod` (built); (b) SEC fail-to-deliver,
+   fund class files and tickers (section 2b), first fetch by hand after the close.
 3. **Type cascade** and its report.
 4. **`adjust()` per security**, rule 15 per security.
 5. **`universe_daily`** in dbt, `get_universe` / `get_daily_bars` / `get_security`, coverage report.

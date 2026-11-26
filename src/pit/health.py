@@ -191,7 +191,8 @@ def day_summary(data_dir: Path, session) -> Check:
     if runs.is_empty():
         return "error", [("❌ 运行记录", f"{session} 没有找到任何运行记录", False)]
     level, fields = "ok", []
-    for ds in ("option_snapshots", "index_snapshots", "equity_bars", "corporate_actions", "assets", "daily_bars"):
+    for ds in ("option_snapshots", "index_snapshots", "equity_bars", "corporate_actions", "assets", "daily_bars",
+               "symbol_directory"):
         r = runs.filter(pl.col("dataset") == ds)
         good = r.filter(pl.col("status") == "success")
         bad = r.height - good.height

@@ -4,7 +4,7 @@ from airflow.sdk import dag, task
 from pit.market_hours import recent_sessions
 from pit.health import report
 from pit.notify import CALLBACKS, send
-from pit.pipeline import collect_assets, collect_corporate_actions, collect_equity_bars
+from pit.pipeline import collect_assets, collect_corporate_actions, collect_equity_bars, collect_symbol_directory
 from pit.universe import collect_recent_daily_bars
 
 CONFIG = "/opt/airflow/config/alpaca_bars.toml"
@@ -28,6 +28,11 @@ def eod():
     @task(retries=2)
     def assets(**context) -> str:
         return collect_assets(CONFIG, run_id=context["run_id"])["staged_path"]
+
+    @task(retries=2)
+    def symbol_directory(**context) -> str:
+        # Nasdaq Trader's listings with names and ETF flags (security type); current only, so daily builds history.
+        return collect_symbol_directory(run_id=context["run_id"])["staged_path"]
 
     @task(retries=2, trigger_rule="all_done")  # a failed asset snapshot falls back to the previous one
     def daily_bars(**context) -> list[str]:
@@ -54,7 +59,7 @@ def eod():
     snapshot = assets()
     bars = daily_bars()
     snapshot >> bars
-    [corporate_actions(), snapshot, bars, refetch_recent_bars()] >> dbt_build() >> close_summary()
+    [corporate_actions(), symbol_directory(), snapshot, bars, refetch_recent_bars()] >> dbt_build() >> close_summary()
 
 
 eod()

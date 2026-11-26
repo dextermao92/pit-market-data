@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 
-from pit import alpaca_bars, assets, corporate_actions, ibkr_indices, ibkr_options, stage_options
+from pit import alpaca_bars, assets, corporate_actions, ibkr_indices, ibkr_options, stage_options, symbol_directory
 from pit.market_hours import calendar
 from pit.notify import DATASET_ZH, alert_once
 from pit.rules import missing_bars
@@ -46,6 +46,7 @@ STAGERS = {
     "daily_bars": alpaca_bars.stage_file,
     "corporate_actions": corporate_actions.stage_file,
     "assets": assets.stage_file,
+    "symbol_directory": symbol_directory.stage_file,
 }
 
 
@@ -165,6 +166,10 @@ def collect_corporate_actions(config_path: str, run_id: str | None = None, full:
 
 def collect_assets(config_path: str, run_id: str | None = None) -> dict:
     return _recorded("assets", run_id, lambda: _stage("assets", assets.run(config_path))[0])
+
+
+def collect_symbol_directory(run_id: str | None = None) -> dict:
+    return _recorded("symbol_directory", run_id, lambda: _stage("symbol_directory", symbol_directory.run())[0])
 
 
 def restage(data_dir: Path, datasets: list[str] | None = None) -> None:

@@ -25,7 +25,7 @@ DATASET_ZH = {"option_snapshots": "期权快照", "index_snapshots": "指数快�
               "corporate_actions": "公司行为", "assets": "资产快照", "daily_bars": "日线 bar",
               "symbol_directory": "交易所代码目录"}
 TASK_ZH = {"chains": "期权快照", "indices": "指数快照", "fetch": "股票 bar", "corporate_actions": "公司行为",
-           "assets": "资产快照", "daily_bars": "日线 bar", "symbol_directory": "交易所代码目录", "refetch_recent_bars": "回拉最近 10 个交易日",
+           "assets": "资产快照", "daily_bars": "日线 bar", "symbol_directory": "交易所代码目录", "sec_tickers": "SEC 代码表", "sec_reference": "SEC 名称与基金数据", "refetch_recent_bars": "回拉最近 10 个交易日",
            "dbt_build": "dbt build", "close_summary": "收盘总结", "check_and_send": "状态检查",
            "discover_symbols": "全市场代码发现", "backfill_daily_bars": "全市场日线回补",
            "universe_summary": "全市场刷新总结"}

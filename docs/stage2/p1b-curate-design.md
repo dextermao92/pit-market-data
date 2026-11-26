@@ -184,6 +184,11 @@ The type report gives, per year, the eligible securities by type and source, and
 
 #### 2b. SEC fetch plan (build step 2b)
 
+*Built 2026-11-26* (`pit.sec`, `collect_sec`, the `sec_tickers` task in `eod` and `sec_reference` in
+`universe_refresh`). A dry run against sec.gov (2 fund files, 4 half-months, the tickers) took 6 s; a second run
+fetched nothing new. Deploying needs `SEC_USER_AGENT` passed to the Airflow container (`docker-compose.yml`),
+which means recreating that container outside the collection window.
+
 **One client** (`pit.sec`): the User-Agent comes from `SEC_USER_AGENT` in `.env` and nothing is sent without
 it; at most 5 requests a second (SEC allows 10); 429/503 retried with backoff; redirects followed. The
 User-Agent is never written to raw, staged, logs or notifications.

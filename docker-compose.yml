@@ -67,6 +67,7 @@ services:
       ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SEC_USER_AGENT: ${SEC_USER_AGENT:-}  # pit.sec: SEC asks for a contact address in the User-Agent
     volumes:
       - ./dags:/opt/airflow/dags
       - ./plugins:/opt/airflow/plugins

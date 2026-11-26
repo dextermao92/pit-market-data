@@ -6,6 +6,7 @@ from airflow.sdk import dag, task
 
 from pit.corporate_actions import HISTORY_START
 from pit.notify import CALLBACKS, send
+from pit.pipeline import collect_sec
 from pit.universe import backfill, discover, last_closed_session
 
 CONFIG = "/opt/airflow/config/alpaca_bars.toml"
@@ -33,6 +34,16 @@ def universe_refresh():
         today = pendulum.now("America/New_York")
         return context["dag_run"].run_type == "manual" or (today.month in QUARTER_MONTHS and today.day <= 7)
 
+    @task(execution_timeout=timedelta(minutes=60), retries=1)
+    def sec_reference(**context) -> dict:
+        # New SEC fail-to-deliver half-months and fund class files since the last run (pit.sec); names, CUSIPs and
+        # fund tickers for the security type. Stops before the collection window like the rest.
+        out = {}
+        for ds in ("sec_fund_classes", "sec_ftd"):
+            r = collect_sec(ds, run_id=context["run_id"])
+            out[ds] = {"files": r["files"], "rows": r["rows"], "stopped": r["stopped"]}
+        return out
+
     @task(execution_timeout=timedelta(minutes=90))
     def discover_symbols() -> int:
         return pl.read_parquet(discover(CONFIG)).height
@@ -42,11 +53,13 @@ def universe_refresh():
         return backfill(CONFIG, pendulum.parse(HISTORY_START).date(), last_closed_session())
 
     @task
-    def universe_summary(candidates: int, stats: dict) -> str:
-        level = "warn" if stats["failed"] or stats["stopped"] else "ok"
+    def universe_summary(candidates: int, stats: dict, sec: dict) -> str:
+        level = "warn" if stats["failed"] or stats["stopped"] or sec["sec_ftd"]["stopped"] else "ok"
         fields = [("🔎 有数据的代码", f"{candidates:,}", True), ("🆕 首次回补的代码", f"{stats['new_symbols']:,}", True),
                   ("📊 新拉日线", f"{stats['rows']:,} 行 · {stats['batches']} 批", True),
                   ("❗ 失败批次", f"{stats['failed']}（重跑会续传）" if stats["failed"] else "0", True)]
+        fields.append(("📄 SEC 新文件", f"fail-to-deliver {sec['sec_ftd']['files']} 个 · 基金名录 "
+                       f"{sec['sec_fund_classes']['files']} 个", True))
         if stats["stopped"]:
             fields.append(("⏸️ 到点暂停", "已在美股采集时段（开盘前 90 分钟起）之前停下；手动重跑会从断点续传", False))
         send("🗂️ 全市场代码刷新" + ("暂停" if stats["stopped"] else "完成"), "代码发现 + 日线增量回补（季度任务）",
@@ -55,8 +68,11 @@ def universe_refresh():
 
     candidates = discover_symbols()
     stats = backfill_daily_bars()
-    due() >> candidates >> stats
-    universe_summary(candidates, stats)
+    reference = sec_reference()
+    gate = due()
+    gate >> candidates >> stats
+    gate >> reference
+    universe_summary(candidates, stats, reference)
 
 
 universe_refresh()

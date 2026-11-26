@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 
-from pit import alpaca_bars, assets, corporate_actions, ibkr_indices, ibkr_options, stage_options, symbol_directory
+from pit import alpaca_bars, assets, corporate_actions, ibkr_indices, ibkr_options, sec, stage_options, symbol_directory
 from pit.market_hours import calendar
 from pit.notify import DATASET_ZH, alert_once
 from pit.rules import missing_bars
@@ -47,7 +47,11 @@ STAGERS = {
     "corporate_actions": corporate_actions.stage_file,
     "assets": assets.stage_file,
     "symbol_directory": symbol_directory.stage_file,
+    "sec_ftd": sec.stage_ftd,
+    "sec_fund_classes": sec.stage_fund_classes,
+    "sec_tickers": sec.stage_tickers,
 }
+SEC_FETCHERS = {"sec_ftd": sec.fetch_ftd, "sec_fund_classes": sec.fetch_fund_classes, "sec_tickers": sec.fetch_tickers}
 
 
 def _previous_success(data_dir: Path, dataset: str, now: datetime) -> datetime | None:
@@ -172,11 +176,22 @@ def collect_symbol_directory(run_id: str | None = None) -> dict:
     return _recorded("symbol_directory", run_id, lambda: _stage("symbol_directory", symbol_directory.run())[0])
 
 
+def collect_sec(dataset: str, run_id: str | None = None) -> dict:
+    """One SEC dataset (pit.sec): only files not fetched before. Returns the run record plus the fetch stats
+    (files, stopped)."""
+    stats: dict = {}
+
+    def collect():
+        stats.update(SEC_FETCHERS[dataset](Path(os.environ.get("DATA_DIR", "data"))))
+        return {k: stats[k] for k in ("raw_path", "staged_path", "rows", "quarantined", "flagged")}
+    return _recorded(dataset, run_id, collect) | stats
+
+
 def restage(data_dir: Path, datasets: list[str] | None = None) -> None:
     for dataset, stage in STAGERS.items():
         if datasets and dataset not in datasets:
             continue
-        for raw in sorted(data_dir.glob(f"raw/source=*/ingest_date=*/{dataset}/*.json")):
+        for raw in sorted(f for f in data_dir.glob(f"raw/source=*/ingest_date=*/{dataset}/*") if f.suffix != ".tmp"):
             stage(raw)
             print(raw)
 

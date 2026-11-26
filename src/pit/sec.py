@@ -218,7 +218,10 @@ def fund_frame(raw_path: Path) -> pl.DataFrame:
         text = content.decode("utf-8-sig")
     except UnicodeDecodeError:
         text = content.decode("latin-1")
-    df = pl.read_csv(io.StringIO(text), infer_schema_length=0, null_values=["[NULL]", ""], truncate_ragged_lines=True)
+    lines = text.splitlines(keepends=True)
+    header = next((i for i, ln in enumerate(lines) if "class_id" in ln or "Class ID" in ln), 0)  # 2017 has a title row
+    df = pl.read_csv(io.StringIO("".join(lines[header:])), infer_schema_length=0, null_values=["[NULL]", ""],
+                     truncate_ragged_lines=True)
     df = df.rename({c: FUND_COLUMNS[c.strip()] for c in df.columns if c.strip() in FUND_COLUMNS})
     df = df.with_columns(pl.lit(None, pl.String).alias(c) for c in set(FUND_COLUMNS.values()) - set(df.columns))
     year = int(raw_path.name.split("__")[1])

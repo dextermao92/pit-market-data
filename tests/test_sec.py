@@ -115,7 +115,10 @@ def test_ftd_staging_groups_by_security_and_skips_the_trailer(tmp_path):
     assert staged.filter(pl.col("symbol") == "BAD")["flags"].item().to_list() == ["cusip_check_digit"]
 
 
-@pytest.mark.parametrize("text, year, ticker", [(FUND_TITLE, 2026, "LACAX"), (FUND_SNAKE, 2016, "TNFAX")])
+@pytest.mark.parametrize("text, year, ticker", [
+    (FUND_TITLE, 2026, "LACAX"), (FUND_SNAKE, 2016, "TNFAX"),
+    ("Open Gov Series and Class List v final,,,,,,,,,,,,,\r\n" + FUND_SNAKE.replace("\n", "\r\n"), 2017, "TNFAX"),
+])
 def test_fund_staging_reads_both_header_styles(tmp_path, text, year, ticker):
     raw = write_raw_bytes(tmp_path, "sec", "sec_fund_classes", f"{year}__f.csv", text.encode(), NOW)
     _, staged, quarantined = sec.stage_fund_classes(raw)
@@ -123,7 +126,7 @@ def test_fund_staging_reads_both_header_styles(tmp_path, text, year, ticker):
     assert (first["year"], first["ticker"], first["org_type"]) == (year, ticker, "30")
     assert first["file_number"] and first["cik"]
     assert staged.height + quarantined.height == 2
-    if year == 2016:
+    if year in (2016, 2017):
         assert quarantined.height == 1  # [NULL] class id
     else:
         assert staged.filter(pl.col("ticker").is_null())["flags"].item().to_list() == ["no_ticker"]

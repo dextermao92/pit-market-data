@@ -24,18 +24,19 @@ def write_raw(data_dir: Path, source: str, dataset: str, payload: dict, ingested
     return path
 
 
-def staged_path(raw_path: Path, layer: str = "staged") -> Path:
-    data_dir, ingest_date, dataset = raw_path.parents[4], raw_path.parents[1].name, raw_path.parent.name
-    return data_dir / layer / dataset / ingest_date / f"{raw_path.stem}.parquet"
+def staged_path(raw_path: Path, layer: str = "staged", dataset: str | None = None) -> Path:
+    """dataset: a second staged dataset derived from the same raw files (e.g. corporate_events)."""
+    data_dir, ingest_date = raw_path.parents[4], raw_path.parents[1].name
+    return data_dir / layer / (dataset or raw_path.parent.name) / ingest_date / f"{raw_path.stem}.parquet"
 
 
-def write_staged(raw_path: Path, staged: pl.DataFrame, quarantined: pl.DataFrame) -> Path:
-    q = staged_path(raw_path, "quarantine")
+def write_staged(raw_path: Path, staged: pl.DataFrame, quarantined: pl.DataFrame, dataset: str | None = None) -> Path:
+    q = staged_path(raw_path, "quarantine", dataset)
     if quarantined.height:
         write_parquet(quarantined, q)
     else:
         q.unlink(missing_ok=True)  # a re-stage under fixed rules may clear an earlier quarantine
-    return write_parquet(staged, staged_path(raw_path))
+    return write_parquet(staged, staged_path(raw_path, dataset=dataset))
 
 
 def write_parquet(df: pl.DataFrame, path: Path) -> Path:

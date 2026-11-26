@@ -86,6 +86,12 @@ def check_corporate_actions(df: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFram
     })
 
 
+def check_corporate_events(df: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
+    return apply(df, errors={"required_fields": _required("id", "type", "symbol", "date")}, warns={
+        "cusip_symbol": pl.col("symbol").str.contains(r"^[0-9A-Z]{9}$") & pl.col("symbol").str.contains(r"[0-9]"),
+    })
+
+
 def missing_bars(df: pl.DataFrame, symbols: list[str], start: datetime, end: datetime, bar: timedelta) -> int:
     """Partition check: expected (symbol, bar_start) slots in [start, end] minus those present (staged or quarantined).
     A warning, not an error: halts and no-trade intervals leave real gaps."""

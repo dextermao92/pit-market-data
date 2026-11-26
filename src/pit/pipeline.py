@@ -1,6 +1,6 @@
 """One collection run per dataset: fetch -> raw -> staged (+ quarantine), recorded in pipeline_runs.
 
-Re-stage everything from raw (e.g. after a rule change): python -m pit.pipeline restage data
+Re-stage everything from raw (e.g. after a rule change): python -m pit.pipeline restage data [dataset ...]
 Backfill equity bars: python -m pit.pipeline backfill config/alpaca_bars.toml 2025-10-15 2026-10-14
 Whole-market daily bars (discovery + backfill): see pit.universe.
 """
@@ -167,8 +167,10 @@ def collect_assets(config_path: str, run_id: str | None = None) -> dict:
     return _recorded("assets", run_id, lambda: _stage("assets", assets.run(config_path))[0])
 
 
-def restage(data_dir: Path) -> None:
+def restage(data_dir: Path, datasets: list[str] | None = None) -> None:
     for dataset, stage in STAGERS.items():
+        if datasets and dataset not in datasets:
+            continue
         for raw in sorted(data_dir.glob(f"raw/source=*/ingest_date=*/{dataset}/*.json")):
             stage(raw)
             print(raw)
@@ -188,6 +190,6 @@ def backfill(config_path: str, start: date, end: date, run_id: str | None = None
 
 if __name__ == "__main__":
     if sys.argv[1] == "restage":
-        restage(Path(sys.argv[2]))
+        restage(Path(sys.argv[2]), sys.argv[3:] or None)
     elif sys.argv[1] == "backfill":
         backfill(sys.argv[2], date.fromisoformat(sys.argv[3]), date.fromisoformat(sys.argv[4]))

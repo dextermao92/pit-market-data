@@ -1,6 +1,6 @@
 # Stage 2 · P1b: curate the whole-market daily data (design)
 
-Status: **draft for review**, 2026-11-26. Built on the P1a survey ([p1-data-survey.md](p1-data-survey.md)) and a
+Status: **reviewed**, 2026-11-26; decisions at the end. Build step 1 (`pit.identity`, staged `corporate_events`) is built and run on production data (scratch output); not wired into `eod` yet. Built on the P1a survey ([p1-data-survey.md](p1-data-survey.md)) and a
 prototype run of the identity rules on the production data; replaces sections 3–6 of
 [p1-universe-design.md](p1-universe-design.md). Nothing here is built yet.
 
@@ -94,7 +94,13 @@ Output under `data/curated/identity/`, read by dbt as sources.
 3. **Segments**: cut each symbol's traded series
    - at a gap of more than 250 sessions;
    - at a gap of 61–250 sessions when the close moves ≥ 2× across it;
-   - at the end of a twin run where this symbol **jumps** while its twin continues smoothly (immediate reuse).
+   - at the edges of a twin run, for the **old name** of the pair (the one that stops or jumps when the shared
+     run ends while the other carries on), when both symbols also trade with different bars on the same
+     sessions before the run (cut at its first shared bar) or after it (cut at its first bar after). Two
+     different bars on one day cannot be one security: the old name carried another one then, a ticker handed
+     to the acquirer in a merger (Primo's PRMW taken by Cott the next day) or reused after a short pause
+     (EAGL). This replaced a price-jump rule after the first production run, which left 20 securities mixing
+     two companies.
 4. **Links** between segments:
    - twin runs (≥ 5 shared bars);
    - `name_changes` without a twin run (renames newer than the last discovery, before the quarterly refresh
@@ -119,6 +125,22 @@ Tables:
 | `security_symbols` | (security, symbol period) | `security_id`, `symbol`, `valid_from`, `valid_to`, `fetch_symbol` |
 | `securities` | security | `security_id`, `first_session`, `last_session`, `end_reason`, `successor_id`, type columns (section 2), `flags` |
 | `identity_report` | build | counts: securities, twins merged, ties, cuts by rule, unlinked name changes, changed security-days |
+
+**First production run** (2026-11-26, scratch output, 90 s on the host):
+
+| | |
+|---|---|
+| Symbols / traded bars in | 24,498 / 27,401,431 |
+| Segments / cuts | 25,347; long gap 722, gap with a 2× move 102, twin edges 25 (3 at the start, 22 at the end) |
+| Links | 2,084 twin pairs (7 left apart, both carrying on smoothly), 556 by name change only |
+| **Securities** | **22,819**; 1,538,381 back-mapped bars merged away |
+| Ends | active 13,157; delisted, reason unknown 6,811; cash merger 1,421; stock merger 729; renamed to a symbol outside the data 668; worthless 33 |
+| Flags | tie 64 securities (61,477 days, SIVB/SIVBQ-style full copies); twin cut 47; smooth twin 14; conflict 3 (1,490 days, mostly one NTN/BTX/ERNA tangle) |
+| Bars in two securities | 2,127: two smooth-twin pairs (AEON/PMGM 392, NUVB/PANA 113) and 1,508 pairs of ≤ 4 identical bars (when-issued `…V` symbols, units, coincidences on illiquid days), under the 5-bar threshold |
+
+Every known case in the validation table resolves as expected. Of the 675 renames left unlinked, 495 point to a
+symbol with no SIP bars (OTC, foreign); most of the rest are share-class consolidations (CUK → CCL, CWEN.A →
+CWEN) and rights or notes, which are different securities, so not linking them is right.
 
 `fetch_symbol` is the symbol whose vendor series carries that period (for back-mapped chains, the current
 symbol carries all of it; for a reused ticker, the old symbol with a date range). P2 fetches 1-minute bars by
@@ -231,13 +253,14 @@ vs not; ties and cuts by rule; and the P2 sizing (securities ever eligible, smal
 5. **`universe_daily`** in dbt, `get_universe` / `get_daily_bars` / `get_security`, coverage report.
 6. Docs: README data table, `docs/setup.md`, and P2's fetch list.
 
-## Open questions
+## Decisions (2026-11-26)
 
-1. **`unknown` type**: eligible with a flag (the P1 default), or excluded? With funds at half the listings, an
-   `unknown` that is really a fund would leak into the stock universe; excluding it loses delisted stocks the
-   type sources miss. The type report will size it; the default stays "eligible, flagged" until then.
-2. **SPAC common shares** before their merger (trading near $10 on little news): exclude by default?
-3. **Closed-end funds, BDCs, REITs**: BDCs and REITs are operating companies (common); closed-end funds are
-   funds and excluded. Agreed?
-4. **SEC User-Agent**: SEC asks automated clients to send a contact address in the User-Agent. Which contact
-   should the project use (a project address in `.env`, not committed)?
+1. **`unknown` type is eligible, flagged** (`type_unknown`). With funds at half the listings, an `unknown` that
+   is really a fund would leak into the stock universe; excluding it would lose delisted stocks the type sources
+   miss. Revisited once the type report sizes it.
+2. **SPAC common shares are excluded** before their merger (`type = 'spac'`); after the merger the security is
+   the operating company and eligible.
+3. **BDCs and REITs are common stock; closed-end funds are funds** and excluded.
+4. **SEC requests** send a contact address in the User-Agent, as SEC asks of automated clients. The address is
+   the user's to give and lives in `.env` (`SEC_USER_AGENT`), never in the repository; the SEC sources (build
+   step 2) wait for it.

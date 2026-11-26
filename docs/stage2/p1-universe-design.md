@@ -1,8 +1,10 @@
 # Stage 2 · P1: whole-market universe and daily bars (design)
 
-Status: **reviewed**, 2026-11-25; the four open questions are decided (see Decisions). P1a steps 1–3 are built
-(`pit.universe`, the whole-market `assets` / `corporate_actions` / `daily_bars` fetches, `eod`); the survey
-(step 4) and P1b are not.
+Status: **reviewed**, 2026-11-25; the four open questions are decided (see Decisions). P1a is done: steps 1–3
+are built and live (`pit.universe`, the whole-market `assets` / `corporate_actions` / `daily_bars` fetches,
+`eod`; first full run 2026-11-25: 24,498 symbols, 29.3M daily bars, 63 min), and the survey (step 4) is in
+[p1-data-survey.md](p1-data-survey.md). P1b is not built; its sections below predate the survey, which lists
+what changes.
 
 **Scheduling.** Past daily bars never expire, unlike option snapshots, so discovery and backfill have no deadline;
 they only have to stay out of the way. The `universe_refresh` DAG runs them on the first Saturday of January,

@@ -189,9 +189,9 @@ acquiree, worthless removal, old symbol of a name change or unit split):
 
 ## What changes for P1b
 
-1. **Ignore filler bars.** `security_days` keeps only bars with volume > 0 (or marks the rest `no_trade`).
-   `listed`, `prev_close`, `adv20_usd`, returns and gap detection all use traded bars. Without this, a delisted
-   name stays "listed" for days after its last trade and medians are pulled toward zero.
+1. **Filler bars are not prices.** `security_days` marks them `no_trade`. Closes, returns, the last close of a
+   delisted name and gap detection use traded bars only; a no-trade session still counts as zero dollar volume
+   in `adv20_usd`, which is what it was.
 2. **Dedupe by identical bars first, actions second.** The design's step 2 holds, but identical OHLCV is the
    primary signal (it catches the ~540 pairs no action links); name changes then decide which symbol was
    as-traded on each day. Where no action decides, the twin that keeps trading alone after the overlap is the

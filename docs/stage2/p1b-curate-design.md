@@ -174,6 +174,27 @@ recording its source:
 Every source is a new raw dataset (fetched once, then on a schedule), staged, and joined by symbol and date.
 The type report gives, per year, the eligible securities by type and source, and the `unknown` share.
 
+*Built 2026-11-27* (`pit.security_types`, build step 3; not yet wired into `eod`). It writes
+`curated/identity/security_types.parquet`, one row per (security, symbol period) with `type`, `source`,
+`evidence` and `flags`, and `type_report.json`. Changes from the plan above, found on production data:
+
+- Order: SEC fund list, symbol shape, Nasdaq ETF flag, then text from fail-to-deliver descriptions (dated) and
+  Alpaca/Nasdaq names (the symbol's current holder only). A specific text answer (fund, ADR, SPAC …) beats
+  `common`, because fail-to-deliver text is cut at 30 characters and often loses "ETF"/"ADR".
+- Two more types: `debt` (exchange-traded notes) and `when_issued` (`.WI`, fifth letter V), both not eligible.
+- An ADS of a preferred share (ITUB, BBD, PBR.A) is `adr`; Nasdaq's "Closed End Fund" label on BDCs is ignored
+  (BDCs are common); closed-end "… Trust" names without "Fund" (RVT, PPR, GBAB) are funds by a name rule.
+- SPACs: by name, or by structure (a unit of the same root up to 200 days earlier, at the start of a security,
+  and either opening near $10 or ending with its unit as the security carries on under the target's symbol:
+  IPOE → SOFI, CCIV → LCID). A SPAC merging under its own symbol is split where its description changes (7).
+  SIC codes were not needed.
+
+First run (3 s, 2.75 GB peak on the host): 22,819 securities, 25,382 periods; liquid securities (≥ 20 days
+with close ≥ $1 and ≥ $1M traded) per year in eligible types 3,890–5,253, of which `unknown` 0–0.35% (mostly
+bankrupt `Q` symbols). Known misses: PSTH (a SPAC with no units, typed common), ADRs whose names never say
+ADR (TSM, typed common, still eligible), registered CLO funds (OXLC, ECC, typed common). Measure inside the
+Airflow container before wiring it into `eod`.
+
 #### 2a. SEC probe (2026-11-26)
 
 | Source | What came back | Coverage |

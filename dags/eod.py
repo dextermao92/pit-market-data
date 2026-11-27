@@ -3,7 +3,8 @@ from pathlib import Path
 import pendulum
 from airflow.sdk import dag, task
 
-from pit import market_calendar
+from pit import identity as pit_identity
+from pit import market_calendar, security_types
 from pit.market_hours import recent_sessions
 from pit.health import report
 from pit.notify import CALLBACKS, send
@@ -12,6 +13,7 @@ from pit.pipeline import (collect_assets, collect_corporate_actions, collect_equ
 from pit.universe import collect_recent_daily_bars
 
 CONFIG = "/opt/airflow/config/alpaca_bars.toml"
+DATA_DIR = Path("/opt/airflow/data")
 REFETCH_SESSIONS = 10  # vendor revisions to recent bars show up as new versions
 NY = "America/New_York"
 
@@ -31,7 +33,7 @@ def eod():
     @task
     def calendar_table() -> str:
         # Which days the market is open, its hours, half days and holidays, as data (curated/market_calendar).
-        return str(market_calendar.run(Path("/opt/airflow/data")))
+        return str(market_calendar.run(DATA_DIR))
 
     @task.short_circuit  # skips everything downstream (the all_done tasks too) on a market holiday
     def trading_day() -> bool:
@@ -84,6 +86,18 @@ def eod():
         return [collect_equity_bars(CONFIG, run_id=f"{context['run_id']}__{s}", session=s)["staged_path"]
                 for s in recent_sessions(pendulum.now("UTC"), REFETCH_SESSIONS)]
 
+    @task(trigger_rule="all_done")  # from whatever staged has, like dbt_build
+    def identity() -> dict:
+        # Symbols -> securities (renames, back-mapped copies, reused tickers): curated/identity. ~1 min, ~3 GB.
+        rep = pit_identity.run(DATA_DIR)
+        return {k: rep[k] for k in ("securities", "traded_bars", "tie_days", "conflict_days")}
+
+    @task
+    def types() -> dict:
+        # Security type per symbol period (common, ADR, fund, SPAC ...): curated/identity/security_types.
+        rep = security_types.run(DATA_DIR)
+        return {"by_type": rep["by_type"], "flags": rep["flags"]}
+
     # Runs even if a fetch failed: curated refreshes from whatever staged has; failing tests fail this task.
     @task.bash(trigger_rule="all_done")
     def dbt_build() -> str:
@@ -102,7 +116,10 @@ def eod():
     snapshot >> bars
     fetches = [corporate_actions(), symbol_directory(), sec_tickers(), snapshot, refetch_recent_bars()]
     gate >> fetches
-    [calendar_table(), *fetches, bars] >> dbt_build() >> close_summary()
+    curated = identity()
+    typed = types()
+    [*fetches, bars] >> curated >> typed
+    [calendar_table(), *fetches, bars, typed] >> dbt_build() >> close_summary()
 
 
 eod()

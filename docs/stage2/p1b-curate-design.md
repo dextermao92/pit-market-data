@@ -174,7 +174,7 @@ recording its source:
 Every source is a new raw dataset (fetched once, then on a schedule), staged, and joined by symbol and date.
 The type report gives, per year, the eligible securities by type and source, and the `unknown` share.
 
-*Built 2026-11-27* (`pit.security_types`, build step 3; not yet wired into `eod`). It writes
+*Built 2026-11-27* (`pit.security_types`, build step 3; in `eod` after `identity`, before `dbt_build`). It writes
 `curated/identity/security_types.parquet`, one row per (security, symbol period) with `type`, `source`,
 `evidence` and `flags`, and `type_report.json`. Changes from the plan above, found on production data:
 
@@ -192,8 +192,9 @@ The type report gives, per year, the eligible securities by type and source, and
 First run (3 s, 2.75 GB peak on the host): 22,819 securities, 25,382 periods; liquid securities (≥ 20 days
 with close ≥ $1 and ≥ $1M traded) per year in eligible types 3,890–5,253, of which `unknown` 0–0.35% (mostly
 bankrupt `Q` symbols). Known misses: PSTH (a SPAC with no units, typed common), ADRs whose names never say
-ADR (TSM, typed common, still eligible), registered CLO funds (OXLC, ECC, typed common). Measure inside the
-Airflow container before wiring it into `eod`.
+ADR (TSM, typed common, still eligible), registered CLO funds (OXLC, ECC, typed common). Inside the Airflow
+container `pit.identity` plus `pit.security_types` took 77 s with the container at 5.2 GiB at most (1.9 GiB idle,
+15.6 GiB limit), on 2026-11-27 after `eod`.
 
 #### 2a. SEC probe (2026-11-26)
 
@@ -282,7 +283,8 @@ traded close (P1 decision 4).
 
 ### 6. Schedule
 
-- `pit.identity` and the type join run in `eod` after `daily_bars`, before `dbt_build` (about a minute).
+- `pit.identity` and `pit.security_types` run in `eod` after the fetches, before `dbt_build` (about 80 s; built
+  2026-11-27).
 - Type sources: the Nasdaq Trader directories daily in `eod`; the SEC files weekly (Friday, with the full
   corporate actions); the SEC fail-to-deliver and fund files once by hand, then new periods in `universe_refresh`
   (section 2b).

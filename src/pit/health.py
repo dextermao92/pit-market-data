@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo
 import polars as pl
 from ib_async import Index, Stock
 
-from pit import ibc
+from pit import ibc, market_calendar
 from pit.alpaca_bars import client
 from pit.ibkr_options import clean, connect, wait_for_ticks
 from pit.market_hours import recent_sessions
@@ -184,6 +184,13 @@ def _rth(day) -> tuple[int, int]:
 def _slots_covered(good: pl.DataFrame, first: int, last: int) -> int:
     """Distinct 5-min slots from ET minute `first` to `last` (inclusive) with a successful run."""
     return good.filter(_mins(pl.col("slot")).is_between(first, last))["slot"].n_unique()
+
+
+def calendar_fields(session) -> Check:
+    """The session's kind (regular or half day, with hours) and the holidays and half days of the next two weeks."""
+    ahead = market_calendar.upcoming(session, 14)
+    return "ok", [("🗓️ 交易日", market_calendar.label(session), False),
+                  ("🔜 接下来两周的假期和半日市", "\n".join(ahead) or "无", False)]
 
 
 def day_summary(data_dir: Path, session) -> Check:
@@ -366,7 +373,7 @@ def report(kind: str) -> tuple[str, str, str, list[Field]]:
         checks, title = [progress(data_dir, now)], f"盘中进度 · 美东 {now.astimezone(ZoneInfo(NY)):%H:%M}"
     else:
         session = recent_sessions(now, 1)[0]
-        checks, title = [day_summary(data_dir, session), disk(data_dir)], f"收盘总结 · {session}"
+        checks, title = [calendar_fields(session), day_summary(data_dir, session), disk(data_dir)], f"收盘总结 · {session}"
     level = _worst(*(lv for lv, _ in checks))
     return level, f"{LEVEL_MARK[level]} {title}", HEADLINE[kind][level], [f for _, fs in checks for f in fs]
 

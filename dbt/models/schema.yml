@@ -22,6 +22,12 @@ models:
     data_tests:
       - unique: {column_name: "asset_id || '|' || valid_from::varchar"}
       - unique: {column_name: "case when is_current then asset_id end"}
+  - name: market_calendar
+    columns:
+      - name: day
+        data_tests: [unique, not_null]
+      - name: is_session
+        data_tests: [not_null]
   - name: option_quotes
     columns:
       - name: mid

@@ -153,7 +153,7 @@ derives run slots from the exchange calendar, so holidays, half days and DST nee
 | `contract_cache` | 08:15 | Fetches today's expiries and contract lists, so snapshot runs only ask for quotes |
 | `option_snapshots` | Every 5 min, 09:10–15:55 | Option chains and index levels → raw → staged. Pre-open runs warm the Gateway after its nightly restart. No retries: the next slot is the retry |
 | `equity_bars` | Every 5 min, 09:50–16:25 | The session's completed bars so far (the free plan withholds the latest 15 min) |
-| `eod` | 17:30 | Corporate actions, asset snapshot, daily bars, a refetch of the last 10 sessions to capture revisions, then `dbt build` |
+| `eod` | 17:30, trading days | Corporate actions, asset snapshot, daily bars, a refetch of the last 10 sessions to capture revisions, the market calendar table (`market_calendar`: sessions, hours, half days, holidays), then `dbt build`; on a market holiday only the calendar table and a holiday notice |
 | `watchdog_check` | Every 5 min in market hours | Alerts when a dataset has had no new data for 15 min, independently of the collectors |
 | `universe_refresh` | First Saturday of each quarter, 20:00 | Whole-market symbol discovery (including delisted stocks) and an incremental daily-bar backfill since 2016 ([design](docs/stage2/p1-universe-design.md)) |
 | Status checks | 08:00–09:28, hourly to 15:00, after `eod` | Gateway check, warm-up check, progress, close summary |

@@ -255,6 +255,14 @@ Tests: header variants and `[NULL]`, the fail-to-deliver trailer and Latin-1, li
 - Rule 15 (split-like jump without a split) runs per security on traded bars, `warn`, calibrated first on the
   liquid set. A jump that coincides with a cut or a link is reported as identity, not price.
 
+*Built 2026-11-27* (build step 4, `pit.adjust`): `attach` gives each action the security that traded under its
+symbol within 5 days of its ex_date; `adjust_daily` adjusts `security_days` by security; `split_jumps` is rule
+15. On production data 328,525 of 384,058 actions attach; of the 2,547 splits left unattached, 2,323 are on
+symbols with no SIP bars (OTC). GE's 1:8 reverse split (2021-08-02) is continuous (103.60 → 100.60). Rule 15
+on liquid eligible securities: 3,052 jumps of 1.8x or more without a split, 482 of them within 2% of a whole
+ratio (`split_like`: UHAL's 1:10 stock dividend, UWTI's reverse split, also spin-offs and crashes). It stays a
+review list, not a fix; `get_daily_bars` (step 5) will use `adjust_daily`.
+
 ### 4. Daily universe (`universe_daily`, dbt)
 
 One row per (session d, security with a bar on d−1), from sessions before d only:

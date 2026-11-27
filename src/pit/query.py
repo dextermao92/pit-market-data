@@ -6,12 +6,13 @@ Two clocks: bar_start / ts is market time, as_of is knowledge time. Delta time t
 """
 
 import os
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import polars as pl
 
-from pit.adjust import adjust, session_closes
+from pit.adjust import adjust, adjust_daily, attach, session_closes
 
 KEY = ("symbol", "bar_start")
 
@@ -85,3 +86,54 @@ def get_chain(underlying: str, at: datetime, *, data_dir: Path | None = None) ->
             latest = rows["ingested_at"].max()
             return rows.filter(pl.col("ingested_at") == latest)
     return pl.DataFrame()
+
+
+# --- by security (Stage 2 P1b: curated/identity and universe_daily) ---
+
+def get_universe(session: date, *, eligible_only: bool = True, data_dir: Path | None = None) -> pl.DataFrame:
+    """Securities a strategy could trade at `session`'s open, from sessions before it (universe_daily, written
+    by dbt): security_id, symbol (as traded the session before), type, flags, prev_close, adv20_usd, rank_adv.
+    Sorted by rank_adv (most traded first)."""
+    rows = pl.scan_parquet(_data_dir(data_dir) / "curated" / "universe_daily.parquet").filter(pl.col("session") == session)
+    if eligible_only:
+        rows = rows.filter("eligible")
+    return rows.sort("rank_adv", "security_id", nulls_last=True).collect()
+
+
+def get_security(symbol: str, session: date, *, data_dir: Path | None = None) -> str | None:
+    """The security_id that traded under `symbol` on `session` (FB on 2020-01-02 is Meta; FB in 2025 a fund)."""
+    periods = (pl.scan_parquet(_data_dir(data_dir) / "curated" / "identity" / "security_symbols.parquet")
+               .filter((pl.col("symbol") == symbol) & (pl.col("valid_from") <= session) & (pl.col("valid_to") >= session))
+               .collect())
+    return periods["security_id"][0] if periods.height else None
+
+
+def get_daily_bars(security_ids: list[str], start: date, end: date, *, as_of: datetime | None = None,
+                   adjust: str = "all", traded_only: bool = True, data_dir: Path | None = None) -> pl.DataFrame:
+    """Daily bars by security (identity's security_days), start <= session <= end, with the symbol each row
+    traded under, adjusted by security with the corporate actions known at as_of ("all", "split" or "none").
+
+    as_of (default now) also drops sessions after its New York date. Bars themselves are the latest version
+    (identity is rebuilt, not versioned); actions are point-in-time. traded_only drops zero-volume filler days.
+    """
+    root = _data_dir(data_dir)
+    as_of = as_of or datetime.now(UTC)
+    if as_of.tzinfo is None:
+        raise ValueError("as_of must be timezone-aware")
+    last = min(end, as_of.astimezone(ZoneInfo("America/New_York")).date())
+    ident = root / "curated" / "identity"
+    days = (pl.scan_parquet(sorted((ident / "security_days").glob("*.parquet")))
+            .filter(pl.col("security_id").is_in(security_ids) & (pl.col("session") <= last))
+            .collect())  # every day up to the window's end: a dividend needs the close before its ex_date
+    if adjust != "none" and days.height:
+        symbols = pl.read_parquet(ident / "security_symbols.parquet")
+        actions = _scan(_files(root, "corporate_actions", as_of), as_of)
+        held = symbols.filter(pl.col("security_id").is_in(security_ids))["symbol"].unique().to_list()
+        if actions is not None:
+            known = (actions.filter(pl.col("symbol").is_in(held))
+                     .select("ingested_at", "id", "symbol", "ex_date", "price_factor", "cash").collect())
+            days = adjust_daily(days, attach(known, symbols), as_of, adjust)
+    window = days.filter(pl.col("session") >= start)
+    if traded_only:
+        window = window.filter(pl.col("volume") > 0)
+    return window.sort("security_id", "session")

@@ -40,6 +40,7 @@ def known_actions(actions: pl.DataFrame, as_of: datetime) -> pl.DataFrame:
 
 def _factors(acts: pl.DataFrame, closes: pl.DataFrame, days: pl.DataFrame, key: str, how: str) -> pl.DataFrame:
     """(key, day, price_adj, split_adj) for the (key, day) pairs in `days`."""
+    acts = acts.with_columns(pl.col("price_factor", "cash").cast(pl.Float64))  # an all-null column reads as Null
     splits = acts.filter(pl.col("cash").is_null()).select(key, "ex_date", "price_factor", is_split=pl.lit(True))
     divs = (acts.filter(pl.col("cash").is_not_null()).sort("ex_date")
             .join_asof(closes.sort("day"), left_on="ex_date", right_on="day", by=key,

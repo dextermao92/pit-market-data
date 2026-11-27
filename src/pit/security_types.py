@@ -328,9 +328,21 @@ def _openings(days: pl.LazyFrame, wanted: pl.DataFrame) -> pl.DataFrame:
             .agg(opening=pl.col("close").head(OPENING_SESSIONS).median()).collect())
 
 
-def _latest(path: Path, columns: tuple[str, ...]) -> pl.DataFrame:
-    return pl.read_parquet(sorted(path.rglob("*.parquet")), columns=list(columns)) if path.exists() else \
-        pl.DataFrame(schema={c: pl.String for c in columns})
+TS = pl.Datetime("us", "UTC")
+SOURCES = {  # staged dataset -> the columns used, typed for when a source is not there yet (a new install, CI)
+    "sec_ftd": {"symbol": pl.String, "cusip": pl.String, "description": pl.String, "first_date": pl.Date,
+                "last_date": pl.Date},
+    "sec_fund_classes": {"year": pl.Int64, "ticker": pl.String, "entity_name": pl.String},
+    "assets": {"ingested_at": TS, "symbol": pl.String, "name": pl.String, "status": pl.String},
+    "symbol_directory": {"ingested_at": TS, "symbol": pl.String, "cqs_symbol": pl.String, "name": pl.String,
+                         "etf": pl.Boolean, "test_issue": pl.Boolean},
+}
+
+
+def _source(staged: Path, dataset: str) -> pl.DataFrame:
+    schema = SOURCES[dataset]
+    files = sorted((staged / dataset).rglob("*.parquet"))
+    return pl.read_parquet(files, columns=list(schema)) if files else pl.DataFrame(schema=schema)
 
 
 def run(data_dir: Path, out_dir: Path | None = None) -> dict:
@@ -344,11 +356,7 @@ def run(data_dir: Path, out_dir: Path | None = None) -> dict:
     openings = _openings(days, unit_siblings(_periods(symbols)))
     types = build(
         symbols,
-        _latest(staged / "sec_ftd", ("symbol", "cusip", "description", "first_date", "last_date")),
-        _latest(staged / "sec_fund_classes", ("year", "ticker", "entity_name")),
-        _latest(staged / "assets", ("ingested_at", "symbol", "name", "status")),
-        _latest(staged / "symbol_directory", ("ingested_at", "symbol", "cqs_symbol", "name", "etf", "test_issue")),
-        openings)
+        *(_source(staged, d) for d in SOURCES), openings)
     liquid = pl.concat([
         pl.scan_parquet(f).filter((pl.col("volume") > 0) & (pl.col("close") >= LIQUID_CLOSE)
                                   & (pl.col("close") * pl.col("volume") >= LIQUID_DOLLARS))

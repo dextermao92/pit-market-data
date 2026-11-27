@@ -17,3 +17,11 @@ models:
     # Tables, not views: a view would bake in the Parquet path of whichever host or container ran dbt.
     # ponytail: full rebuilds each eod; switch the big ones to incremental when a rebuild gets slow.
     +materialized: table
+
+vars:
+  # universe_daily eligibility (docs/stage2/p1-universe-design.md decision 1); research can rerun with stricter ones:
+  #   dbt build --select universe_daily --vars '{universe_min_adv_usd: 5000000}'
+  universe_min_price: 1
+  universe_min_adv_usd: 1000000
+  universe_min_age_sessions: 20
+  universe_max_close_age: 5

@@ -10,7 +10,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from pit import alpaca_bars, assets, corporate_actions, market_calendar, stage_options
+from pit import alpaca_bars, assets, corporate_actions, identity, market_calendar, security_types, stage_options
 from pit.storage import write_raw
 
 UTC = timezone.utc
@@ -80,6 +80,8 @@ def build(data_dir: Path) -> None:
                         "status": "active", "tradable": True}]}, at)
         assets.stage_file(raw)
     market_calendar.run(data_dir)  # derived from exchange_calendars, not fetched: the real table
+    identity.run(data_dir)         # curated/identity, read by universe_daily
+    security_types.run(data_dir)
 
 
 if __name__ == "__main__":

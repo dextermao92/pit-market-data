@@ -28,6 +28,21 @@ models:
         data_tests: [unique, not_null]
       - name: is_session
         data_tests: [not_null]
+  - name: universe_daily
+    description: Who a strategy could trade at each session's open, from what was known before it (P1b section 4).
+    columns:
+      - name: session
+        data_tests: [not_null]
+      - name: security_id
+        data_tests: [not_null]
+      - name: type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [common, adr, fund, preferred, debt, warrant, right, unit, spac, when_issued, unknown]
+      - name: eligible
+        data_tests: [not_null]
   - name: option_quotes
     columns:
       - name: mid

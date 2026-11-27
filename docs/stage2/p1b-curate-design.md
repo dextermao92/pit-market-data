@@ -281,6 +281,28 @@ One row per (session d, security with a bar on d−1), from sessions before d on
 Thresholds in dbt vars, as decided in P1. The exit price for a position whose security stops trading is its last
 traded close (P1 decision 4).
 
+*Built 2026-11-28* (`dbt/models/universe_daily.sql`, thresholds in `dbt_project.yml` vars, also written to
+`curated/universe_daily.parquet` sorted by session for polars). On production data (27.2M rows, 33 s on the
+host, about 5 s and under 1 GiB more inside the container; +0.7 GB in `curated.duckdb`, 322 MB Parquet):
+
+| Year | Listed per session | Eligible per session |
+|---|---|---|
+| 2016 | 7,936 | 2,847 (none in the first 20 sessions: `age_sessions` counts from the data's start) |
+| 2017 | 8,055 | 3,179 |
+| 2018 | 8,306 | 3,265 |
+| 2019 | 8,552 | 3,171 |
+| 2020 | 8,835 | 3,317 |
+| 2021 | 10,197 | 3,939 (the SPAC wave's mergers) |
+| 2022 | 11,228 | 3,598 |
+| 2023 | 11,001 | 3,303 |
+| 2024 | 10,905 | 3,320 |
+| 2025 | 11,492 | 3,479 |
+| 2026 | 12,737 | 3,598 |
+
+8,038 securities are eligible on at least one session: P2's 1-minute fetch list. FB → META keeps one rank
+through the rename; SIVB's last row is 2023-03-10 (the day after its last close); CCIV is excluded as a SPAC
+until 2021-07-26 and LCID eligible from 2021-07-27. No step changes except the 2021 rise.
+
 ### 5. Queries (`pit.query`)
 
 - `get_universe(session, *, eligible_only=True)` → `security_id`, `symbol`, `type`, flags, `adv20_usd`, `rank_adv`.
@@ -288,6 +310,12 @@ traded close (P1 decision 4).
   → by security, as-traded symbol on each row.
 - `get_security(symbol, session)` → the security that traded under a symbol on a date (for reading old notes and
   for P2).
+
+*Built 2026-11-28*: `get_universe(session, *, eligible_only=True)` reads the Parquet (0.01 s a day);
+`get_security(symbol, session)`; `get_daily_bars(security_ids, start, end, *, as_of=None, adjust="all",
+traded_only=True)` reads `security_days`, attaches the actions known at `as_of` and adjusts by security (0.1 s
+for two securities over a year). Bars are the latest version (identity is rebuilt, not versioned); actions are
+point-in-time.
 
 ### 6. Schedule
 
@@ -329,7 +357,8 @@ vs not; ties and cuts by rule; and the P2 sizing (securities ever eligible, smal
    fund class files and tickers (section 2b), first fetch by hand after the close.
 3. **Type cascade** and its report.
 4. **`adjust()` per security**, rule 15 per security.
-5. **`universe_daily`** in dbt, `get_universe` / `get_daily_bars` / `get_security`, coverage report.
+5. **`universe_daily`** in dbt, `get_universe` / `get_daily_bars` / `get_security`, coverage report (built
+   2026-11-28).
 6. Docs: README data table, `docs/setup.md`, and P2's fetch list.
 
 ## Decisions (2026-11-26)
